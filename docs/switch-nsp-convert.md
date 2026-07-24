@@ -17,7 +17,7 @@
    - **사운드 볼륨** — 기본값 100%, 드롭다운으로 조절
 10. **작업 시작** — 변환 진행 (진행률, 속도, 경과 시간, 진행바 표시)
 
-<img width="850" height="831" alt="image" src="https://github.com/user-attachments/assets/e291dc47-02f8-4bc6-92f4-25e79cc30e87" />
+<img width="850" height="684" alt="image" src="https://github.com/user-attachments/assets/e291dc47-02f8-4bc6-92f4-25e79cc30e87" />
 
 ---
 
