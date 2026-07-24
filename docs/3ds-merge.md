@@ -1,4 +1,4 @@
-# 3DS - 병합
+# 3DS - 리팩
 
 게임 파일과 한글패치를 병합하는 탭입니다.
 
@@ -17,7 +17,7 @@
 8. **진행도**
 9. **로그**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-merge-1.png) -->
+<img width="850" height="684" alt="1783810287" src="https://github.com/user-attachments/assets/38563a71-3f4b-47d9-a23f-c2b5fba95497" />
 
 ---
 
