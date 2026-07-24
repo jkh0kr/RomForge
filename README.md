@@ -2,6 +2,9 @@
 
 롬 패치 / 압축 툴
 
+## 사용자 매뉴얼
+https://sinjunyoung.github.io/RomForge/
+
 ## License
 
 This project is licensed under the GNU General Public License v2.0 or later (GPL-2.0-or-later). See the `LICENSE` file for the full license text.
