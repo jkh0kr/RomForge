@@ -38,6 +38,11 @@ nav:
       - Switch - 병합 / 분리: switch-merge.md
       - Switch - 포맷 변환: switch-format.md
       - Switch - 새턴롬 NSP 변환: switch-nsp-convert.md
+      - Switch - 버전 무시: switch-version-ignore.md
+      - 3DS - 병합: 3ds-merge.md
+      - 3DS - SD 카드 게임 추출: 3ds-extract.md
+      - 3DS - PC 설치: 3ds-pc-install.md
+      - 3DS - 복호화: 3ds-decrypt.md
   - 자주 묻는 질문: faq.md
 
 markdown_extensions:
