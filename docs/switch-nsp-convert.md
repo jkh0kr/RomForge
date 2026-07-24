@@ -17,7 +17,7 @@
    - **사운드 볼륨** — 기본값 100%, 드롭다운으로 조절
 10. **작업 시작** — 변환 진행 (진행률, 속도, 경과 시간, 진행바 표시)
 
-<!-- TODO: 스크린샷 추가 (docs/assets/switch-nsp-convert-1.png) -->
+<img width="850" height="831" alt="image" src="https://github.com/user-attachments/assets/e291dc47-02f8-4bc6-92f4-25e79cc30e87" />
 
 ---
 
