@@ -20,7 +20,7 @@ DBI 등에서 현재 기기의 SDK 버전보다 높은 게임은 설치가 차�
 5. **전체 삭제**
 6. **작업 시작 / 취소**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/switch-version-ignore-1.png) -->
+<img width="850" height="684" alt="1783833784" src="https://github.com/user-attachments/assets/371b57d5-37b5-40cf-82f8-6f2264f2478b" />
 
 ---
 
