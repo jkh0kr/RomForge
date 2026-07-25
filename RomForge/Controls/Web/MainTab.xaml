@@ -1,0 +1,73 @@
+﻿<UserControl x:Class="RomForge.Controls.Web.MainTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 검색 필터 -->
+        <Border Grid.Row="0" Background="#252526" Padding="15,10" BorderBrush="#2D2D30" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Style="{StaticResource GrayButton}" Content="오늘" CommandParameter="today" Command="{Binding SetRangeCommand}" Margin="0,0,4,0" Padding="8,4"/>
+                <Button Style="{StaticResource GrayButton}" Content="1주" CommandParameter="1w" Command="{Binding SetRangeCommand}" Margin="0,0,4,0" Padding="8,4"/>
+                <Button Style="{StaticResource GrayButton}" Content="1월" CommandParameter="1m" Command="{Binding SetRangeCommand}" Margin="0,0,4,0" Padding="8,4"/>
+                <Button Style="{StaticResource GrayButton}" Content="1년" CommandParameter="1y" Command="{Binding SetRangeCommand}" Margin="0,0,4,0" Padding="8,4"/>
+                <Button Style="{StaticResource GrayButton}" Content="전체" CommandParameter="all" Command="{Binding SetRangeCommand}" Margin="0,0,15,0" Padding="8,4"/>
+
+                <TextBlock Text="시작일" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <DatePicker SelectedDate="{Binding StartDate, Mode=TwoWay}" Width="120" Margin="0,0,15,0"/>
+
+                <TextBlock Text="종료일" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <DatePicker SelectedDate="{Binding EndDate, Mode=TwoWay}" Width="120" Margin="0,0,15,0"/>
+
+                <TextBlock Text="플랫폼" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox ItemsSource="{Binding Systems}" SelectedItem="{Binding SelectedSystem, Mode=TwoWay}" Width="110" Margin="0,0,15,0"/>
+
+                <TextBox x:Name="txtKeyword" Text="{Binding Keyword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="180" Padding="6,4" Margin="0,0,8,0" KeyUp="TxtKeyword_KeyUp"/>
+
+                <Button Style="{StaticResource RunButton}" Content="검색" Command="{Binding SearchCommand}" Padding="14,4" Margin="0,0,15,0"/>
+                <Button Style="{StaticResource GrayButton}" Content="CSV 다운로드" Command="{Binding ExportCsvCommand}" Padding="10,4" Margin="0,0,15,0"/>
+
+                <TextBlock Text="{Binding StatusText}" Foreground="#54A3FF" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 검색 결과 -->
+        <ListView Grid.Row="1" ItemsSource="{Binding Results}">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Width="90" Header="플랫폼" DisplayMemberBinding="{Binding System}"/>
+                    <GridViewColumn Width="360" Header="게임" DisplayMemberBinding="{Binding Title}"/>
+                    <GridViewColumn Width="90" Header="버전" DisplayMemberBinding="{Binding Version}"/>
+                    <GridViewColumn Width="110" Header="날짜" DisplayMemberBinding="{Binding Date}"/>
+                    <GridViewColumn Width="90" Header="배포처">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock>
+                                    <Hyperlink Click="Hyperlink_Click" Tag="{Binding Url}">
+                                        <Run Text="바로가기"/>
+                                    </Hyperlink>
+                                </TextBlock>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <!-- 패치 추가 요청 -->
+        <Border Grid.Row="2" Background="#2A2A1E" Padding="15,10" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="누락된 패치 추가 요청" Foreground="#D4AF37" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                <TextBlock Text="게임명" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBox Text="{Binding NewTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="200" Padding="6,4" Margin="0,0,15,0"/>
+                <TextBlock Text="배포 링크" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBox Text="{Binding NewUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="300" Padding="6,4" Margin="0,0,8,0"/>
+                <Button Style="{StaticResource RunButton}" Content="등록" Command="{Binding AddPatchCommand}" Padding="14,4"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

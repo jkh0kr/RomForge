@@ -111,7 +111,12 @@ public static class MetadataService
 
     public static GameMetadata? GetGameMetadataFromUnpacked(string unpackedDir)
     {
-        string nacpPath = Path.Combine(unpackedDir, "control", "control.nacp");
+        string? baseDir = LibHacHelper.FindBaseProgramDir(unpackedDir);
+
+        if (baseDir == null)
+            return null;
+
+        string nacpPath = Path.Combine(baseDir, "control", "control.nacp");
 
         if (!File.Exists(nacpPath))
             return null;
@@ -131,7 +136,7 @@ public static class MetadataService
 
             for (int i = 0; i < langCount; i++)
             {
-                string iconPath = Path.Combine(unpackedDir, "control", $"icon_{(Language)i}.dat");
+                string iconPath = Path.Combine(baseDir, "control", $"icon_{(Language)i}.dat");
                 byte[]? iconData = File.Exists(iconPath) ? File.ReadAllBytes(iconPath) : null;
 
                 langs.Add(new LanguageInfo

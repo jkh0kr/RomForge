@@ -1,6 +1,7 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
 using LibHac.Ns;
+using NSW.Core;
 using NSW.Core.Enums;
 using NSW.M1.Core.Services;
 using NSW.WPF.Services;
@@ -280,7 +281,6 @@ namespace RomForge.ViewModels.Switch
                 WorkPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
 
             string unpackedDir = Path.Combine(WorkPath, "unpacked");
-            string romfsDir = Path.Combine(unpackedDir, "romfs");
 
             try
             {
@@ -297,6 +297,10 @@ namespace RomForge.ViewModels.Switch
                 await NspBuildService.Run(unpackReq, BuildMode.UnpackOnly, progress, (msg, lvl) => Log(msg), token);
 
                 token.ThrowIfCancellationRequested();
+
+                string? baseProgramDir = LibHacHelper.FindBaseProgramDir(unpackedDir)
+                    ?? throw new DirectoryNotFoundException("언팩된 프로그램(titleId) 폴더를 찾을 수 없습니다.");
+                string romfsDir = Path.Combine(baseProgramDir, "romfs");
 
                 string? existingCuePath = (Directory.Exists(romfsDir)
                     ? Directory.GetFiles(romfsDir, "*.cue", SearchOption.AllDirectories).FirstOrDefault()

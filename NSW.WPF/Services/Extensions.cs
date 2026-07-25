@@ -53,8 +53,6 @@ public static class Extensions
     {
         using var image = SixLabors.ImageSharp.Image.Load<Bgra32>(filePath);
 
-        image.Mutate(x => x.Resize(256, 256));
-
         byte[] pixels = new byte[image.Width * image.Height * 4];
 
         image.CopyPixelDataTo(pixels);

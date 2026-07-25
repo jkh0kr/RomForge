@@ -21,6 +21,20 @@ namespace NSW.Core;
 
 public static class LibHacHelper
 {
+    public static string? FindBaseProgramDir(string unpackedDir)
+    {
+        if (!Directory.Exists(unpackedDir))
+            return null;
+
+        return Directory.GetDirectories(unpackedDir)
+            .Select(d => new { Dir = d, Name = Path.GetFileName(d) })
+            .Where(x => x.Name.Length == 16 && ulong.TryParse(x.Name, NumberStyles.HexNumber, null, out _))
+            .Select(x => new { x.Dir, Id = ulong.Parse(x.Name, NumberStyles.HexNumber) })
+            .OrderBy(x => x.Id)
+            .Select(x => x.Dir)
+            .FirstOrDefault();
+    }
+
     public static IFileSystem OpenFileSystem(this LocalStorage storage, KeySet ks, string path)
     {
         IFileSystem fs;
