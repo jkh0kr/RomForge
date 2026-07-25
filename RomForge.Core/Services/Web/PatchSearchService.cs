@@ -11,7 +11,7 @@ public class PatchSearchService
     private const string SpreadsheetId = "1tUBzLVdRf16goco_aATGOwN-DQCdU0nZXt--9hHRE0U";
     private const string SheetName = "전체";
 
-    private const string AddPatchWebAppUrl = "https://script.google.com/macros/s/AKfycb.../exec";
+    private const string AddPatchWebAppUrl = "https://script.google.com/macros/s/AKfycbxamgrSyjyE_z_7lKOWamHEQOMsLojxDHofkHp6hggBqOsoDGeYRcWqWrcWykRIG_QckQ/exec";
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
 
@@ -20,7 +20,7 @@ public class PatchSearchService
         PropertyNameCaseInsensitive = true
     };
 
-    public static async Task<List<PatchEntry>> SearchAsync(DateTime? startDate, DateTime? endDate, string? system, string? keyword, CancellationToken ct = default)
+    public static async Task<List<PatchEntry>> SearchAsync(DateTime? startDate, DateTime? endDate, IReadOnlyCollection<string>? systems, string? keyword, CancellationToken ct = default)
     {
         var url = $"https://docs.google.com/spreadsheets/d/{SpreadsheetId}/gviz/tq?tqx=out:csv&sheet={Uri.EscapeDataString(SheetName)}";
 
@@ -51,7 +51,7 @@ public class PatchSearchService
 
         var filtered = all.Where(r =>
         {
-            if (!string.IsNullOrEmpty(system) && r.System != system)
+            if (systems != null && systems.Count > 0 && !systems.Contains(r.System))
                 return false;
 
             if (startDate.HasValue || endDate.HasValue)

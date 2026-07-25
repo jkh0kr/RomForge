@@ -22,8 +22,10 @@
     <None Remove="Assets\Images\Copy.png" />
     <None Remove="Assets\Images\CUE.png" />
     <None Remove="Assets\Images\Dreamcast.png" />
+    <None Remove="Assets\Images\Excel.png" />
     <None Remove="Assets\Images\FontSize.png" />
     <None Remove="Assets\Images\Hash.png" />
+    <None Remove="Assets\Images\Insert.png" />
     <None Remove="Assets\Images\Keygen.png" />
     <None Remove="Assets\Images\Left.png" />
     <None Remove="Assets\Images\LowerA.png" />
@@ -35,6 +37,7 @@
     <None Remove="Assets\Images\Repack.png" />
     <None Remove="Assets\Images\Right.png" />
     <None Remove="Assets\Images\Saturn.png" />
+    <None Remove="Assets\Images\Search.png" />
     <None Remove="Assets\Images\Split.png" />
     <None Remove="Assets\Images\Unpack.png" />
     <None Remove="Assets\Images\UpperA.png" />
@@ -52,9 +55,11 @@
     <Resource Include="Assets\Images\Copy.png" />
     <Resource Include="Assets\Images\CUE.png" />
     <Resource Include="Assets\Images\Dreamcast.png" />
+    <Resource Include="Assets\Images\Excel.png" />
     <Resource Include="Assets\Images\FontSize.png" />
     <Resource Include="Assets\Images\Hash.png" />
     <Resource Include="Assets\Images\HDD.png" />
+    <Resource Include="Assets\Images\Insert.png" />
     <Resource Include="Assets\Images\Keygen.png" />
     <Resource Include="Assets\Images\Left.png" />
     <Resource Include="Assets\Images\LowerA.png" />
@@ -66,6 +71,7 @@
     <Resource Include="Assets\Images\Right.png" />
     <Resource Include="Assets\Images\Saturn.png" />
     <Resource Include="Assets\Images\SD.png" />
+    <Resource Include="Assets\Images\Search.png" />
     <Resource Include="Assets\Images\Split.png" />
     <Resource Include="Assets\Images\Unpack.png" />
     <Resource Include="Assets\Images\UpperA.png" />

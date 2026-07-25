@@ -432,6 +432,92 @@
                 </Setter>
             </Style>
 
+            <Style x:Key="DatePickerTextBoxStyle" TargetType="DatePickerTextBox">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="#E8E8F0"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DatePickerTextBox">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                              Background="Transparent"
+                              Focusable="False"
+                              HorizontalScrollBarVisibility="Hidden"
+                              VerticalScrollBarVisibility="Hidden"
+                              VerticalAlignment="Center"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="DatePicker">
+                <Setter Property="Background" Value="#1E1E1E"/>
+                <Setter Property="Foreground" Value="#E8E8F0"/>
+                <Setter Property="BorderBrush" Value="#2A2A3A"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DatePicker">
+                            <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="26"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <DatePickerTextBox x:Name="PART_TextBox"
+                                           Grid.Column="0"
+                                           Style="{StaticResource DatePickerTextBoxStyle}"
+                                           Margin="10,0,0,0"
+                                           VerticalAlignment="Center"/>
+
+                                    <Button x:Name="PART_Button"
+                                Grid.Column="1"
+                                Focusable="False"
+                                Width="20" Height="20"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="Transparent"
+                                BorderThickness="0">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="Transparent">
+                                                    <Path Stretch="Uniform"
+                                              Width="14" Height="14"
+                                              Stroke="#8AB4F8"
+                                              StrokeThickness="1.3"
+                                              Data="M1,3 L15,3 M1,3 L1,15 L15,15 L15,3 M4,1 L4,4 M12,1 L12,4"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+
+                                    <Popup x:Name="PART_Popup"
+                               Grid.ColumnSpan="2"
+                               Placement="Bottom"
+                               StaysOpen="False"
+                               AllowsTransparency="True"/>
+                                </Grid>
+                            </Border>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                    <Setter Property="BorderBrush" Value="#4F8EF7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <Style x:Key="OptionTextStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12"/>
                 <Setter Property="Foreground" Value="#EEEEEE"/>

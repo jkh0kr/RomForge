@@ -5,11 +5,27 @@ using RomForge.Core.Models.Web;
 using RomForge.Core.Services.Web;
 using RomForge.Core.UI.Command;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Windows.Input;
 
 namespace RomForge.ViewModels.Web;
+
+public class PlatformFilterItem : ViewModelBase
+{
+    public string Name { get; }
+
+    private bool _isChecked;
+    public bool IsChecked { get => _isChecked; set => SetProperty(ref _isChecked, value); }
+
+    public PlatformFilterItem(string name, bool isChecked)
+    {
+        Name = name;
+        _isChecked = isChecked;
+    }
+}
 
 public class PatchSearchMainViewModel : ToolTabViewModel
 {
@@ -29,11 +45,14 @@ public class PatchSearchMainViewModel : ToolTabViewModel
         "Windows","DOS"
     ];
 
-    private readonly PatchSearchService _service = new();
+    private readonly PlatformFilterItem _allPlatformsItem;
+    private bool _isUpdatingPlatforms;
 
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
     public ObservableCollection<PatchEntry> Results { get; } = [];
+
+    public ObservableCollection<PlatformFilterItem> Platforms { get; } = [];
 
     public static string[] Systems => SystemList;
 
@@ -42,9 +61,6 @@ public class PatchSearchMainViewModel : ToolTabViewModel
 
     private DateTime? _endDate = DateTime.Today;
     public DateTime? EndDate { get => _endDate; set => SetProperty(ref _endDate, value); }
-
-    private string? _selectedSystem;
-    public string? SelectedSystem { get => _selectedSystem; set => SetProperty(ref _selectedSystem, value); }
 
     private string _keyword = "";
     public string Keyword { get => _keyword; set => SetProperty(ref _keyword, value); }
@@ -61,6 +77,27 @@ public class PatchSearchMainViewModel : ToolTabViewModel
     private string _newUrl = "";
     public string NewUrl { get => _newUrl; set => SetProperty(ref _newUrl, value); }
 
+    private string? _newSystem;
+    public string? NewSystem { get => _newSystem; set => SetProperty(ref _newSystem, value); }
+
+    public string PlatformSummaryText
+    {
+        get
+        {
+            var others = Platforms.Skip(1).ToList();
+
+            if (others.Count == 0)
+                return "전체";
+
+            var checkedCount = others.Count(p => p.IsChecked);
+
+            if (checkedCount == 0 || checkedCount == others.Count)
+                return "전체";
+
+            return $"{checkedCount}개 선택";
+        }
+    }
+
     public ICommand SearchCommand { get; }
     public ICommand SetRangeCommand { get; }
     public ICommand AddPatchCommand { get; }
@@ -68,6 +105,17 @@ public class PatchSearchMainViewModel : ToolTabViewModel
 
     public PatchSearchMainViewModel()
     {
+        _allPlatformsItem = new PlatformFilterItem("전체", true);
+        _allPlatformsItem.PropertyChanged += OnAllPlatformsItemChanged;
+        Platforms.Add(_allPlatformsItem);
+
+        foreach (var name in SystemList)
+        {
+            var item = new PlatformFilterItem(name, true);
+            item.PropertyChanged += OnPlatformItemChanged;
+            Platforms.Add(item);
+        }
+
         SearchCommand = new RelayCommand(async _ => await SearchAsync(), _ => !IsSearching);
         SetRangeCommand = new RelayCommand(async p => await SetRangeAsync(p as string), _ => !IsSearching);
         AddPatchCommand = new RelayCommand(async _ => await AddPatchAsync(),
@@ -75,6 +123,62 @@ public class PatchSearchMainViewModel : ToolTabViewModel
         ExportCsvCommand = new RelayCommand(_ => ExportCsv(), _ => Results.Count > 0);
 
         _ = SearchAsync();
+    }
+
+    // "전체" 체크박스를 직접 토글하면 나머지 전부를 같은 상태로 맞춘다.
+    private void OnAllPlatformsItemChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(PlatformFilterItem.IsChecked) || _isUpdatingPlatforms)
+            return;
+
+        _isUpdatingPlatforms = true;
+
+        try
+        {
+            foreach (var item in Platforms)
+            {
+                if (!ReferenceEquals(item, _allPlatformsItem))
+                    item.IsChecked = _allPlatformsItem.IsChecked;
+            }
+        }
+        finally
+        {
+            _isUpdatingPlatforms = false;
+        }
+
+        OnPropertyChanged(nameof(PlatformSummaryText));
+    }
+
+    // 개별 플랫폼 체크박스가 바뀌면 "전체"는 전부 체크됐을 때만 체크 상태로 동기화한다.
+    private void OnPlatformItemChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(PlatformFilterItem.IsChecked) || _isUpdatingPlatforms)
+            return;
+
+        _isUpdatingPlatforms = true;
+
+        try
+        {
+            _allPlatformsItem.IsChecked = Platforms.Skip(1).All(p => p.IsChecked);
+        }
+        finally
+        {
+            _isUpdatingPlatforms = false;
+        }
+
+        OnPropertyChanged(nameof(PlatformSummaryText));
+    }
+
+    // null이면 필터 없음(전체 조회)을 의미한다.
+    private List<string>? GetSelectedSystems()
+    {
+        var others = Platforms.Skip(1).ToList();
+        var checkedNames = others.Where(p => p.IsChecked).Select(p => p.Name).ToList();
+
+        if (checkedNames.Count == 0 || checkedNames.Count == others.Count)
+            return null;
+
+        return checkedNames;
     }
 
     private async Task SetRangeAsync(string? type)
@@ -103,7 +207,7 @@ public class PatchSearchMainViewModel : ToolTabViewModel
 
         try
         {
-            var list = await PatchSearchService.SearchAsync(StartDate, EndDate, SelectedSystem, Keyword);
+            var list = await PatchSearchService.SearchAsync(StartDate, EndDate, GetSelectedSystems(), Keyword);
 
             Results.Clear();
 
@@ -126,7 +230,7 @@ public class PatchSearchMainViewModel : ToolTabViewModel
     {
         var entry = new RomForge.Core.Models.Web.PatchEntry
         {
-            System = SelectedSystem ?? "기타",
+            System = NewSystem ?? "기타",
             Title = NewTitle,
             Version = "",
             Date = DateTime.Today.ToString("yyyy-MM-dd"),

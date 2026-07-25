@@ -41,4 +41,9 @@ public partial class MainTab : UserControl
         if (DataContext is PatchSearchMainViewModel vm && vm.SearchCommand.CanExecute(null))
             vm.SearchCommand.Execute(null);
     }
+
+    private void BtnPlatform_Click(object sender, System.Windows.RoutedEventArgs e)
+    {
+        platformPopup.IsOpen = !platformPopup.IsOpen;
+    }
 }
