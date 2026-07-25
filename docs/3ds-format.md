@@ -18,7 +18,7 @@
 7. **취소**
 8. **로그**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-format-1.png) -->
+<img width="850" height="683" alt="1783986177" src="https://github.com/user-attachments/assets/0ebab9d8-2827-49b7-8f15-2cddca5a3e5b" />
 
 ---
 
