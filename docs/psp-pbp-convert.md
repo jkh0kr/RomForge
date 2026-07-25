@@ -26,7 +26,8 @@ PBP 변환 툴입니다. 원본 PS1 게임이 여러 장의 CD로 나뉘어 있�
 15. **부트로고**
 16. **부트로고 적용 취소**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/psp-pbp-convert-1.png, psp-pbp-convert-2.png) -->
+<img width="850" height="684" alt="1783944928" src="https://github.com/user-attachments/assets/9d19bb1a-5a86-468f-9be5-1fa719eb6e91" />
+<img width="665" height="555" alt="1783944928" src="https://github.com/user-attachments/assets/e4973948-0b84-4bbc-b3d4-2c18fe625666" />
 
 ---
 
@@ -37,7 +38,7 @@ PBP 변환 툴입니다. 원본 PS1 게임이 여러 장의 CD로 나뉘어 있�
     - **일반**: 에뮬레이터용
     - **실기**: 실기용 GameID 폴더 + `eboot.pbp` 파일명으로 고정 출력
 
-<!-- TODO: 스크린샷 추가 (docs/assets/psp-pbp-convert-3.png) -->
+<img width="850" height="155" alt="1783944931" src="https://github.com/user-attachments/assets/b2fd6000-912d-4699-b603-4882a459b0f5" />
 
 ---
 
@@ -53,3 +54,5 @@ CD가 여러 장인 게임(예: 바이오하자드 2, CD 2장 + CUE 2개로 파�
     현재는 최대 5개 파일까지만 지원합니다.
 
 동영상 재생 타이밍에 프리징이 발생한다면 앞서 언급한 POPS 에뮬레이터 설정 옵션을 체크해보세요. 일부 게임에서 알려진 버그는 자동으로 프리셋이 적용되어 있으며, 커뮤니티에서 정리된 에뮬레이터 설정 프리셋도 함께 반영되어 있습니다. (수동 설정 기능도 지원합니다.)
+
+<img width="684" height="85" alt="1784089369" src="https://github.com/user-attachments/assets/3ddc7677-0c80-455e-b966-35efc963c9e3" />
