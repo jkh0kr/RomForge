@@ -13,7 +13,7 @@ PSP용 포맷 변환 기능입니다. ISO, CSO, CHD 형식을 상호 변환할 �
 7. **취소**
 8. **로그**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/psp-format-1.png) -->
+<img width="850" height="682" alt="1783997217" src="https://github.com/user-attachments/assets/b9119a4b-1314-4df1-b9ff-6094cff2edb9" />
 
 ---
 
