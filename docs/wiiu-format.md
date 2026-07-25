@@ -20,7 +20,7 @@ WUP/Loadiine 폴더, WUD/WUX/WUA 파일을 드래그 앤 드롭하면 됩니다.
 - **파일 추가 / 폴더 추가 / 선택 삭제 / 전체 삭제**
 - **시작 / 취소**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/wiiu-format-1.png) -->
+<img width="850" height="684" alt="image" src="https://github.com/user-attachments/assets/21e68188-4a5f-4237-a450-ff6ceb169c8d" />
 
 ---
 
