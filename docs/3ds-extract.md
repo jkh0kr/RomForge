@@ -1,4 +1,4 @@
-# 3DS - SD 카드 게임 추출
+# 3DS - 설치 - 설치된 게임목록
 
 3DS SD 카드에 설치된 게임을 CIA, CCI 파일로 추출하는 탭입니다.
 
@@ -19,7 +19,7 @@
 8. **진행도, 게임 추출 취소**
 9. **로그**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-extract-1.png) -->
+<img width="850" height="684" alt="1783830234" src="https://github.com/user-attachments/assets/e9739792-77a5-4dbb-b531-044df8738f78" />
 
 ---
 
@@ -27,10 +27,12 @@
 
 추출을 원하는 게임을 선택한 뒤, 우클릭 컨텍스트 메뉴로 **CIA** 또는 **CCI**로 추출할 수 있습니다.
 
+<img width="850" height="120" alt="1783836624" src="https://github.com/user-attachments/assets/24163b7c-f2b1-4179-90c2-d6ce1948fbee" />
+
 !!! note "업데이트 / DLC는 CIA만 가능"
     업데이트와 DLC는 CCI 형식으로는 추출할 수 없어서, CIA로만 추출 가능합니다.
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-extract-2.png, 3ds-extract-3.png) -->
+<img width="850" height="83" alt="1783938877" src="https://github.com/user-attachments/assets/013999f3-293c-4ed3-8952-660a104a3454" />
 
 ---
 
