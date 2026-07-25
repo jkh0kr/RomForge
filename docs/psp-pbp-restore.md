@@ -13,7 +13,7 @@ PBP 파일을 원본 BIN + CUE로 복원하는 탭입니다.
 7. **취소**
 8. **로그**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/psp-pbp-restore-1.png) -->
+<img width="850" height="683" alt="1783998164" src="https://github.com/user-attachments/assets/04ef2109-c83d-4bd8-afef-e99bdb9b8776" />
 
 ---
 
