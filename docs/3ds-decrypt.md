@@ -16,7 +16,7 @@
 7. **취소**
 8. **로그**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-decrypt-1.png) -->
+<img width="850" height="683" alt="1783828929" src="https://github.com/user-attachments/assets/0a75355d-0873-4d3f-8a70-75147c76a807" />
 
 ---
 
@@ -24,4 +24,11 @@
 
 이미 복호화되어 있는 파일을 지정하면 자동으로 건너뛰고 진행됩니다. 즉, 복호화된 파일과 암호화된 파일이 섞여 있어도 상관없이 한꺼번에 넣고 돌리면, 암호화된 파일만 골라서 복호화합니다.
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-decrypt-2.png, 3ds-decrypt-3.png) -->
+진행 예시
+
+<img width="850" height="61" alt="1783934346" src="https://github.com/user-attachments/assets/71e59191-4e51-4c32-aac5-5198e42fab2e" />
+
+
+스킵 예시
+
+<img width="850" height="65" alt="1783828932" src="https://github.com/user-attachments/assets/630bfe02-2619-4ea3-81fe-e60eb0f8abdd" />
