@@ -46,6 +46,9 @@ nav:
       - 3DS - 설치 - 신규 게임 설치: 3ds-pc-install.md
       - 3DS - 포맷 변환: 3ds-format.md
       - 3DS - 복호화: 3ds-decrypt.md
+      - PSP - PBP 패킹: psp-pbp-convert.md
+      - PSP - PBP 언팩: psp-pbp-restore.md
+      - PSP - 포맷 변환: psp-format.md
   - 자주 묻는 질문: faq.md
 
 markdown_extensions:
