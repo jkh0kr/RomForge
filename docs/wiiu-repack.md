@@ -16,7 +16,7 @@ Wii U 게임 파일을 관리하고 리팩하는 탭입니다. 본편/업데이�
 - **언팩** / **리팩 (폴더 기반)** / **언팩 + 리팩 (Full)** 버튼
 - **진행률 표시줄** — 진행률, 속도, 경과 시간
 
-<!-- TODO: 스크린샷 추가 (docs/assets/wiiu-repack-1.png) -->
+<img width="850" height="684" alt="image" src="https://github.com/user-attachments/assets/bbc1a777-77b7-48e0-a098-47ff949202d7" />
 
 ---
 

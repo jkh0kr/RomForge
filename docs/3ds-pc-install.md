@@ -1,4 +1,4 @@
-# 3DS - PC 설치
+# 3DS - 설치 - 신규 게임 설치
 
 3DS 실기로 직접 게임을 설치하면 매우 느리기 때문에, PC에서 SD 카드에 바로 게임을 설치하는 탭입니다.
 
@@ -18,7 +18,7 @@
 7. **진행도**
 8. **로그**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-pc-install-1.png) -->
+<img width="850" height="683" alt="1783836554" src="https://github.com/user-attachments/assets/2a5715a7-ba10-4c62-9c17-cc1ae0f15c7d" />
 
 ---
 
