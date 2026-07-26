@@ -1,5 +1,6 @@
 ﻿using Common.WPF.ViewModels;
 using Microsoft.Win32;
+using RomForge.Core;
 using RomForge.Core.Models;
 using RomForge.Core.Models.Web;
 using RomForge.Core.Services.Web;
@@ -7,7 +8,6 @@ using RomForge.Core.UI.Command;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Windows.Input;
 
@@ -38,7 +38,7 @@ public class PatchSearchMainViewModel : ToolTabViewModel
         "MD","MDCD","SS","DC","GG",
         "NEOGEO","NGP","NGPC",
         "Xbox","Xbox 360","Xbox One",
-        "PC98",
+        "PC98", "PC88",
         "PCE","PCE CD",
         "MSX1","MSX2",
         "WS","WSC",
@@ -56,11 +56,27 @@ public class PatchSearchMainViewModel : ToolTabViewModel
 
     public static string[] Systems => SystemList;
 
-    private DateTime? _startDate = EarliestDate;
-    public DateTime? StartDate { get => _startDate; set => SetProperty(ref _startDate, value); }
+    private DateTime? _startDate;
+    public DateTime? StartDate
+    {
+        get => _startDate;
+        set
+        {
+            if (SetProperty(ref _startDate, value))
+                AppConfig.Instance.PatchSearch.StartDate = value;
+        }
+    }
 
-    private DateTime? _endDate = DateTime.Today;
-    public DateTime? EndDate { get => _endDate; set => SetProperty(ref _endDate, value); }
+    private DateTime? _endDate;
+    public DateTime? EndDate
+    {
+        get => _endDate;
+        set
+        {
+            if (SetProperty(ref _endDate, value))
+                AppConfig.Instance.PatchSearch.EndDate = value;
+        }
+    }
 
     private string _keyword = "";
     public string Keyword { get => _keyword; set => SetProperty(ref _keyword, value); }
@@ -105,16 +121,27 @@ public class PatchSearchMainViewModel : ToolTabViewModel
 
     public PatchSearchMainViewModel()
     {
-        _allPlatformsItem = new PlatformFilterItem("전체", true);
-        _allPlatformsItem.PropertyChanged += OnAllPlatformsItemChanged;
+        var config = AppConfig.Instance.PatchSearch;
+
+        _startDate = config.StartDate ?? EarliestDate;
+        _endDate = config.EndDate ?? DateTime.Today;
+
+        var savedSystems = config.SelectedSystems;
+        var isAllChecked = savedSystems == null || savedSystems.Count == 0;
+
+        _allPlatformsItem = new PlatformFilterItem("전체", isAllChecked);
         Platforms.Add(_allPlatformsItem);
 
         foreach (var name in SystemList)
         {
-            var item = new PlatformFilterItem(name, true);
-            item.PropertyChanged += OnPlatformItemChanged;
-            Platforms.Add(item);
+            var isChecked = isAllChecked || savedSystems!.Contains(name);
+            Platforms.Add(new PlatformFilterItem(name, isChecked));
         }
+
+        _allPlatformsItem.PropertyChanged += OnAllPlatformsItemChanged;
+
+        foreach (var item in Platforms.Skip(1))
+            item.PropertyChanged += OnPlatformItemChanged;
 
         SearchCommand = new RelayCommand(async _ => await SearchAsync(), _ => !IsSearching);
         SetRangeCommand = new RelayCommand(async p => await SetRangeAsync(p as string), _ => !IsSearching);
@@ -125,7 +152,6 @@ public class PatchSearchMainViewModel : ToolTabViewModel
         _ = SearchAsync();
     }
 
-    // "전체" 체크박스를 직접 토글하면 나머지 전부를 같은 상태로 맞춘다.
     private void OnAllPlatformsItemChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(PlatformFilterItem.IsChecked) || _isUpdatingPlatforms)
@@ -147,9 +173,9 @@ public class PatchSearchMainViewModel : ToolTabViewModel
         }
 
         OnPropertyChanged(nameof(PlatformSummaryText));
+        AppConfig.Instance.PatchSearch.SelectedSystems = GetSelectedSystems();
     }
 
-    // 개별 플랫폼 체크박스가 바뀌면 "전체"는 전부 체크됐을 때만 체크 상태로 동기화한다.
     private void OnPlatformItemChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(PlatformFilterItem.IsChecked) || _isUpdatingPlatforms)
@@ -167,9 +193,9 @@ public class PatchSearchMainViewModel : ToolTabViewModel
         }
 
         OnPropertyChanged(nameof(PlatformSummaryText));
+        AppConfig.Instance.PatchSearch.SelectedSystems = GetSelectedSystems();
     }
 
-    // null이면 필터 없음(전체 조회)을 의미한다.
     private List<string>? GetSelectedSystems()
     {
         var others = Platforms.Skip(1).ToList();
@@ -228,7 +254,7 @@ public class PatchSearchMainViewModel : ToolTabViewModel
 
     private async Task AddPatchAsync()
     {
-        var entry = new RomForge.Core.Models.Web.PatchEntry
+        var entry = new PatchEntry
         {
             System = NewSystem ?? "기타",
             Title = NewTitle,

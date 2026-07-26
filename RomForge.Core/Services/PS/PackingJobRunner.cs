@@ -20,12 +20,12 @@ public class PackingJobRunner
         if (AppConfig.Instance.PS1.UseGameIdMode)
         {
             gameDirectory = Path.Combine(baseDirectory, mainGameId);
-            targetOutputPath = Path.Combine(gameDirectory, "eboot.pbp");
+            targetOutputPath = Path.Combine(gameDirectory, "EBOOT.PBP");
         }
         else
         {
             var safeTitle = string.Concat(gameTitle.Split(Path.GetInvalidFileNameChars()));
-            targetOutputPath = Path.Combine(baseDirectory, safeTitle + ".pbp");
+            targetOutputPath = Path.Combine(baseDirectory, safeTitle + ".PBP");
         }
 
         targetOutputPath = Utils.GetUniqueFilePath(targetOutputPath);

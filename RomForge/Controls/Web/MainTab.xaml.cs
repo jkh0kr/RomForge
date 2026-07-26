@@ -29,7 +29,6 @@ public partial class MainTab : UserControl
         }
         catch
         {
-            // 링크 열기 실패는 조용히 무시 (잘못된 URL 등)
         }
     }
 

@@ -91,6 +91,18 @@ public class PS1Config : ViewModelBase
     public bool UseFileNameMode { get => _useFileNameMode; set => SetProperty(ref _useFileNameMode, value); }
 }
 
+public class PatchSearchConfig : ViewModelBase
+{
+    private List<string>? _selectedSystems;
+    public List<string>? SelectedSystems { get => _selectedSystems; set => SetProperty(ref _selectedSystems, value); }
+
+    private DateTime? _startDate;
+    public DateTime? StartDate { get => _startDate; set => SetProperty(ref _startDate, value); }
+
+    private DateTime? _endDate;
+    public DateTime? EndDate { get => _endDate; set => SetProperty(ref _endDate, value); }
+}
+
 public class AppConfig : ViewModelBase
 {
     private static readonly string DefaultFilePath = Path.ChangeExtension(Environment.ProcessPath!, "config.json");
@@ -123,6 +135,9 @@ public class AppConfig : ViewModelBase
     private PS1Config _ps1 = new();
     public PS1Config PS1 { get => _ps1; set => SetProperty(ref _ps1, value); }
 
+    private PatchSearchConfig _patchSearch = new();
+    public PatchSearchConfig PatchSearch { get => _patchSearch; set => SetProperty(ref _patchSearch, value); }
+
     [JsonConstructor]
     private AppConfig() { }
 
@@ -150,6 +165,7 @@ public class AppConfig : ViewModelBase
                 Azahar = loaded.Azahar ?? new();
                 Dolphin = loaded.Dolphin ?? new();
                 PS1 = loaded.PS1 ?? new();
+                PatchSearch = loaded.PatchSearch ?? new();
             }
         }
         catch
@@ -173,6 +189,7 @@ public class AppConfig : ViewModelBase
         Dolphin.PropertyChanged += AutoSave;
         Patch.PropertyChanged += AutoSave;
         PS1.PropertyChanged += AutoSave;
+        PatchSearch.PropertyChanged += AutoSave;
     }
 
     public void Save() => File.WriteAllText(DefaultFilePath, JsonSerializer.Serialize(this, JsonOptions));
