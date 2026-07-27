@@ -25,16 +25,19 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
         progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
         log($"패치 완료: {outputPath}", LogLevel.Ok);
 
+        bool skipCompress = false;
         if (detected.Format == RomFormat.Bin)
+        {
             _outputCuePath = await _binTrackCopier.CopyBinTracksAsync(sourcePath, outputDir, outputPath, _copiedTrackPaths);
+            skipCompress = _outputCuePath is null;
+        }
 
-        if (!autoCompress)
+        if (!autoCompress || skipCompress)
             return;
 
         if (isZipTarget)
         {
             progress.Report(new ProgressInfo { Label = "압축 중...", Percent = 0 });
-
             await _zipCompressor.CompressFromFileAsync(sourcePath, outputPath, outputDir, ct);
         }
         else
