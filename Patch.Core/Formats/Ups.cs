@@ -78,6 +78,8 @@ public static class Ups
                         outOffset++;
                     }
 
+                    outOffset++;
+
                     if (progress != null && pos % Math.Max(1, patchEnd / 100) == 0)
                         progress.Report(new ProgressInfo { Percent = pos / patchEnd });
                 }
