@@ -4,6 +4,7 @@ using _3DS.Core.Models;
 using _3DS.Core.Services;
 using Common;
 using NSW.Utils;
+using Patch.Core.Services;
 using System.IO;
 
 namespace RomForge.Core.Services._3DS;
@@ -91,6 +92,9 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         string outputCci = Utils.GetUniqueFilePath(Path.Combine(outputPath, fileName + "_Repack.cci"));
         var repackedNcchs = new Dictionary<int, (NcchUnpackResult, byte[], Stream, RomFsUnpackResult?, IRomFsFileSource?)>();
         var contentsList = new List<Contents>();
+        bool patchDirSpecified = false;
+        int exefsPatchedCount = 0;
+        PatchFolderFileSource? romfsPatchSource = null;
 
         var partitionIndices = Directory.GetDirectories(unpackedPath, "partition*")
             .Select(Path.GetFileName)
@@ -147,16 +151,36 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             string? exefsPatchDir = idx == 0 ? GetPatchDir("exefs") : null;
             string exefsDir = Path.Combine(partDir, "exefs");
             var exefsFiles = Directory.Exists(exefsDir) ? ExeFsUnpacker.LoadFromDirectory(exefsDir) : [];
-            byte[] exefsBlock = exefsFiles.Count > 0 ? await ExeFsPacker.PackWithPatchAsync(exefsFiles, exefsPatchDir, exHeader, getPatchPath(), log, ct) : [];
+            byte[] exefsBlock = [];
+
+            if (exefsFiles.Count > 0)
+            {
+                var (data, patchedCount) = await ExeFsPacker.PackWithPatchAsync(exefsFiles, exefsPatchDir, exHeader, getPatchPath(), log, ct);
+
+                exefsBlock = data;
+                exefsPatchedCount += patchedCount;
+            }
+
             string? romfsPatchDir = idx == 0 ? GetPatchDir("romfs") : null;
             string romfsDir = Path.Combine(partDir, "romfs");
             RomFsUnpackResult? romfsResult = null;
             IRomFsFileSource? romfsSource = null;
 
+            if (idx == 0 && (exefsPatchDir != null || romfsPatchDir != null || !string.IsNullOrEmpty(getPatchPath())))
+                patchDirSpecified = true;
+
             if (Directory.Exists(romfsDir))
             {
                 romfsResult = RomFsPacker.ScanFolderAsUnpackResult(romfsDir);
-                IRomFsFileSource? patchSource = romfsPatchDir != null ? new PatchFolderFileSource(romfsPatchDir) : null;
+
+                IRomFsFileSource? patchSource = null;
+
+                if (romfsPatchDir != null)
+                {
+                    romfsPatchSource = new PatchFolderFileSource(romfsPatchDir);
+                    patchSource = romfsPatchSource;
+                }
+
                 romfsSource = new FolderRomFsFileSource(romfsDir, patchSource);
             }
 
@@ -182,6 +206,9 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
         await NcsdBuilder.BuildAsync(repackedSource, outputStream, reporter, ct);
 
+        if (patchDirSpecified && exefsPatchedCount == 0 && (romfsPatchSource == null || romfsPatchSource.AppliedCount == 0))
+            log("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
+
         log($"출력: {outputCci}", LogLevel.Ok);
     }
 
@@ -192,6 +219,9 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         await using var source = await OpenSourceAsync(inputPath, keyStore, ct);
 
         var repackedNcchs = new Dictionary<int, (NcchUnpackResult, byte[], Stream, RomFsUnpackResult?, IRomFsFileSource?)>();
+        bool patchDirSpecified = false;
+        int exefsPatchedCount = 0;
+        PatchFolderFileSource? romfsPatchSource = null;
 
         foreach (var content in source.Contents)
         {
@@ -209,8 +239,27 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
             string? exefsPatchDir = idx == 0 ? GetPatchDir("exefs") : null;
             string? romfsPatchDir = idx == 0 ? GetPatchDir("romfs") : null;
-            byte[] exefsBlock = unpack.ExeFs != null ? await ExeFsPacker.PackWithPatchAsync(unpack.ExeFs.Files, exefsPatchDir, unpack.ExHeader, getPatchPath(), log, ct) : [];
-            IRomFsFileSource? patchSource = romfsPatchDir != null ? new PatchFolderFileSource(romfsPatchDir) : null;
+
+            if (idx == 0 && (exefsPatchDir != null || romfsPatchDir != null || !string.IsNullOrEmpty(getPatchPath())))
+                patchDirSpecified = true;
+
+            byte[] exefsBlock = [];
+
+            if (unpack.ExeFs != null)
+            {
+                var (data, patchedCount) = await ExeFsPacker.PackWithPatchAsync(unpack.ExeFs.Files, exefsPatchDir, unpack.ExHeader, getPatchPath(), log, ct);
+
+                exefsBlock = data;
+                exefsPatchedCount += patchedCount;
+            }
+
+            IRomFsFileSource? patchSource = null;
+
+            if (romfsPatchDir != null)
+            {
+                romfsPatchSource = new PatchFolderFileSource(romfsPatchDir);
+                patchSource = romfsPatchSource;
+            }
 
             repackedNcchs[idx] = (unpack, exefsBlock, ncchStream, unpack.RomFs, patchSource);
         }
@@ -221,6 +270,9 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
         await NcsdBuilder.BuildAsync(repackedSource, outputStream, reporter, ct);
 
+        if (patchDirSpecified && exefsPatchedCount == 0 && (romfsPatchSource == null || romfsPatchSource.AppliedCount == 0))
+            log("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
+
         log($"출력: {outputCci}", LogLevel.Ok);
     }
 
@@ -228,12 +280,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
     {
         string? patchPath = getPatchPath();
 
-        if (string.IsNullOrEmpty(patchPath))
-            return null;
-
-        string path = Path.Combine(patchPath, subFolder);
-
-        return Directory.Exists(path) ? path : null;
+        return string.IsNullOrEmpty(patchPath) ? null : PatchFolderResolver.FindSubDir(patchPath, subFolder);
     }
 
     private async Task<INcsdSource> OpenSourceAsync(string inputPath, KeyStore keyStore, CancellationToken ct)

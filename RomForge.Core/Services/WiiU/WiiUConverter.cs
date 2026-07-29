@@ -29,7 +29,7 @@ public static class WiiUConverter
 
     public static void ConvertToWua(ITitleSource source, string outputWuaPath, Action<int, int, string>? onFileProgress, CancellationToken ct)
     {
-        WiiURepackService.Repack(source, outputWuaPath, patchFolder: null, titleIdHexOverride: null, titleVersionOverride: null, onFileProgress, ct);
+        WiiURepackService.Repack(source, outputWuaPath, patchFolder: null, titleIdHexOverride: null, titleVersionOverride: null, onFileProgress, ct: ct);
     }
 
     public static string BuildOutputName(ITitleSource source, string? titleName)

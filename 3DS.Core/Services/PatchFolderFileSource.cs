@@ -12,13 +12,19 @@ public class PatchFolderFileSource(string patchFolder) : IRomFsFileSource
 
     private readonly Dictionary<string, byte[]> _resultCache = new(StringComparer.OrdinalIgnoreCase);
 
+    public int AppliedCount { get; private set; }
+
     public async ValueTask<Stream?> OpenFileAsync(string fullPath, Func<CancellationToken, ValueTask<Stream?>>? getOriginal = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         string relative = fullPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
         string localPath = Path.Combine(patchFolder, relative);
 
         if (File.Exists(localPath))
+        {
+            AppliedCount++;
+
             return File.OpenRead(localPath);
+        }
 
         if (_resultCache.TryGetValue(fullPath, out byte[]? cachedResult))
             return new MemoryStream(cachedResult);
@@ -52,6 +58,7 @@ public class PatchFolderFileSource(string patchFolder) : IRomFsFileSource
 
             log($"패치완료: {patchKey}", LogLevel.Info);
 
+            AppliedCount++;
             _resultCache[fullPath] = patchedData;
 
             return new MemoryStream(patchedData);

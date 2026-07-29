@@ -1,22 +1,24 @@
-﻿using WiiU.Core.Models;
+﻿using Common;
+using Patch.Core;
+using Patch.Core.Services;
+using WiiU.Core.Models;
 
 namespace WiiU.Core.Services;
 
 public sealed class WiiURepackService
 {
     private const int BufferSize = 1024 * 1024;
+    private static readonly string[] PatchAnchors = ["content", "meta", "code"];
 
-    public static void Repack(ITitleSource source, string outputWuaPath, string? patchFolder = null, string? titleIdHexOverride = null, int? titleVersionOverride = null, Action<int, int, string>? onFileProgress = null, CancellationToken ct = default)
-    {
-        RepackMultiple([new RepackEntry(source, patchFolder, titleIdHexOverride, titleVersionOverride)], outputWuaPath, onFileProgress, ct);
-    }
+    public static void Repack(ITitleSource source, string outputWuaPath, string? patchFolder = null, string? titleIdHexOverride = null, int? titleVersionOverride = null, Action<int, int, string>? onFileProgress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
+        => RepackMultiple([new RepackEntry(source, patchFolder, titleIdHexOverride, titleVersionOverride)], outputWuaPath, onFileProgress, log, ct);
 
-    public static void RepackMultiple(IReadOnlyList<RepackEntry> entries, string outputWuaPath, Action<int, int, string>? onFileProgress = null, CancellationToken ct = default)
+    public static void RepackMultiple(IReadOnlyList<RepackEntry> entries, string outputWuaPath, Action<int, int, string>? onFileProgress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
         if (entries.Count == 0)
             throw new ArgumentException("At least one entry is required.", nameof(entries));
 
-        var resolved = new List<(string TitleFolder, ITitleSource Source, Dictionary<string, string> PatchFiles, List<string> Paths)>();
+        var resolved = new List<(string TitleFolder, ITitleSource Source, Dictionary<string, string> OverwriteFiles, Dictionary<string, string> BinaryPatches, List<string> Paths)>();
         var seenFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var entry in entries)
@@ -28,28 +30,44 @@ public sealed class WiiURepackService
             if (!seenFolders.Add(titleFolder))
                 throw new InvalidOperationException($"Two entries both resolved to the folder name \"{titleFolder}\" — they'd collide in the output .wua. " + "Check that base/update/DLC don't share the same title ID + version.");
 
-            var patchFiles = new Dictionary<string, string>(StringComparer.Ordinal);
+            string? effectivePatchFolder = entry.PatchFolder is null
+                ? null
+                : PatchFolderResolver.FindPatchRoot(entry.PatchFolder, PatchAnchors) ?? entry.PatchFolder;
 
-            if (entry.PatchFolder is not null)
+            var overwriteFiles = new Dictionary<string, string>(StringComparer.Ordinal);
+            var binaryPatches = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            if (effectivePatchFolder is not null)
             {
-                foreach (string file in Directory.EnumerateFiles(entry.PatchFolder, "*", SearchOption.AllDirectories))
+                foreach (var patchEntry in PatchFileIndex.Build(effectivePatchFolder).Entries)
                 {
-                    string relative = Path.GetRelativePath(entry.PatchFolder, file).Replace(Path.DirectorySeparatorChar, '/');
-                    patchFiles[relative] = file;
+                    string relDir = patchEntry.RelativeDir.Replace(Path.DirectorySeparatorChar, '/');
+                    string relTarget = relDir.Length == 0 ? patchEntry.BaseName : $"{relDir}/{patchEntry.BaseName}";
+
+                    if (patchEntry.Kind == PatchFileKind.BinaryPatch)
+                        binaryPatches[relTarget] = patchEntry.FullPath;
+                    else
+                        overwriteFiles[relTarget] = patchEntry.FullPath;
                 }
             }
 
-            var paths = new SortedSet<string>(entry.Source.EnumerateFiles(), StringComparer.Ordinal);
+            var sourcePaths = new HashSet<string>(entry.Source.EnumerateFiles(), StringComparer.Ordinal);
+            int matchedCount = overwriteFiles.Keys.Count(sourcePaths.Contains) + binaryPatches.Keys.Count(sourcePaths.Contains);
 
-            foreach (var p in patchFiles.Keys) 
+            if (entry.PatchFolder is not null && matchedCount == 0)
+                log?.Invoke($"패치 대상 파일이 존재하지 않습니다. ({titleFolder})", LogLevel.Error);
+
+            var paths = new SortedSet<string>(sourcePaths, StringComparer.Ordinal);
+
+            foreach (var p in overwriteFiles.Keys)
                 paths.Add(p);
 
-            resolved.Add((titleFolder, entry.Source, patchFiles, new List<string>(paths)));
+            resolved.Add((titleFolder, entry.Source, overwriteFiles, binaryPatches, new List<string>(paths)));
         }
 
         int total = 0;
 
-        foreach (var (TitleFolder, Source, PatchFiles, Paths) in resolved) 
+        foreach (var (TitleFolder, Source, OverwriteFiles, BinaryPatches, Paths) in resolved) 
             total += Paths.Count;
 
         int done = 0;
@@ -57,7 +75,7 @@ public sealed class WiiURepackService
         using var writer = new WuaWriter(outStream);
         var buffer = new byte[BufferSize];
 
-        foreach (var (titleFolder, source, patchFiles, paths) in resolved)
+        foreach (var (titleFolder, source, overwriteFiles, binaryPatches, paths) in resolved)
         {
             writer.MakeDir(titleFolder, recursive: true);
 
@@ -70,7 +88,7 @@ public sealed class WiiURepackService
                 EnsureDirWritten(writer, titleFolder, GetDirectoryPart(path), writtenDirs);
                 writer.StartNewFile($"{titleFolder}/{path}");
 
-                using (Stream srcStream = patchFiles.TryGetValue(path, out var patchFilePath) ? File.OpenRead(patchFilePath) : source.OpenRead(path))
+                using (Stream srcStream = ResolveEntryStream(path, source, overwriteFiles, binaryPatches, log, ct))
                 {
                     int read;
 
@@ -87,11 +105,39 @@ public sealed class WiiURepackService
         writer.FinalizeArchive();
     }
 
+
+    private static Stream ResolveEntryStream(string path, ITitleSource source, Dictionary<string, string> overwriteFiles, Dictionary<string, string> binaryPatches, Action<string, LogLevel>? log, CancellationToken ct)
+    {
+        if (overwriteFiles.TryGetValue(path, out var overwritePath))
+            return File.OpenRead(overwritePath);
+
+        if (binaryPatches.TryGetValue(path, out var patchFilePath))
+        {
+            byte[] originalData;
+
+            using (var srcStream = source.OpenRead(path))
+            using (var ms = new MemoryStream())
+            {
+                srcStream.CopyTo(ms);
+                originalData = ms.ToArray();
+            }
+
+            byte[] patchData = File.ReadAllBytes(patchFilePath);
+            byte[] patchedData = UniversalPatcher.ApplyPatchAsync(originalData, patchData, null, ct).GetAwaiter().GetResult();
+
+            log?.Invoke($"  패치 완료: {Path.GetFileName(patchFilePath)} → {path}", LogLevel.Info);
+
+            return new MemoryStream(patchedData);
+        }
+
+        return source.OpenRead(path);
+    }
+
     private static string GetDirectoryPart(string path)
     {
         int idx = path.LastIndexOf('/');
 
-        return idx < 0 ? "" : path[..idx];
+        return idx < 0 ? string.Empty : path[..idx];
     }
 
     private static void EnsureDirWritten(WuaWriter writer, string titleFolderName, string dirPath, HashSet<string> writtenDirs)

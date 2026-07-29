@@ -1,6 +1,7 @@
 ﻿using Common;
 using NSW.M1.Core.Models;
 using Patch.Core.Formats;
+using Patch.Core.Services;
 using Path = System.IO.Path;
 
 namespace NSW.M1.Core.Services;
@@ -11,20 +12,21 @@ public static class NspPatchApplier
     {
         string exefsDir = unpackResult.ExefsDirs.GetValueOrDefault((byte)0, string.Empty);
         string romfsDir = unpackResult.RomfsDirs.GetValueOrDefault((byte)0, string.Empty);
-        string patchExefs = Path.Combine(patchDir, "exefs");
-        string patchRomfs = Path.Combine(patchDir, "romfs");
+        string? patchExefs = PatchFolderResolver.FindSubDir(patchDir, "exefs");
+        string? patchRomfs = PatchFolderResolver.FindSubDir(patchDir, "romfs");
+        int matchedCount = 0;
 
-        if (Directory.Exists(patchExefs))
+        if (patchExefs != null)
         {
             progress.Report((-1, "한글패치 ExeFS 병합 중..."));
             log($"  한글패치 ExeFS 병합: {patchExefs}", LogLevel.Info);
-            MergeDirectory(patchExefs, exefsDir);
+            matchedCount += MergeDirectory(patchExefs, exefsDir);
         }
-        if (Directory.Exists(patchRomfs))
+        if (patchRomfs != null)
         {
             progress.Report((-1, "한글패치 RomFS 병합 중..."));
             log($"  한글패치 RomFS 병합: {patchRomfs}", LogLevel.Info);
-            MergeDirectory(patchRomfs, romfsDir);
+            matchedCount += MergeDirectory(patchRomfs, romfsDir);
         }
 
         if (Directory.Exists(patchDir))
@@ -62,13 +64,19 @@ public static class NspPatchApplier
                     if (targetFiles.Count > 0)
                     {
                         foreach (var targetPath in targetFiles.Distinct())
+                        {
                             ApplyXdeltaToTarget(xdeltaPath, targetPath, unpackedRoot, progress, log);
+                            matchedCount++;
+                        }
                     }
                     else
                         log($"  ⚠️ xdelta 대상 원본 파일을 찾을 수 없음: {targetFileName}", LogLevel.Info);
                 }
             }
         }
+
+        if (matchedCount == 0)
+            log("  패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
     }
 
     public static void ApplyDlcPatch(string patchDir, string titleIdStr, string romfsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
@@ -76,39 +84,46 @@ public static class NspPatchApplier
         if (!Directory.Exists(patchDir))
             return;
 
-        string patchRomfs = Path.Combine(patchDir, "romfs");
+        string? patchRomfs = PatchFolderResolver.FindSubDir(patchDir, "romfs");
+        int matchedCount = 0;
 
-        if (Directory.Exists(patchRomfs))
+        if (patchRomfs != null)
         {
             progress.Report((-1, $"DLC 패치 RomFS 병합 중... ({titleIdStr})"));
             log($"  DLC 패치 RomFS 병합: {patchRomfs}", LogLevel.Info);
-            MergeDirectory(patchRomfs, romfsDir);
+            matchedCount += MergeDirectory(patchRomfs, romfsDir);
         }
 
         var xdeltaFiles = Directory.EnumerateFiles(patchDir, "*.xdelta", SearchOption.AllDirectories)
                                    .OrderBy(f => f)
                                    .ToList();
 
-        if (xdeltaFiles.Count == 0)
-            return;
-
-        progress.Report((-1, $"DLC xdelta 패치 적용 중... ({titleIdStr})"));
-        log($"  발견된 DLC xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
-
-        foreach (var xdeltaPath in xdeltaFiles)
+        if (xdeltaFiles.Count > 0)
         {
-            string targetFileName = Path.GetFileNameWithoutExtension(xdeltaPath);
-            var targetFiles = Directory.EnumerateFiles(romfsDir, targetFileName, SearchOption.AllDirectories).ToList();
+            progress.Report((-1, $"DLC xdelta 패치 적용 중... ({titleIdStr})"));
+            log($"  발견된 DLC xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
 
-            if (targetFiles.Count == 0)
+            foreach (var xdeltaPath in xdeltaFiles)
             {
-                log($"  ⚠️ DLC xdelta 대상 원본 파일을 찾을 수 없음: {targetFileName}", LogLevel.Info);
-                continue;
-            }
+                string targetFileName = Path.GetFileNameWithoutExtension(xdeltaPath);
+                var targetFiles = Directory.EnumerateFiles(romfsDir, targetFileName, SearchOption.AllDirectories).ToList();
 
-            foreach (var targetPath in targetFiles)
-                ApplyXdeltaToTarget(xdeltaPath, targetPath, romfsDir, progress, log, isDlc: true);
+                if (targetFiles.Count == 0)
+                {
+                    log($"  ⚠️ DLC xdelta 대상 원본 파일을 찾을 수 없음: {targetFileName}", LogLevel.Info);
+                    continue;
+                }
+
+                foreach (var targetPath in targetFiles)
+                {
+                    ApplyXdeltaToTarget(xdeltaPath, targetPath, romfsDir, progress, log, isDlc: true);
+                    matchedCount++;
+                }
+            }
         }
+
+        if (matchedCount == 0)
+            log("  패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
     }
 
     private static void ApplyXdeltaToTarget(string xdeltaPath, string targetPath, string displayRoot, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, bool isDlc = false)
@@ -147,9 +162,11 @@ public static class NspPatchApplier
         }
     }
 
-    public static void MergeDirectory(string srcDir, string dstDir)
+    public static int MergeDirectory(string srcDir, string dstDir)
     {
         Directory.CreateDirectory(dstDir);
+
+        int count = 0;
 
         foreach (var file in Directory.EnumerateFiles(srcDir, "*", SearchOption.AllDirectories))
         {
@@ -161,6 +178,9 @@ public static class NspPatchApplier
 
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             File.Copy(file, dest, overwrite: true);
+            count++;
         }
+
+        return count;
     }
 }

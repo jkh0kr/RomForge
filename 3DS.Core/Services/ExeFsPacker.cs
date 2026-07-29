@@ -95,15 +95,16 @@ public static class ExeFsPacker
         return Pack(files);
     }
 
-    public static async Task<byte[]> PackWithPatchAsync(IReadOnlyList<ExeFsFile> originalFiles, string? exefsPatchDir, byte[]? exHeader, string? patchRootDir, Action<string, LogLevel>? log = null,  CancellationToken ct = default)
+    public static async Task<(byte[] Data, int PatchedCount)> PackWithPatchAsync(IReadOnlyList<ExeFsFile> originalFiles, string? exefsPatchDir, byte[]? exHeader, string? patchRootDir, Action<string, LogLevel>? log = null,  CancellationToken ct = default)
     {
         bool hasExefsDir = exefsPatchDir != null && Directory.Exists(exefsPatchDir);
         bool hasRootFallback = !string.IsNullOrEmpty(patchRootDir);
 
         if (!hasExefsDir && !hasRootFallback)
-            return Pack(originalFiles);
+            return (Pack(originalFiles), 0);
 
         var patchedFiles = new List<ExeFsFile>();
+        int patchedCount = 0;
 
         foreach (var file in originalFiles)
         {
@@ -123,6 +124,8 @@ public static class ExeFsPacker
                     ExpectedHash = [],
                     HashValid = false,
                 });
+
+                patchedCount++;
             }
             else if (ipsPath != null)
             {
@@ -154,6 +157,7 @@ public static class ExeFsPacker
                 });
 
                 log?.Invoke($"패치 완료: {Path.GetFileName(ipsPath)}", LogLevel.Info);
+                patchedCount++;
             }
             else
             {
@@ -161,7 +165,7 @@ public static class ExeFsPacker
             }
         }
 
-        return Pack(patchedFiles);
+        return (Pack(patchedFiles), patchedCount);
     }
 
     private static (string? binPath, string? ipsPath) ResolvePatchFiles(string baseName, string? exefsPatchDir, string? patchRootDir, bool allowRootFallback)

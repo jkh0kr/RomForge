@@ -291,6 +291,7 @@ public sealed class RepackService()
                                 Speed = string.Empty,
                             });
                         },
+                        log: log,
                         ct: ct);
 
                     log?.Invoke($"완료: {outputWuaPath}", LogLevel.Ok);
