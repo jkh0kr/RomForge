@@ -1,5 +1,6 @@
 ﻿using NSW.Core.Enums;
 using NSW.WPF.Services;
+using RomForge.Core.Models.WiiU;
 using RomForge.ViewModels.WiiU;
 using System.IO;
 using System.Windows;
@@ -15,6 +16,40 @@ namespace RomForge.Controls.WiiU
         public RepackTab()
         {
             InitializeComponent();
+        }
+
+        private void PatchDropTarget_DragEnter(object sender, DragEventArgs e)
+        {
+            e.Effects = IsValidPatchDrop(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void PatchDropTarget_DragLeave(object sender, DragEventArgs e)
+        {
+            e.Handled = true;
+        }
+
+        private void PatchDropTarget_Drop(object sender, DragEventArgs e)
+        {
+            if (sender is not FrameworkElement { DataContext: TitleInputEntry entry }) return;
+            if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+
+            string path = paths[0];
+
+            if (Directory.Exists(path) || (File.Exists(path) && string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase)))
+                entry.PatchPath = path;
+
+            e.Handled = true;
+        }
+
+        private static bool IsValidPatchDrop(IDataObject data)
+        {
+            if (data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length != 1)
+                return false;
+
+            string path = paths[0];
+
+            return Directory.Exists(path) || (File.Exists(path) && string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase));
         }
 
         private void Root_DragEnter(object sender, DragEventArgs e)

@@ -124,9 +124,12 @@
                             <GridViewColumn Header="한글패치" Width="60">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Width="32" Height="32" Padding="0" ToolTip="{Binding PatchDisplay}" Click="BtnSetPatch_Click" Tag="{Binding}" Style="{StaticResource GrayButton}">
+                                        <Border Width="32" Height="32" CornerRadius="4" Background="#3A3A40" BorderBrush="#5A5A62" BorderThickness="1"
+                                                ToolTip="{Binding PatchDisplay}"
+                                                AllowDrop="True" DragEnter="PatchDropTarget_DragEnter" DragLeave="PatchDropTarget_DragLeave" Drop="PatchDropTarget_Drop"
+                                                Tag="{Binding}">
                                             <Image Source="{Binding PatchIconSource}" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                        </Button>
+                                        </Border>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>

@@ -36,7 +36,7 @@ public static class FolderPatchApplier
 
             await onBinaryPatch(entry, targetFile, ct);
             matched = true;
-            log?.Invoke($"패치 완료: {Path.GetFileName(entry.FullPath)}", LogLevel.Info);
+            log?.Invoke($"패치 완료: {entry.File.DisplayName}", LogLevel.Info);
         }
 
         if (!matched)
@@ -57,6 +57,8 @@ public static class FolderPatchApplier
                 return hit;
         }
 
-        return Directory.Exists(targetDir) ? Directory.EnumerateFiles(targetDir, entry.BaseName + ".*", SearchOption.AllDirectories).FirstOrDefault() : null;
+        return Directory.Exists(targetDir)
+            ? Directory.EnumerateFiles(targetDir, entry.BaseName + ".*", SearchOption.AllDirectories).FirstOrDefault()
+            : null;
     }
 }

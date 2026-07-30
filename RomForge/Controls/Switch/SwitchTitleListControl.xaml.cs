@@ -237,17 +237,35 @@ public partial class SwitchTitleListControl : UserControl
             file.PatchPath = null;
     }
 
-    private void BtnSetPatch_Click(object sender, RoutedEventArgs e)
+    private void PatchDropTarget_DragEnter(object sender, DragEventArgs e)
     {
-        if (sender is not Button { Tag: GameFile file }) return;
+        e.Effects = IsValidPatchDrop(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
 
-        var dlg = new System.Windows.Forms.FolderBrowserDialog
-        {
-            Description = $"{file.TitleName}에 적용할 한글패치 폴더 선택",
-            UseDescriptionForTitle = true
-        };
+    private void PatchDropTarget_DragLeave(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+    }
 
-        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            file.PatchPath = dlg.SelectedPath;
+    private void PatchDropTarget_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: GameFile file }) return;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+
+        string path = paths[0];
+
+        if (Directory.Exists(path) || (File.Exists(path) && string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase)))
+            file.PatchPath = path;
+    }
+
+    private static bool IsValidPatchDrop(IDataObject data)
+    {
+        if (data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length != 1)
+            return false;
+
+        string path = paths[0];
+
+        return Directory.Exists(path) || (File.Exists(path) && string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase));
     }
 }

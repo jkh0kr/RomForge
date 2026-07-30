@@ -115,8 +115,6 @@ public class RepackMainViewModel : ToolTabViewModel
 
     public bool StartEnabled => !IsLocked || _currentMode == BuildMode.FullProcess;
 
-    public ICommand SetPatchCommand { get; }
-
     public ICommand RemoveSelectedCommand { get; }
 
     public ICommand RemoveAllCommand { get; }
@@ -127,7 +125,6 @@ public class RepackMainViewModel : ToolTabViewModel
     {
         OutputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
 
-        SetPatchCommand = new RelayCommand(async param => await SetPatch(param as TitleInputEntry));
         RemoveSelectedCommand = new RelayCommand(_ => RemoveSelected(), _ => HasSelection);
         RemoveAllCommand = new RelayCommand(_ => Entries.Clear(), _ => Entries.Count > 0);
 
@@ -144,19 +141,6 @@ public class RepackMainViewModel : ToolTabViewModel
             if (e.PropertyName == nameof(IsLocked))
                 NotifyButtonStates();
         };
-    }
-
-    private async static Task SetPatch(TitleInputEntry? entry)
-    {
-        if (entry is null)
-            return;
-
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"{entry.TitleName}에 적용할 한글패치 폴더 선택" };
-
-        if (dlg.ShowDialog() == true)
-            entry.PatchPath = dlg.FolderName;
-
-        await Task.CompletedTask;
     }
 
     private bool IsDuplicate(string path) => Entries.Any(e => string.Equals(e.FilePath, path, StringComparison.OrdinalIgnoreCase));
@@ -226,11 +210,7 @@ public class RepackMainViewModel : ToolTabViewModel
         }
     }
 
-    private static bool LooksLikeSupportedFolder(string path) =>
-        WupTitleSource.LooksLikeWupFolder(path) ||
-        (Directory.Exists(Path.Combine(path, "code")) &&
-         Directory.Exists(Path.Combine(path, "content")) &&
-         Directory.Exists(Path.Combine(path, "meta")));
+    private static bool LooksLikeSupportedFolder(string path) => WupTitleSource.LooksLikeWupFolder(path) || (Directory.Exists(Path.Combine(path, "code")) && Directory.Exists(Path.Combine(path, "content")) && Directory.Exists(Path.Combine(path, "meta")));
 
     private void RemoveSelected()
     {

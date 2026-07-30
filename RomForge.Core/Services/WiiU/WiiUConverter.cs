@@ -16,7 +16,10 @@ public static class WiiUConverter
 
     public static void ConvertToWup(ITitleSource source, string outputFolder, Action<int, int, string>? onFileProgress, CancellationToken ct)
     {
-        List<WupFileEntry> files = RepackService.BuildFileEntries(source, patchPath: null);
+        var (files, patchZipHandle) = RepackService.BuildFileEntries(source, patchPath: null);
+
+        using var _ = patchZipHandle;
+
         ulong titleId = Convert.ToUInt64(source.TitleIdHex, 16);
 
         WupPacker.Pack(outputFolder, titleId, (ushort)source.TitleVersion, files, (done, total, label) => onFileProgress?.Invoke(total > 0 ? (int)(done * 100.0 / total) : 100, 100, label), ct);

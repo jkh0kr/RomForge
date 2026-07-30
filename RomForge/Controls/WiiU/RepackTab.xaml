@@ -82,21 +82,11 @@
                                 <GridViewColumn Header="한글패치" Width="70">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Width="32" Height="32" Padding="0" ToolTip="{Binding PatchDisplay}" Command="{Binding DataContext.SetPatchCommand, RelativeSource={RelativeSource AncestorType=ListView}}" CommandParameter="{Binding}">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource PatchButton}">
-                                                        <Setter Property="Background" Value="#3A3A40"/>
-                                                        <Setter Property="BorderBrush" Value="#5A5A62"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding PatchPath}" Value="{x:Null}">
-                                                                <Setter Property="Background" Value="#3A3A40"/>
-                                                                <Setter Property="BorderBrush" Value="#5A5A62"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
+                                            <Border Width="32" Height="32" CornerRadius="4" Background="#3A3A40" BorderBrush="#5A5A62" BorderThickness="1"
+                                                    ToolTip="{Binding PatchDisplay}"
+                                                    AllowDrop="True" DragEnter="PatchDropTarget_DragEnter" DragLeave="PatchDropTarget_DragLeave" Drop="PatchDropTarget_Drop">
                                                 <Image Source="{Binding PatchIconSource}" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality"/>
-                                            </Button>
+                                            </Border>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>

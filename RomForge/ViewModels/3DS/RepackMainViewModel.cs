@@ -121,7 +121,6 @@ public class RepackMainViewModel : ToolTabViewModel
     public bool StartEnabled => !IsLocked || _currentMode == BuildMode.FullProcess;
 
     public ICommand BrowseInputCommand { get; }
-    public ICommand BrowsePatchCommand { get; }
     public ICommand BrowseOutputCommand { get; }
 
     public RepackMainViewModel()
@@ -130,7 +129,6 @@ public class RepackMainViewModel : ToolTabViewModel
 
         OutputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
         BrowseInputCommand = new RelayCommand(async _ => await BrowseInput());
-        BrowsePatchCommand = new RelayCommand(async _ => await BrowsePatch());
         BrowseOutputCommand = new RelayCommand(async _ => await BrowseOutput());
 
         _ = RefreshRomInfoAsync();
@@ -312,14 +310,6 @@ public class RepackMainViewModel : ToolTabViewModel
 
         if (dlg.ShowDialog() == true)
             InputPath = dlg.FileName;
-    }
-
-    private async Task BrowsePatch()
-    {
-        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "패치 폴더 선택" };
-
-        if (dlg.ShowDialog() == true)
-            PatchPath = dlg.FolderName;
     }
 
     private async Task BrowseOutput()

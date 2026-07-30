@@ -1,8 +1,11 @@
 using Common;
 using NSW.Utils;
+using Patch.Core;
+using Patch.Core.Services;
 using RomForge.Core.Models.WiiU;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using WiiU.Core.Models;
@@ -12,6 +15,8 @@ namespace RomForge.Core.Services.WiiU;
 
 public sealed class RepackService()
 {
+    private static readonly string[] PatchAnchors = ["content", "meta", "code"];
+
     public static async Task<IReadOnlyList<TitleInputEntry>> PeekFileAsync(string path, string keysTxtPath, CancellationToken ct)
     {
         return await Task.Run(async () =>
@@ -176,36 +181,85 @@ public sealed class RepackService()
         return sources[entry.SubTitleIndex];
     }
 
-    public static List<WupFileEntry> BuildFileEntries(ITitleSource source, string? patchPath)
+    public static (List<WupFileEntry> Files, IDisposable? PatchZipHandle) BuildFileEntries(ITitleSource source, string? patchPath, Action<string, LogLevel>? log = null)
     {
         var result = new List<WupFileEntry>();
+        var overwriteFiles = new Dictionary<string, PatchFileRef>(StringComparer.Ordinal);
+        var binaryPatches = new Dictionary<string, PatchFileRef>(StringComparer.Ordinal);
+        ZipArchive? zip = null;
 
-        foreach (string relPath in source.EnumerateFiles())
+        if (patchPath is not null)
         {
-            string capturedRelPath = relPath;
-            ITitleSource capturedSource = source;
-            Func<Stream> openRead;
-            long length;
+            PatchFileIndex index;
 
-            string? patchFilePath = patchPath is null ? null : Path.Combine(patchPath, relPath.Replace('/', Path.DirectorySeparatorChar));
-
-            if (patchFilePath is not null && File.Exists(patchFilePath))
+            if (ZipPatchSource.IsZipPath(patchPath))
             {
-                string capturedPatchPath = patchFilePath;
+                zip = ZipFile.OpenRead(patchPath);
 
-                openRead = () => File.OpenRead(capturedPatchPath);
-                length = new FileInfo(patchFilePath).Length;
+                string prefix = ZipPatchSource.FindPatchRoot(zip, PatchAnchors) ?? "";
+
+                index = PatchFileIndex.Build(zip, prefix);
             }
             else
             {
-                openRead = () => capturedSource.OpenRead(capturedRelPath);
-                length = capturedSource.GetFileSize(capturedRelPath);
+                string effectivePatchFolder = PatchFolderResolver.FindPatchRoot(patchPath, PatchAnchors) ?? patchPath;
+
+                index = PatchFileIndex.Build(effectivePatchFolder);
             }
 
-            result.Add(new WupFileEntry(relPath, openRead, length));
+            foreach (var patchEntry in index.Entries)
+            {
+                string relDir = patchEntry.RelativeDir.Replace(Path.DirectorySeparatorChar, '/');
+                string relTarget = relDir.Length == 0 ? patchEntry.BaseName : $"{relDir}/{patchEntry.BaseName}";
+
+                if (patchEntry.Kind == PatchFileKind.BinaryPatch)
+                    binaryPatches[relTarget] = patchEntry.File;
+                else
+                    overwriteFiles[relTarget] = patchEntry.File;
+            }
         }
 
-        return result;
+        var sourceFiles = new HashSet<string>(source.EnumerateFiles(), StringComparer.Ordinal);
+        int matchedCount = overwriteFiles.Keys.Count(sourceFiles.Contains) + binaryPatches.Keys.Count(sourceFiles.Contains);
+
+        if (patchPath is not null && matchedCount == 0)
+            log?.Invoke("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
+
+        foreach (string relPath in sourceFiles)
+        {
+            string capturedRelPath = relPath;
+            ITitleSource capturedSource = source;
+
+            if (overwriteFiles.TryGetValue(relPath, out var overwriteRef))
+            {
+                result.Add(new WupFileEntry(relPath, overwriteRef.OpenRead, overwriteRef.Length));
+                continue;
+            }
+
+            if (binaryPatches.TryGetValue(relPath, out var patchRef))
+            {
+                byte[] originalData;
+
+                using (var srcStream = source.OpenRead(relPath))
+                using (var ms = new MemoryStream())
+                {
+                    srcStream.CopyTo(ms);
+                    originalData = ms.ToArray();
+                }
+
+                byte[] patchData = patchRef.ReadSmallFileBytes();
+                byte[] patchedData = UniversalPatcher.ApplyPatchAsync(originalData, patchData, null).GetAwaiter().GetResult();
+
+                log?.Invoke($"  패치 완료: {patchRef.DisplayName} → {relPath}", LogLevel.Info);
+
+                result.Add(new WupFileEntry(relPath, () => new MemoryStream(patchedData), patchedData.Length));
+                continue;
+            }
+
+            result.Add(new WupFileEntry(relPath, () => capturedSource.OpenRead(capturedRelPath), capturedSource.GetFileSize(capturedRelPath)));
+        }
+
+        return (result, zip);
     }
 
     public static async Task UnpackAsync(IReadOnlyList<TitleInputEntry> entries, string keysTxtPath, string outputPath, Action<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
@@ -349,8 +403,8 @@ public sealed class RepackService()
 
             var source = sources[i];
             string? patchPath = repackEntries[i].PatchFolder;
-            List<WupFileEntry> files = BuildFileEntries(source, patchPath);
-
+            var (files, patchZipHandle) = BuildFileEntries(source, patchPath, log);
+            using var _ = patchZipHandle;
             ulong titleId = entries[i].GetRoleCorrectedTitleId();
             ushort titleVersion = (ushort)source.TitleVersion;
             var folderName = BuildWupFolderName(entries[i]);

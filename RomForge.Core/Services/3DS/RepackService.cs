@@ -6,6 +6,7 @@ using Common;
 using NSW.Utils;
 using Patch.Core.Services;
 using System.IO;
+using System.IO.Compression;
 
 namespace RomForge.Core.Services._3DS;
 
@@ -92,9 +93,11 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         string outputCci = Utils.GetUniqueFilePath(Path.Combine(outputPath, fileName + "_Repack.cci"));
         var repackedNcchs = new Dictionary<int, (NcchUnpackResult, byte[], Stream, RomFsUnpackResult?, IRomFsFileSource?)>();
         var contentsList = new List<Contents>();
-        bool patchDirSpecified = false;
         int exefsPatchedCount = 0;
         PatchFolderFileSource? romfsPatchSource = null;
+
+        using var patchCtx = PatchSourceContext.Open(getPatchPath(), log);
+        bool patchDirSpecified = patchCtx.HasSource;
 
         var partitionIndices = Directory.GetDirectories(unpackedPath, "partition*")
             .Select(Path.GetFileName)
@@ -148,26 +151,23 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             if (File.Exists(plainPath))
                 plainRegion = await File.ReadAllBytesAsync(plainPath, ct);
 
-            string? exefsPatchDir = idx == 0 ? GetPatchDir("exefs") : null;
             string exefsDir = Path.Combine(partDir, "exefs");
             var exefsFiles = Directory.Exists(exefsDir) ? ExeFsUnpacker.LoadFromDirectory(exefsDir) : [];
             byte[] exefsBlock = [];
 
             if (exefsFiles.Count > 0)
             {
-                var (data, patchedCount) = await ExeFsPacker.PackWithPatchAsync(exefsFiles, exefsPatchDir, exHeader, getPatchPath(), log, ct);
+                var exefsIndex = idx == 0 ? patchCtx.FindSubIndex("exefs") : null;
+                var rootIndex = idx == 0 ? patchCtx.RootIndex() : null;
+                var (data, patchedCount) = await ExeFsPacker.PackWithPatchAsync(exefsFiles, exefsIndex, exHeader, rootIndex, log, ct);
 
                 exefsBlock = data;
                 exefsPatchedCount += patchedCount;
             }
 
-            string? romfsPatchDir = idx == 0 ? GetPatchDir("romfs") : null;
             string romfsDir = Path.Combine(partDir, "romfs");
             RomFsUnpackResult? romfsResult = null;
             IRomFsFileSource? romfsSource = null;
-
-            if (idx == 0 && (exefsPatchDir != null || romfsPatchDir != null || !string.IsNullOrEmpty(getPatchPath())))
-                patchDirSpecified = true;
 
             if (Directory.Exists(romfsDir))
             {
@@ -175,9 +175,9 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
                 IRomFsFileSource? patchSource = null;
 
-                if (romfsPatchDir != null)
+                if (idx == 0)
                 {
-                    romfsPatchSource = new PatchFolderFileSource(romfsPatchDir);
+                    romfsPatchSource = patchCtx.CreateRomfsSource("romfs");
                     patchSource = romfsPatchSource;
                 }
 
@@ -219,9 +219,11 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         await using var source = await OpenSourceAsync(inputPath, keyStore, ct);
 
         var repackedNcchs = new Dictionary<int, (NcchUnpackResult, byte[], Stream, RomFsUnpackResult?, IRomFsFileSource?)>();
-        bool patchDirSpecified = false;
         int exefsPatchedCount = 0;
         PatchFolderFileSource? romfsPatchSource = null;
+
+        using var patchCtx = PatchSourceContext.Open(getPatchPath(), log);
+        bool patchDirSpecified = patchCtx.HasSource;
 
         foreach (var content in source.Contents)
         {
@@ -237,17 +239,13 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
             var unpack = await NcchUnpacker.UnpackAsync(ncchStream, ncchHeader, ct);
 
-            string? exefsPatchDir = idx == 0 ? GetPatchDir("exefs") : null;
-            string? romfsPatchDir = idx == 0 ? GetPatchDir("romfs") : null;
-
-            if (idx == 0 && (exefsPatchDir != null || romfsPatchDir != null || !string.IsNullOrEmpty(getPatchPath())))
-                patchDirSpecified = true;
-
             byte[] exefsBlock = [];
 
             if (unpack.ExeFs != null)
             {
-                var (data, patchedCount) = await ExeFsPacker.PackWithPatchAsync(unpack.ExeFs.Files, exefsPatchDir, unpack.ExHeader, getPatchPath(), log, ct);
+                var exefsIndex = idx == 0 ? patchCtx.FindSubIndex("exefs") : null;
+                var rootIndex = idx == 0 ? patchCtx.RootIndex() : null;
+                var (data, patchedCount) = await ExeFsPacker.PackWithPatchAsync(unpack.ExeFs.Files, exefsIndex, unpack.ExHeader, rootIndex, log, ct);
 
                 exefsBlock = data;
                 exefsPatchedCount += patchedCount;
@@ -255,9 +253,9 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
             IRomFsFileSource? patchSource = null;
 
-            if (romfsPatchDir != null)
+            if (idx == 0)
             {
-                romfsPatchSource = new PatchFolderFileSource(romfsPatchDir);
+                romfsPatchSource = patchCtx.CreateRomfsSource("romfs");
                 patchSource = romfsPatchSource;
             }
 
@@ -276,11 +274,92 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         log($"출력: {outputCci}", LogLevel.Ok);
     }
 
-    private string? GetPatchDir(string subFolder)
+    private sealed class PatchSourceContext : IDisposable
     {
-        string? patchPath = getPatchPath();
+        private readonly string? _diskPath;
+        private readonly ZipArchive? _zip;
 
-        return string.IsNullOrEmpty(patchPath) ? null : PatchFolderResolver.FindSubDir(patchPath, subFolder);
+        public bool HasSource { get; }
+
+        private PatchSourceContext(string? diskPath, ZipArchive? zip, bool hasSource)
+        {
+            _diskPath = diskPath;
+            _zip = zip;
+            HasSource = hasSource;
+        }
+
+        public static PatchSourceContext Open(string? rawPath, Action<string, LogLevel> log)
+        {
+            if (string.IsNullOrEmpty(rawPath))
+                return new PatchSourceContext(null, null, false);
+
+            if (ZipPatchSource.IsZipPath(rawPath))
+            {
+                try
+                {
+                    return new PatchSourceContext(null, ZipFile.OpenRead(rawPath), true);
+                }
+                catch (Exception ex)
+                {
+                    log($"⚠️ 한글패치 zip을 열 수 없습니다: {ex.Message}", LogLevel.Error);
+
+                    return new PatchSourceContext(null, null, false);
+                }
+            }
+
+            if (!Directory.Exists(rawPath))
+            {
+                log($"⚠️ 한글패치 경로를 찾을 수 없습니다: {rawPath}", LogLevel.Error);
+
+                return new PatchSourceContext(null, null, false);
+            }
+
+            return new PatchSourceContext(rawPath, null, true);
+        }
+
+        public PatchFileIndex? FindSubIndex(string folderName)
+        {
+            if (!HasSource)
+                return null;
+
+            if (_zip != null)
+            {
+                string? prefix = ZipPatchSource.FindSubDir(_zip, folderName);
+
+                return prefix == null ? null : PatchFileIndex.Build(_zip, prefix);
+            }
+
+            string? dir = PatchFolderResolver.FindSubDir(_diskPath!, folderName);
+
+            return dir == null ? null : PatchFileIndex.Build(dir);
+        }
+
+        public PatchFileIndex? RootIndex()
+        {
+            if (!HasSource)
+                return null;
+
+            return _zip != null ? PatchFileIndex.Build(_zip, "") : PatchFileIndex.Build(_diskPath!);
+        }
+
+        public PatchFolderFileSource? CreateRomfsSource(string folderName)
+        {
+            if (!HasSource)
+                return null;
+
+            if (_zip != null)
+            {
+                string? prefix = ZipPatchSource.FindSubDir(_zip, folderName);
+
+                return prefix == null ? null : PatchFolderFileSource.ForZip(_zip, prefix);
+            }
+
+            string? dir = PatchFolderResolver.FindSubDir(_diskPath!, folderName);
+
+            return dir == null ? null : PatchFolderFileSource.ForFolder(dir);
+        }
+
+        public void Dispose() => _zip?.Dispose();
     }
 
     private async Task<INcsdSource> OpenSourceAsync(string inputPath, KeyStore keyStore, CancellationToken ct)
