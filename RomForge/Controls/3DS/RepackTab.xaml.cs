@@ -57,12 +57,25 @@ namespace RomForge.Controls._3DS
         private void TxtPatch_Drop(object sender, DragEventArgs e)
         {
             var items = (string[]?)e.Data.GetData(DataFormats.FileDrop);
-            var path = items?.FirstOrDefault(p => Directory.Exists(p) || (File.Exists(p) && string.Equals(Path.GetExtension(p), ".zip", StringComparison.OrdinalIgnoreCase)));
+            var path = items?.FirstOrDefault(IsValidPatchPath);
 
             if (path != null)
                 ViewModel.PatchPath = path;
 
             e.Handled = true;
+        }
+
+        private static bool IsValidPatchPath(string path)
+        {
+            if (Directory.Exists(path))
+                return true;
+
+            if (!File.Exists(path))
+                return false;
+
+            string ext = Path.GetExtension(path);
+
+            return string.Equals(ext, ".zip", StringComparison.OrdinalIgnoreCase) || string.Equals(ext, ".7z", StringComparison.OrdinalIgnoreCase);
         }
 
         private async void BtnStart_Click(object sender, RoutedEventArgs e)

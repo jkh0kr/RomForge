@@ -1,7 +1,10 @@
-﻿using Microsoft.Win32;
+﻿using LibHac.Ncm;
+using Microsoft.Win32;
 using NSW.Core;
+using NSW.Core.Models;
 using NSW.WPF.Services;
 using NSW.WPF.ViewModels;
+using Patch.Core.Services;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
@@ -31,12 +34,23 @@ public partial class SwitchTitleListControl : UserControl
     public void RecalcKeyMissingFiles(Action onCompleted)
     {
         var targets = GameFiles.Where(f => f.IsKeyMissing).ToList();
-        if (targets.Count == 0) { onCompleted(); return; }
+
+        if (targets.Count == 0) 
+        { 
+            onCompleted();
+            return;
+        }
 
         var keySet = KeySetProvider.Instance.KeySet;
-        if (keySet == null) { onCompleted(); return; }
+
+        if (keySet == null) 
+        { 
+            onCompleted(); 
+            return; 
+        }
 
         int remaining = targets.Count;
+
         foreach (var vm in targets)
         {
             string capturedPath = vm.FilePath;
@@ -66,6 +80,7 @@ public partial class SwitchTitleListControl : UserControl
             Filter = $"{Res.Filter_SwitchFiles} (*.nsp;*.xci;*.nsz;*.xcz)|*.nsp;*.xci;*.nsz;*.xcz|{Res.Filter_AllFiles}|*.*",
             Multiselect = true
         };
+
         if (dlg.ShowDialog() == true)
             _ = AddFilesAsync(ExpandPaths(dlg.FileNames));
     }
@@ -73,23 +88,30 @@ public partial class SwitchTitleListControl : UserControl
     private void BtnAddFolder_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new System.Windows.Forms.FolderBrowserDialog { Description = "게임 폴더 선택", UseDescriptionForTitle = true };
+
         if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             _ = AddFilesAsync(ExpandPaths([dlg.SelectedPath]));
     }
 
     private void BtnBulkPatch_Click(object sender, RoutedEventArgs e)
     {
-        var targets = GameFiles.Where(f => !string.IsNullOrEmpty(f.TitleID)).ToList();
-
-        if (targets.Count == 0)
-        {
-            MessageBox.Show("타이틀 정보가 있는 항목이 없습니다.", "한글패치 일괄 지정", MessageBoxButton.OK, MessageBoxImage.Information);
+        if (sender is not FrameworkElement { ContextMenu: not null } fe) 
             return;
-        }
+
+        fe.ContextMenu.PlacementTarget = fe;
+        fe.ContextMenu.IsOpen = true;
+    }
+
+    private void BulkPatchMenu_FromFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var targets = GetBulkPatchTargets();
+
+        if (targets == null)
+            return;
 
         var dlg = new System.Windows.Forms.FolderBrowserDialog
         {
-            Description = "한글패치 루트 폴더 선택 (titleId 이름의 하위 폴더를 자동 매칭합니다)",
+            Description = "한글패치 루트 폴더 선택 (titleId 이름의 하위 폴더 또는 titleId.zip/titleId.7z 파일을 자동 매칭합니다)",
             UseDescriptionForTitle = true
         };
 
@@ -100,17 +122,87 @@ public partial class SwitchTitleListControl : UserControl
 
         foreach (var file in targets)
         {
-            string candidate = Path.Combine(dlg.SelectedPath, file.TitleID!);
+            string folderCandidate = Path.Combine(dlg.SelectedPath, file.TitleID!);
 
-            if (Directory.Exists(candidate))
+            if (Directory.Exists(folderCandidate))
             {
-                file.PatchPath = candidate;
+                file.PatchPath = folderCandidate;
+                matched++;
+                continue;
+            }
+
+            string[] strings = [".zip", ".7z"];
+            string? archiveCandidate = strings
+                .Select(ext => Path.Combine(dlg.SelectedPath, file.TitleID! + ext))
+                .FirstOrDefault(File.Exists);
+
+            if (archiveCandidate != null)
+            {
+                file.PatchPath = archiveCandidate;
                 matched++;
             }
         }
 
-        MessageBox.Show($"{targets.Count}개 중 {matched}개에 패치 매칭됨.", "한글패치 일괄 지정", MessageBoxButton.OK, MessageBoxImage.Information);
+        ShowBulkPatchResult(targets.Count, matched);
     }
+
+    private void BulkPatchMenu_FromArchive_Click(object sender, RoutedEventArgs e)
+    {
+        var targets = GetBulkPatchTargets();
+
+        if (targets == null)
+            return;
+
+        var dlg = new OpenFileDialog
+        {
+            Title = "한글패치 루트 압축파일 선택 (안에서 titleId 이름의 폴더를 자동 매칭합니다)",
+            Filter = "압축파일 (*.zip;*.7z)|*.zip;*.7z"
+        };
+
+        if (dlg.ShowDialog() != true)
+            return;
+
+        int matched = 0;
+
+        try
+        {
+            using var archive = ArchivePatchSourceFactory.Open(dlg.FileName);
+
+            foreach (var file in targets)
+            {
+                string? prefix = ArchivePatchFolderResolver.FindSubDir(archive.EntryPaths, file.TitleID!);
+
+                if (prefix == null)
+                    continue;
+
+                file.PatchPath = ArchivePatchSourceFactory.CombineScope(dlg.FileName, prefix);
+                matched++;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"압축파일을 여는 중 오류가 발생했습니다: {ex.Message}", "한글패치 일괄 지정", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        ShowBulkPatchResult(targets.Count, matched);
+    }
+
+    private List<GameFile>? GetBulkPatchTargets()
+    {
+        var targets = GameFiles.Where(f => !string.IsNullOrEmpty(f.TitleID)).ToList();
+
+        if (targets.Count == 0)
+        {
+            MessageBox.Show("타이틀 정보가 있는 항목이 없습니다.", "한글패치 일괄 지정", MessageBoxButton.OK, MessageBoxImage.Information);
+            return null;
+        }
+
+        return targets;
+    }
+
+    private static void ShowBulkPatchResult(int total, int matched) =>
+        MessageBox.Show($"{total}개 중 {matched}개에 패치 매칭됨.", "한글패치 일괄 지정", MessageBoxButton.OK, MessageBoxImage.Information);
 
     private void BtnRemoveFile_Click(object sender, RoutedEventArgs e)
     {
@@ -128,7 +220,8 @@ public partial class SwitchTitleListControl : UserControl
 
     private void LvFiles_KeyUp(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Delete) BtnRemoveFile_Click(sender, new RoutedEventArgs());
+        if (e.Key == Key.Delete) 
+            BtnRemoveFile_Click(sender, new RoutedEventArgs());
     }
 
     private void LvFiles_DragEnter(object sender, DragEventArgs e)
@@ -139,7 +232,9 @@ public partial class SwitchTitleListControl : UserControl
 
     private async void LvFiles_Drop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths) return;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths) 
+            return;
+
         await AddFilesAsync(ExpandPaths(paths));
     }
 
@@ -147,7 +242,6 @@ public partial class SwitchTitleListControl : UserControl
     {
         var keySet = KeySetProvider.Instance.KeySet;
         var existing = GameFiles.Select(f => f.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         var newPaths = await Task.Run(() =>
             paths.Where(p => SupportedExtensions.Contains(Path.GetExtension(p)))
                  .Where(p => existing.Add(p))
@@ -168,6 +262,43 @@ public partial class SwitchTitleListControl : UserControl
                     vm.FileType = info.Type;
                     if (info.IconData != null) vm.Icon = info.IconData.ToBitmapImage();
                 }
+
+                List<MetadataResult> allMeta;
+                try { allMeta = MetadataReader.GetMetadataFromContainer(keySet, path); }
+                catch { allMeta = []; }
+
+                var dlcResults = allMeta
+                    .Where(m => m.Type is ContentMetaType.AddOnContent or ContentMetaType.Delta)
+                    .GroupBy(m => m.TitleId, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .ToList();
+
+                if (dlcResults.Count > 0)
+                {
+                    bool hasBaseOrUpdate = vm.FileType.Contains('B') || vm.FileType.Contains('U');
+
+                    vm.FileType = string.Concat(vm.FileType.Where(c => c != 'D'));
+
+                    foreach (var dlc in dlcResults)
+                    {
+                        var dlcVm = new GameFile(path)
+                        {
+                            FileType = "D",
+                            TitleID = dlc.TitleId,
+                            Version = dlc.GetEffectiveDisplayVersion(),
+                            TitleName = string.IsNullOrEmpty(vm.TitleName) ? dlc.TitleId : $"{vm.TitleName} (DLC {dlc.TitleId[^4..]})",
+                            Icon = vm.Icon,
+                        };
+
+                        AssignOrReplace(dlcVm);
+                    }
+
+                    if (!hasBaseOrUpdate)
+                    {
+                        UpdateDropHint();
+                        continue;
+                    }
+                }
             }
 
             if (string.IsNullOrEmpty(vm.TitleName))
@@ -178,7 +309,6 @@ public partial class SwitchTitleListControl : UserControl
         }
     }
 
-    // 본편(B)/업데이트(U)는 새로 들어오면 기존 걸 대체, DLC(D)나 미확인 항목은 그냥 누적.
     private void AssignOrReplace(GameFile vm)
     {
         if (vm.FileType.Contains('B'))
@@ -211,7 +341,8 @@ public partial class SwitchTitleListControl : UserControl
         foreach (var path in paths)
         {
             if (Directory.Exists(path))
-                foreach (var f in Directory.EnumerateFiles(path, "*.*", opts)) yield return f;
+                foreach (var f in Directory.EnumerateFiles(path, "*.*", opts)) 
+                    yield return f;
             else if (File.Exists(path))
                 yield return path;
         }
@@ -225,7 +356,9 @@ public partial class SwitchTitleListControl : UserControl
     private void MenuItem_OpenFolder_Click(object sender, RoutedEventArgs e)
     {
         var selected = lvFiles.SelectedIndex;
-        if (selected < 0) return;
+
+        if (selected < 0)
+            return;
 
         string? dir = Path.GetDirectoryName(GameFiles[selected].FilePath);
         dir?.OpenFolder();
@@ -235,6 +368,45 @@ public partial class SwitchTitleListControl : UserControl
     {
         if (lvFiles.SelectedItem is GameFile file)
             file.PatchPath = null;
+    }
+
+    private void PatchDropTarget_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { ContextMenu: not null } fe)
+            return;
+
+        fe.ContextMenu.PlacementTarget = fe;
+        fe.ContextMenu.IsOpen = true;
+    }
+
+    private void PatchMenu_SelectFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: GameFile file }) 
+            return;
+
+        var dlg = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description = $"{file.TitleName}에 적용할 한글패치 폴더 선택",
+            UseDescriptionForTitle = true
+        };
+
+        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            file.PatchPath = dlg.SelectedPath;
+    }
+
+    private void PatchMenu_SelectArchive_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: GameFile file }) 
+            return;
+
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = $"{file.TitleName}에 적용할 한글패치 압축파일 선택",
+            Filter = "압축파일 (*.zip;*.7z)|*.zip;*.7z"
+        };
+
+        if (dlg.ShowDialog() == true)
+            file.PatchPath = dlg.FileName;
     }
 
     private void PatchDropTarget_DragEnter(object sender, DragEventArgs e)
@@ -250,12 +422,15 @@ public partial class SwitchTitleListControl : UserControl
 
     private void PatchDropTarget_Drop(object sender, DragEventArgs e)
     {
-        if (sender is not FrameworkElement { Tag: GameFile file }) return;
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+        if (sender is not FrameworkElement { Tag: GameFile file })
+            return;
+
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0)
+            return;
 
         string path = paths[0];
 
-        if (Directory.Exists(path) || (File.Exists(path) && string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase)))
+        if (IsValidPatchPath(path))
             file.PatchPath = path;
     }
 
@@ -264,8 +439,19 @@ public partial class SwitchTitleListControl : UserControl
         if (data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length != 1)
             return false;
 
-        string path = paths[0];
+        return IsValidPatchPath(paths[0]);
+    }
 
-        return Directory.Exists(path) || (File.Exists(path) && string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase));
+    private static bool IsValidPatchPath(string path)
+    {
+        if (Directory.Exists(path))
+            return true;
+
+        if (!File.Exists(path))
+            return false;
+
+        string ext = Path.GetExtension(path);
+
+        return string.Equals(ext, ".zip", StringComparison.OrdinalIgnoreCase) || string.Equals(ext, ".7z", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -210,7 +210,11 @@ public class RepackMainViewModel : ToolTabViewModel
         }
     }
 
-    private static bool LooksLikeSupportedFolder(string path) => WupTitleSource.LooksLikeWupFolder(path) || (Directory.Exists(Path.Combine(path, "code")) && Directory.Exists(Path.Combine(path, "content")) && Directory.Exists(Path.Combine(path, "meta")));
+    private static bool LooksLikeSupportedFolder(string path) =>
+        WupTitleSource.LooksLikeWupFolder(path) ||
+        (Directory.Exists(Path.Combine(path, "code")) &&
+         Directory.Exists(Path.Combine(path, "content")) &&
+         Directory.Exists(Path.Combine(path, "meta")));
 
     private void RemoveSelected()
     {

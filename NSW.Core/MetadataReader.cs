@@ -59,7 +59,9 @@ public static class MetadataReader
 
     public static string DetectFileType(KeySet keySet, string path)
     {
-        if (keySet == null) return "Not Key";
+        if (keySet == null) 
+            return "Not Key";
+
         try
         {
             using var storage = new LocalStorage(path, FileAccess.Read);
@@ -73,13 +75,18 @@ public static class MetadataReader
             foreach (var entry in entries)
             {
                 using var file = new UniqueRef<IFile>();
-                if (fs.OpenFile(ref file.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).IsFailure()) continue;
+
+                if (fs.OpenFile(ref file.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).IsFailure()) 
+                    continue;
 
                 var cnmt = file.Get.GetCnmtFromNca(keySet);
+
                 if (cnmt != null)
                 {
                     var letter = GetContentMetaTypeTag(cnmt.Type)[..1];
-                    if (letter != "?") foundTypes.Add(letter);
+
+                    if (letter != "?")
+                        foundTypes.Add(letter);
                 }
             }
 
@@ -91,36 +98,51 @@ public static class MetadataReader
     public static GameFileInfo GetGameFileInfo(KeySet keySet, string path)
     {
         var info = new GameFileInfo { Path = path };
-        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return info;
+
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) 
+            return info;
 
         try
         {
             using var storage = new LocalStorage(path, FileAccess.Read);
             string ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
             using IFileSystem fs = storage.OpenFileSystem(keySet, path);
-
             var types = new HashSet<string>();
             var entries = fs.EnumerateEntries("/", "*.nca").ToList();
+            string? baseTitleId = null;
+            string? anyTitleId = null;
 
             foreach (var entry in entries)
             {
                 using var file = new UniqueRef<IFile>();
-                if (fs.OpenFile(ref file.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).IsFailure()) continue;
+
+                if (fs.OpenFile(ref file.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).IsFailure()) 
+                    continue;
+
                 var nca = new Nca(keySet, file.Release().AsStorage());
 
                 if (nca.Header.ContentType == NcaContentType.Meta)
                 {
                     using var ncaFs = nca.OpenFileSystem(NcaSectionType.Data, IntegrityCheckLevel.None);
+
                     foreach (var cnmtEntry in ncaFs.EnumerateEntries("/", "*.cnmt"))
                     {
                         using var cnmtFile = new UniqueRef<IFile>();
+
                         if (ncaFs.OpenFile(ref cnmtFile.Ref, cnmtEntry.FullPath.ToU8Span(), OpenMode.Read).IsSuccess())
                         {
                             var cnmt = new Cnmt(cnmtFile.Get.AsStream());
-                            info.TitleId = cnmt.TitleId.ToString("X16");
+                            string thisTitleId = cnmt.TitleId.ToString("X16");
+
+                            anyTitleId ??= thisTitleId;
+
+                            if (cnmt.Type == ContentMetaType.Application)
+                                baseTitleId = thisTitleId;
+
                             string? t = GetContentMetaTypeTag(cnmt.Type)[..1];
 
-                            if (t != null) types.Add(t);
+                            if (t != null)
+                                types.Add(t);
                         }
                     }
                 }
@@ -132,15 +154,22 @@ public static class MetadataReader
                     if (cFs.OpenFile(ref nacpFile.Ref, "/control.nacp".ToU8Span(), OpenMode.Read).IsSuccess())
                     {
                         var control = new ApplicationControlProperty();
+
                         nacpFile.Get.Read(out _, 0, SpanHelpers.AsByteSpan(ref control)).ThrowIfFailure();
                         info.DisplayVersion = control.DisplayVersionString.ToString().Trim('\0').Trim();
+
                         var (titleName, developer, language) = control.GetTitleByLanguage(Current);
+
                         info.TitleName = titleName;
                         info.Developer = developer;
                         info.IconData = cFs.GetIconData(language);
                     }
                 }
             }
+
+            if (baseTitleId != null || anyTitleId != null)
+                info.TitleId = baseTitleId ?? anyTitleId!;
+
             info.Type = types.Count == 0 ? "?" : string.Join("+", sourceArray.Where(types.Contains));
         }
         catch (Exception ex)
@@ -153,58 +182,59 @@ public static class MetadataReader
     public static List<MetadataResult> GetMetadataFromContainer(KeySet keySet, string path)
     {
         var results = new List<MetadataResult>();
-        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return results;
+
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) 
+            return results;
 
         using var storage = new LocalStorage(path, FileAccess.Read);
         IFileSystem fs = storage.OpenFileSystem(keySet, path);
-
         var allFiles = new Dictionary<string, IStorage>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var entry in fs.EnumerateEntries("/", "*"))
         {
             var file = new UniqueRef<IFile>();
+
             if (fs.OpenFile(ref file.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).IsSuccess())
                 allFiles[entry.Name] = file.Release().AsStream().AsStorage();
         }
 
-        foreach (var cnmtNcaName in allFiles.Keys.Where(k =>
-            k.EndsWith(".cnmt.nca", StringComparison.OrdinalIgnoreCase)))
+        foreach (var cnmtNcaName in allFiles.Keys.Where(k => k.EndsWith(".cnmt.nca", StringComparison.OrdinalIgnoreCase)))
         {
             try
             {
                 using var ncaFile = allFiles[cnmtNcaName].AsFile(OpenMode.Read);
-
                 var cnmt = ncaFile.GetCnmtFromNca(keySet);
-                if (cnmt == null) continue;
+
+                if (cnmt == null)
+                    continue;
 
                 string titleId = cnmt.TitleId.ToString("X16");
                 uint version = cnmt.TitleVersion.Version;
                 ContentMetaType type = cnmt.Type;
-
                 var contentNcaIds = cnmt.ContentEntries
                     .Select(e => BitConverter.ToString(e.NcaId).Replace("-", string.Empty).ToLowerInvariant())
                     .ToList();
-
                 string selfNcaId = System.IO.Path.GetFileNameWithoutExtension(System.IO.Path.GetFileNameWithoutExtension(cnmtNcaName));
+
                 if (!string.IsNullOrEmpty(selfNcaId))
                     contentNcaIds.Add(selfNcaId.ToLowerInvariant());
 
                 string krTitle = string.Empty;
                 string enTitle = string.Empty;
                 string displayVer = "1.0.0";
-
                 var ctrlRecord = cnmt.ContentEntries
                     .FirstOrDefault(x => x.Type == LibHac.Ncm.ContentType.Control);
 
                 if (ctrlRecord != null)
                 {
                     string ctrlId = BitConverter.ToString(ctrlRecord.NcaId).Replace("-", string.Empty).ToLowerInvariant();
-
                     string? ctrlName = allFiles.Keys.FirstOrDefault(k =>
                         k.StartsWith(ctrlId, StringComparison.OrdinalIgnoreCase));
 
                     if (ctrlName != null)
                     {
                         var control = allFiles[ctrlName].GetControlProperty(keySet);
+
                         if (control != null)
                         {
                             var current = control.Value;
@@ -217,7 +247,12 @@ public static class MetadataReader
                                 foreach (ApplicationTitle t in current.Title)
                                 {
                                     var name = t.NameString.ToString().Trim('\0', ' ');
-                                    if (!string.IsNullOrWhiteSpace(name)) { krTitle = name; break; }
+
+                                    if (!string.IsNullOrWhiteSpace(name)) 
+                                    {
+                                        krTitle = name; 
+                                        break;
+                                    }
                                 }
                             }
                             if (string.IsNullOrWhiteSpace(enTitle)) enTitle = krTitle;
@@ -230,11 +265,16 @@ public static class MetadataReader
                 results.Add(new MetadataResult(titleId, version, displayVer, krTitle, enTitle, 0, type, cnmtNcaName, path, contentNcaIds));
             }
             catch
-            { throw; }
+            { 
+                throw;
+            }
         }
 
-        foreach (var s in allFiles.Values) s.Dispose();
-        if (fs is IDisposable d) d.Dispose();
+        foreach (var s in allFiles.Values) 
+            s.Dispose();
+
+        if (fs is IDisposable d)
+            d.Dispose();
 
         return results;
     }
@@ -242,7 +282,9 @@ public static class MetadataReader
     public static List<Cnmt> GetCnmtsFromContainer(KeySet keySet, string path)
     {
         var results = new List<Cnmt>();
-        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return results;
+
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) 
+            return results;
 
         using var storage = new LocalStorage(path, FileAccess.Read);
         using var fs = storage.OpenFileSystem(keySet, path);
@@ -255,16 +297,24 @@ public static class MetadataReader
             try
             {
                 using var file = new UniqueRef<IFile>();
-                if (fs.OpenFile(ref file.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).IsFailure()) continue;
+
+                if (fs.OpenFile(ref file.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).IsFailure()) 
+                    continue;
 
                 var nca = new Nca(keySet, file.Release().AsStorage());
-                if (nca.Header.ContentType != NcaContentType.Meta) continue;
+
+                if (nca.Header.ContentType != NcaContentType.Meta)
+                    continue;
 
                 using var metaFs = nca.OpenFileSystem(NcaSectionType.Data, IntegrityCheckLevel.None);
+
                 foreach (var cnmtEntry in metaFs.EnumerateEntries("/", "*.cnmt"))
                 {
                     using var cnmtFile = new UniqueRef<IFile>();
-                    if (metaFs.OpenFile(ref cnmtFile.Ref, cnmtEntry.FullPath.ToU8Span(), OpenMode.Read).IsFailure()) continue;
+
+                    if (metaFs.OpenFile(ref cnmtFile.Ref, cnmtEntry.FullPath.ToU8Span(), OpenMode.Read).IsFailure())
+                        continue;
+
                     results.Add(new Cnmt(cnmtFile.Get.AsStream()));
                 }
             }
@@ -295,10 +345,12 @@ public static class MetadataReader
         var titles = control.Title;
 
         var title = titles[(int)preferred];
+
         if (!string.IsNullOrWhiteSpace(title.NameString.ToString().Trim('\0')))
             return (title.NameString.ToString().Trim('\0'), title.PublisherString.ToString().Trim('\0'), preferred);
 
         title = titles[(int)Language.AmericanEnglish];
+
         if (!string.IsNullOrWhiteSpace(title.NameString.ToString().Trim('\0')))
             return (title.NameString.ToString().Trim('\0'), title.PublisherString.ToString().Trim('\0'), Language.AmericanEnglish);
 
@@ -306,6 +358,7 @@ public static class MetadataReader
         {
             var t = titles[i];
             var name = t.NameString.ToString().Trim('\0');
+
             if (!string.IsNullOrWhiteSpace(name))
                 return (name, t.PublisherString.ToString().Trim('\0'), (Language)i);
         }

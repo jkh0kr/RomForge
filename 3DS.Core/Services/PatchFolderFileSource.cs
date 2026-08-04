@@ -2,7 +2,6 @@
 using Common;
 using Patch.Core;
 using Patch.Core.Services;
-using System.IO.Compression;
 
 namespace _3DS.Core.Services;
 
@@ -11,24 +10,26 @@ public class PatchFolderFileSource : IRomFsFileSource
     private static readonly string[] PatchExtensions = [".xdelta", ".ips", ".bps", ".ups", ".ppf", ".aps"];
 
     private readonly string? _diskFolder;
-    private readonly ZipArchive? _zipArchive;
-    private readonly string _zipPrefix;
+    private readonly IArchivePatchSource? _archive;
+    private readonly string _archivePrefix;
 
-    private Dictionary<string, PatchFileRef>? _patchIndex; // key: 원본파일명 + 확장자, 디렉터리 무시(기존 동작 유지)
+    private Dictionary<string, PatchFileRef>? _patchIndex;
     private readonly Dictionary<string, byte[]> _resultCache = new(StringComparer.OrdinalIgnoreCase);
-        
-    public int AppliedCount { get; private set; }
+    private readonly Dictionary<string, byte[]> _directCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _appliedPaths = new(StringComparer.OrdinalIgnoreCase);
 
-    private PatchFolderFileSource(string? diskFolder, ZipArchive? zipArchive, string zipPrefix)
+    public int AppliedCount => _appliedPaths.Count;
+
+    private PatchFolderFileSource(string? diskFolder, IArchivePatchSource? archive, string archivePrefix)
     {
         _diskFolder = diskFolder;
-        _zipArchive = zipArchive;
-        _zipPrefix = zipPrefix;
+        _archive = archive;
+        _archivePrefix = archivePrefix;
     }
 
     public static PatchFolderFileSource ForFolder(string patchFolder) => new(patchFolder, null, "");
 
-    public static PatchFolderFileSource ForZip(ZipArchive archive, string prefix) => new(null, archive, prefix);
+    public static PatchFolderFileSource ForArchive(IArchivePatchSource archive, string prefix) => new(null, archive, prefix);
 
     public async ValueTask<Stream?> OpenFileAsync(string fullPath, Func<CancellationToken, ValueTask<Stream?>>? getOriginal = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)
     {
@@ -37,7 +38,7 @@ public class PatchFolderFileSource : IRomFsFileSource
 
         if (direct != null)
         {
-            AppliedCount++;
+            _appliedPaths.Add(relative);
 
             return direct;
         }
@@ -72,9 +73,7 @@ public class PatchFolderFileSource : IRomFsFileSource
             byte[] patchData = await patchRef.ReadSmallFileBytesAsync(ct);
             byte[] patchedData = await UniversalPatcher.ApplyPatchAsync(originalData, patchData, null, ct);
 
-            log?.Invoke($"패치완료: {patchKey}", LogLevel.Info);
-
-            AppliedCount++;
+            _appliedPaths.Add(relative);
             _resultCache[fullPath] = patchedData;
 
             return new MemoryStream(patchedData);
@@ -92,10 +91,26 @@ public class PatchFolderFileSource : IRomFsFileSource
             return File.Exists(localPath) ? File.OpenRead(localPath) : null;
         }
 
-        string zipKey = _zipPrefix + relative;
-        var entry = _zipArchive!.Entries.FirstOrDefault(e => string.Equals(e.FullName.Replace('\\', '/'), zipKey, StringComparison.OrdinalIgnoreCase));
+        string archiveKey = _archivePrefix + relative;
+        var entry = _archive!.FindEntry(archiveKey);
 
-        return entry?.Open();
+        if (entry == null)
+            return null;
+
+        if (_archive.SupportsCheapRepeatedOpen)
+            return entry.Open();
+                
+        if (!_directCache.TryGetValue(relative, out byte[]? cached))
+        {
+            using var s = entry.Open();
+            using var ms = new MemoryStream();
+
+            s.CopyTo(ms);
+            cached = ms.ToArray();
+            _directCache[relative] = cached;
+        }
+
+        return new MemoryStream(cached);
     }
 
     private Dictionary<string, PatchFileRef> GetOrBuildPatchIndex()
@@ -120,22 +135,20 @@ public class PatchFolderFileSource : IRomFsFileSource
         }
         else
         {
-            foreach (var entry in _zipArchive!.Entries)
+            foreach (string key in _archive!.EntryPaths)
             {
-                if (string.IsNullOrEmpty(entry.Name))
+                if (!key.StartsWith(_archivePrefix, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                string key = entry.FullName.Replace('\\', '/');
+                string name = key.Contains('/') ? key[(key.LastIndexOf('/') + 1)..] : key;
 
-                if (!key.StartsWith(_zipPrefix, StringComparison.OrdinalIgnoreCase))
+                if (!PatchExtensions.Any(ext => name.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
                     continue;
 
-                if (PatchExtensions.Any(ext => entry.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
-                {
-                    var capturedEntry = entry;
+                var entry = _archive.FindEntry(key);
 
-                    index.TryAdd(entry.Name, PatchFileRef.FromZip(() => capturedEntry.Open(), capturedEntry.Length));
-                }
+                if (entry != null)
+                    index.TryAdd(name, PatchFileRef.FromArchiveEntry(entry));
             }
         }
 

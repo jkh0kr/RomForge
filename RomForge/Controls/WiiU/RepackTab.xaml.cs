@@ -18,6 +18,38 @@ namespace RomForge.Controls.WiiU
             InitializeComponent();
         }
 
+        private void PatchDropTarget_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement { ContextMenu: not null } fe) return;
+
+            fe.ContextMenu.PlacementTarget = fe;
+            fe.ContextMenu.IsOpen = true;
+        }
+
+        private void PatchMenu_SelectFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement { DataContext: TitleInputEntry entry }) return;
+
+            var dlg = new Microsoft.Win32.OpenFolderDialog { Title = $"{entry.TitleName}에 적용할 한글패치 폴더 선택" };
+
+            if (dlg.ShowDialog() == true)
+                entry.PatchPath = dlg.FolderName;
+        }
+
+        private void PatchMenu_SelectArchive_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement { DataContext: TitleInputEntry entry }) return;
+
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = $"{entry.TitleName}에 적용할 한글패치 압축파일 선택",
+                Filter = "압축파일 (*.zip;*.7z)|*.zip;*.7z"
+            };
+
+            if (dlg.ShowDialog() == true)
+                entry.PatchPath = dlg.FileName;
+        }
+
         private void PatchDropTarget_DragEnter(object sender, DragEventArgs e)
         {
             e.Effects = IsValidPatchDrop(e.Data) ? DragDropEffects.Copy : DragDropEffects.None;
@@ -36,7 +68,7 @@ namespace RomForge.Controls.WiiU
 
             string path = paths[0];
 
-            if (Directory.Exists(path) || (File.Exists(path) && string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase)))
+            if (IsValidPatchPath(path))
                 entry.PatchPath = path;
 
             e.Handled = true;
@@ -47,9 +79,20 @@ namespace RomForge.Controls.WiiU
             if (data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length != 1)
                 return false;
 
-            string path = paths[0];
+            return IsValidPatchPath(paths[0]);
+        }
 
-            return Directory.Exists(path) || (File.Exists(path) && string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase));
+        private static bool IsValidPatchPath(string path)
+        {
+            if (Directory.Exists(path))
+                return true;
+
+            if (!File.Exists(path))
+                return false;
+
+            string ext = Path.GetExtension(path);
+
+            return string.Equals(ext, ".zip", StringComparison.OrdinalIgnoreCase) || string.Equals(ext, ".7z", StringComparison.OrdinalIgnoreCase);
         }
 
         private void Root_DragEnter(object sender, DragEventArgs e)

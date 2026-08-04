@@ -26,8 +26,6 @@ public class MainViewModel : ToolTabViewModel
 
     public PatchMainViewModel PatchVM { get; }
 
-    public PatchSearchMainViewModel PatchSearchVM { get; } = new();
-
     public CompressMainViewModel CompressVM { get; } = new();
 
     public SwitchMainViewModel SwitchMainVM { get; } = new();
@@ -67,13 +65,12 @@ public class MainViewModel : ToolTabViewModel
     public ObservableCollection<LogEntry> ActiveLogEntries => _selectedTabIndex switch
     {
         0 => PatchVM.LogEntries,
-        1 => PatchSearchVM.LogEntries,
-        2 => CompressVM.LogEntries,
-        3 => SwitchMainVM.LogEntries,
-        4 => WiiUMainVM.LogEntries,
-        5 => Main3DsVM.LogEntries,
-        6 => PSMainVM.LogEntries,
-        7 => UtilMainVM.LogEntries,
+        1 => CompressVM.LogEntries,
+        2 => SwitchMainVM.LogEntries,
+        3 => WiiUMainVM.LogEntries,
+        4 => Main3DsVM.LogEntries,
+        5 => PSMainVM.LogEntries,
+        6 => UtilMainVM.LogEntries,
         _ => PatchVM.LogEntries
     };
 
@@ -87,7 +84,6 @@ public class MainViewModel : ToolTabViewModel
         PSMainVM.RunNavigatePackingSettings += PS1MainVM_RunNavigatePackingSettings;
 
         Tools.Add(PatchVM);
-        Tools.Add(PatchSearchVM);
         Tools.Add(CompressVM);
         Tools.Add(SwitchMainVM);
         Tools.Add(WiiUMainVM);

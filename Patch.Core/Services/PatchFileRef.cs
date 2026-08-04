@@ -3,27 +3,27 @@
 public sealed class PatchFileRef
 {
     public string? DiskPath { get; }
-    private readonly Func<Stream>? _zipStreamOpener;
-    private readonly long _zipLength;
+    private readonly Func<Stream>? _archiveOpener;
+    private readonly long _archiveLength;
 
-    private PatchFileRef(string? diskPath, Func<Stream>? zipStreamOpener, long zipLength)
+    private PatchFileRef(string? diskPath, Func<Stream>? archiveOpener, long archiveLength)
     {
         DiskPath = diskPath;
-        _zipStreamOpener = zipStreamOpener;
-        _zipLength = zipLength;
+        _archiveOpener = archiveOpener;
+        _archiveLength = archiveLength;
     }
 
     public static PatchFileRef FromDisk(string path) => new(path, null, 0);
 
-    public static PatchFileRef FromZip(Func<Stream> zipStreamOpener, long length) => new(null, zipStreamOpener, length);
+    public static PatchFileRef FromArchiveEntry(IArchivePatchEntry entry) => new(null, entry.Open, entry.Length);
 
     public bool IsDisk => DiskPath != null;
 
-    public string DisplayName => DiskPath != null ? Path.GetFileName(DiskPath) : "(zip)";
+    public string DisplayName => DiskPath != null ? Path.GetFileName(DiskPath) : "(archive)";
 
-    public long Length => IsDisk ? new FileInfo(DiskPath!).Length : _zipLength;
+    public long Length => IsDisk ? new FileInfo(DiskPath!).Length : _archiveLength;
 
-    public Stream OpenRead() => IsDisk ? File.OpenRead(DiskPath!) : _zipStreamOpener!();
+    public Stream OpenRead() => IsDisk ? File.OpenRead(DiskPath!) : _archiveOpener!();
 
     public byte[] ReadSmallFileBytes()
     {

@@ -2,7 +2,6 @@
 using NSW.M1.Core.Models;
 using Patch.Core.Formats;
 using Patch.Core.Services;
-using System.IO.Compression;
 using Path = System.IO.Path;
 
 namespace NSW.M1.Core.Services;
@@ -15,13 +14,13 @@ public static class NspPatchApplier
         string romfsDir = unpackResult.RomfsDirs.GetValueOrDefault((byte)0, string.Empty);
         int matchedCount = 0;
 
-        if (ZipPatchSource.IsZipPath(patchPath))
+        if (ArchivePatchSourceFactory.IsArchivePath(patchPath))
         {
-            using var archive = ZipFile.OpenRead(patchPath);
+            using var archive = ArchivePatchSourceFactory.Open(patchPath);
 
-            matchedCount += ApplyZipSubDir(archive, "exefs", exefsDir, progress, log, "한글패치 ExeFS");
-            matchedCount += ApplyZipSubDir(archive, "romfs", romfsDir, progress, log, "한글패치 RomFS");
-            matchedCount += ApplyZipXdelta(archive, exefsDir, romfsDir, progress, log);
+            matchedCount += ApplyArchiveSubDir(archive, "exefs", exefsDir, progress, log, "한글패치 ExeFS");
+            matchedCount += ApplyArchiveSubDir(archive, "romfs", romfsDir, progress, log, "한글패치 RomFS");
+            matchedCount += ApplyArchiveXdelta(archive, exefsDir, romfsDir, progress, log);
         }
         else
         {
@@ -32,13 +31,13 @@ public static class NspPatchApplier
             {
                 progress.Report((-1, "한글패치 ExeFS 병합 중..."));
                 log($"  한글패치 ExeFS 병합: {patchExefs}", LogLevel.Info);
-                matchedCount += MergeDirectory(patchExefs, exefsDir);
+                matchedCount += MergeDirectory(patchExefs, exefsDir, log);
             }
             if (patchRomfs != null)
             {
                 progress.Report((-1, "한글패치 RomFS 병합 중..."));
                 log($"  한글패치 RomFS 병합: {patchRomfs}", LogLevel.Info);
-                matchedCount += MergeDirectory(patchRomfs, romfsDir);
+                matchedCount += MergeDirectory(patchRomfs, romfsDir, log);
             }
 
             if (Directory.Exists(patchPath))
@@ -96,12 +95,12 @@ public static class NspPatchApplier
     {
         int matchedCount = 0;
 
-        if (ZipPatchSource.IsZipPath(patchPath))
+        if (ArchivePatchSourceFactory.IsArchivePath(patchPath))
         {
-            using var archive = ZipFile.OpenRead(patchPath);
+            using var archive = ArchivePatchSourceFactory.Open(patchPath);
 
-            matchedCount += ApplyZipSubDir(archive, "romfs", romfsDir, progress, log, $"DLC 패치 RomFS ({titleIdStr})");
-            matchedCount += ApplyZipXdeltaDlc(archive, romfsDir, titleIdStr, progress, log);
+            matchedCount += ApplyArchiveSubDir(archive, "romfs", romfsDir, progress, log, $"DLC 패치 RomFS ({titleIdStr})");
+            matchedCount += ApplyArchiveXdeltaDlc(archive, romfsDir, titleIdStr, progress, log);
         }
         else
         {
@@ -114,7 +113,7 @@ public static class NspPatchApplier
             {
                 progress.Report((-1, $"DLC 패치 RomFS 병합 중... ({titleIdStr})"));
                 log($"  DLC 패치 RomFS 병합: {patchRomfs}", LogLevel.Info);
-                matchedCount += MergeDirectory(patchRomfs, romfsDir);
+                matchedCount += MergeDirectory(patchRomfs, romfsDir, log);
             }
 
             var xdeltaFiles = Directory.EnumerateFiles(patchPath, "*.xdelta", SearchOption.AllDirectories)
@@ -150,31 +149,31 @@ public static class NspPatchApplier
             log("  패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
     }
 
-    private static int ApplyZipSubDir(ZipArchive archive, string folderName, string targetDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, string label)
+    private static int ApplyArchiveSubDir(IArchivePatchSource archive, string folderName, string targetDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, string label)
     {
-        string? prefix = ZipPatchSource.FindSubDir(archive, folderName);
+        string? prefix = ArchivePatchFolderResolver.FindSubDir(archive.EntryPaths, folderName);
 
         if (prefix == null)
             return 0;
 
         progress.Report((-1, $"{label} 병합 중..."));
-        log($"  {label} 병합(zip): {prefix}", LogLevel.Info);
+        log($"  {label} 병합(압축파일): {prefix}", LogLevel.Info);
 
         int count = 0;
 
-        foreach (var entry in archive.Entries)
+        foreach (string key in archive.EntryPaths)
         {
-            if (string.IsNullOrEmpty(entry.Name))
-                continue;
-
-            string key = entry.FullName.Replace('\\', '/');
-
             if (!key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 continue;
 
             string rel = key[prefix.Length..];
 
             if (rel.Length == 0 || rel.EndsWith(".xdelta", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var entry = archive.FindEntry(key);
+
+            if (entry == null)
                 continue;
 
             string dest = Path.Combine(targetDir, rel.Replace('/', Path.DirectorySeparatorChar));
@@ -189,31 +188,34 @@ public static class NspPatchApplier
             count++;
         }
 
+        if (count > 0)
+            log($"  {label} 교체 완료: {count}개 파일", LogLevel.Ok);
+
         return count;
     }
 
-    private static int ApplyZipXdelta(ZipArchive archive, string exefsDir, string romfsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    private static int ApplyArchiveXdelta(IArchivePatchSource archive, string exefsDir, string romfsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
     {
-        var xdeltaEntries = archive.Entries
-            .Where(e => !string.IsNullOrEmpty(e.Name) && e.Name.EndsWith(".xdelta", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(e => e.FullName)
+        var xdeltaKeys = archive.EntryPaths
+            .Where(k => k.EndsWith(".xdelta", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(k => k)
             .ToList();
 
-        if (xdeltaEntries.Count == 0)
+        if (xdeltaKeys.Count == 0)
             return 0;
 
         progress.Report((-1, "xdelta 바이너리 패치 적용 중..."));
-        log($"  발견된 xdelta 패치 수: {xdeltaEntries.Count}개", LogLevel.Info);
+        log($"  발견된 xdelta 패치 수: {xdeltaKeys.Count}개", LogLevel.Info);
 
         string unpackedRoot = Path.GetDirectoryName(exefsDir) is { Length: > 0 } d ? d : Path.GetDirectoryName(romfsDir) ?? string.Empty;
         int count = 0;
 
-        foreach (var entry in xdeltaEntries)
+        foreach (string key in xdeltaKeys)
         {
-            string entryPath = entry.FullName.Replace('\\', '/');
-            string targetFileName = Path.GetFileNameWithoutExtension(entry.Name);
-            int lastSlash = entryPath.LastIndexOf('/');
-            string relDir = lastSlash < 0 ? "" : entryPath[..lastSlash];
+            string entryName = key.Contains('/') ? key[(key.LastIndexOf('/') + 1)..] : key;
+            string targetFileName = Path.GetFileNameWithoutExtension(entryName);
+            int lastSlash = key.LastIndexOf('/');
+            string relDir = lastSlash < 0 ? "" : key[..lastSlash];
             string relativeTargetKey = relDir.Length == 0 ? targetFileName : $"{relDir}/{targetFileName}";
             string absoluteExactPath = Path.Combine(unpackedRoot, relativeTargetKey.Replace('/', Path.DirectorySeparatorChar));
 
@@ -236,14 +238,18 @@ public static class NspPatchApplier
                 continue;
             }
 
-            var capturedEntry = entry;
-            var patchRef = PatchFileRef.FromZip(() => capturedEntry.Open(), capturedEntry.Length);
+            var entry = archive.FindEntry(key);
+
+            if (entry == null)
+                continue;
+
+            var patchRef = PatchFileRef.FromArchiveEntry(entry);
 
             using var tempPatch = patchRef.MaterializeAsTempFile(".xdelta");
 
             foreach (var targetPath in targetFiles.Distinct())
             {
-                ApplyXdeltaToTarget(tempPatch.Path, targetPath, unpackedRoot, progress, log, displayName: entry.Name);
+                ApplyXdeltaToTarget(tempPatch.Path, targetPath, unpackedRoot, progress, log, displayName: entryName);
                 count++;
             }
         }
@@ -251,24 +257,25 @@ public static class NspPatchApplier
         return count;
     }
 
-    private static int ApplyZipXdeltaDlc(ZipArchive archive, string romfsDir, string titleIdStr, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    private static int ApplyArchiveXdeltaDlc(IArchivePatchSource archive, string romfsDir, string titleIdStr, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
     {
-        var xdeltaEntries = archive.Entries
-            .Where(e => !string.IsNullOrEmpty(e.Name) && e.Name.EndsWith(".xdelta", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(e => e.FullName)
+        var xdeltaKeys = archive.EntryPaths
+            .Where(k => k.EndsWith(".xdelta", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(k => k)
             .ToList();
 
-        if (xdeltaEntries.Count == 0)
+        if (xdeltaKeys.Count == 0)
             return 0;
 
         progress.Report((-1, $"DLC xdelta 패치 적용 중... ({titleIdStr})"));
-        log($"  발견된 DLC xdelta 패치 수: {xdeltaEntries.Count}개", LogLevel.Info);
+        log($"  발견된 DLC xdelta 패치 수: {xdeltaKeys.Count}개", LogLevel.Info);
 
         int count = 0;
 
-        foreach (var entry in xdeltaEntries)
+        foreach (string key in xdeltaKeys)
         {
-            string targetFileName = Path.GetFileNameWithoutExtension(entry.Name);
+            string entryName = key.Contains('/') ? key[(key.LastIndexOf('/') + 1)..] : key;
+            string targetFileName = Path.GetFileNameWithoutExtension(entryName);
             var targetFiles = Directory.EnumerateFiles(romfsDir, targetFileName, SearchOption.AllDirectories).ToList();
 
             if (targetFiles.Count == 0)
@@ -277,14 +284,17 @@ public static class NspPatchApplier
                 continue;
             }
 
-            var capturedEntry = entry;
-            var patchRef = PatchFileRef.FromZip(() => capturedEntry.Open(), capturedEntry.Length);
+            var entry = archive.FindEntry(key);
 
+            if (entry == null)
+                continue;
+
+            var patchRef = PatchFileRef.FromArchiveEntry(entry);
             using var tempPatch = patchRef.MaterializeAsTempFile(".xdelta");
 
             foreach (var targetPath in targetFiles)
             {
-                ApplyXdeltaToTarget(tempPatch.Path, targetPath, romfsDir, progress, log, isDlc: true, displayName: entry.Name);
+                ApplyXdeltaToTarget(tempPatch.Path, targetPath, romfsDir, progress, log, isDlc: true, displayName: entryName);
                 count++;
             }
         }
@@ -329,7 +339,7 @@ public static class NspPatchApplier
         }
     }
 
-    public static int MergeDirectory(string srcDir, string dstDir)
+    public static int MergeDirectory(string srcDir, string dstDir, Action<string, LogLevel>? log = null)
     {
         Directory.CreateDirectory(dstDir);
 
@@ -342,11 +352,14 @@ public static class NspPatchApplier
 
             string rel = Path.GetRelativePath(srcDir, file);
             string dest = Path.Combine(dstDir, rel);
-
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             File.Copy(file, dest, overwrite: true);
+
             count++;
         }
+
+        if (count > 0)
+            log?.Invoke($"  교체 완료: {count}개 파일 ({srcDir})", LogLevel.Ok);
 
         return count;
     }

@@ -46,6 +46,7 @@ public static class PatchFolderResolver
             return patchRoot;
 
         var queue = new Queue<string>();
+
         queue.Enqueue(patchRoot);
 
         while (queue.Count > 0)

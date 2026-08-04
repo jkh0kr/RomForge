@@ -6,7 +6,6 @@ using Common;
 using NSW.Utils;
 using Patch.Core.Services;
 using System.IO;
-using System.IO.Compression;
 
 namespace RomForge.Core.Services._3DS;
 
@@ -208,6 +207,14 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
         if (patchDirSpecified && exefsPatchedCount == 0 && (romfsPatchSource == null || romfsPatchSource.AppliedCount == 0))
             log("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
+        else
+        {
+            if (exefsPatchedCount > 0)
+                log($"exefs 패치 적용 완료: {exefsPatchedCount}개 파일", LogLevel.Ok);
+
+            if (romfsPatchSource is { AppliedCount: > 0 })
+                log($"romfs 패치 적용 완료: {romfsPatchSource.AppliedCount}개 파일", LogLevel.Ok);
+        }
 
         log($"출력: {outputCci}", LogLevel.Ok);
     }
@@ -270,6 +277,14 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
         if (patchDirSpecified && exefsPatchedCount == 0 && (romfsPatchSource == null || romfsPatchSource.AppliedCount == 0))
             log("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
+        else
+        {
+            if (exefsPatchedCount > 0)
+                log($"exefs 패치 적용 완료: {exefsPatchedCount}개 파일", LogLevel.Ok);
+
+            if (romfsPatchSource is { AppliedCount: > 0 })
+                log($"romfs 패치 적용 완료: {romfsPatchSource.AppliedCount}개 파일", LogLevel.Ok);
+        }
 
         log($"출력: {outputCci}", LogLevel.Ok);
     }
@@ -277,14 +292,14 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
     private sealed class PatchSourceContext : IDisposable
     {
         private readonly string? _diskPath;
-        private readonly ZipArchive? _zip;
+        private readonly IArchivePatchSource? _archive;
 
         public bool HasSource { get; }
 
-        private PatchSourceContext(string? diskPath, ZipArchive? zip, bool hasSource)
+        private PatchSourceContext(string? diskPath, IArchivePatchSource? archive, bool hasSource)
         {
             _diskPath = diskPath;
-            _zip = zip;
+            _archive = archive;
             HasSource = hasSource;
         }
 
@@ -293,15 +308,15 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             if (string.IsNullOrEmpty(rawPath))
                 return new PatchSourceContext(null, null, false);
 
-            if (ZipPatchSource.IsZipPath(rawPath))
+            if (ArchivePatchSourceFactory.IsArchivePath(rawPath))
             {
                 try
                 {
-                    return new PatchSourceContext(null, ZipFile.OpenRead(rawPath), true);
+                    return new PatchSourceContext(null, ArchivePatchSourceFactory.Open(rawPath), true);
                 }
                 catch (Exception ex)
                 {
-                    log($"⚠️ 한글패치 zip을 열 수 없습니다: {ex.Message}", LogLevel.Error);
+                    log($"⚠️ 한글패치 압축파일을 열 수 없습니다: {ex.Message}", LogLevel.Error);
 
                     return new PatchSourceContext(null, null, false);
                 }
@@ -322,11 +337,11 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             if (!HasSource)
                 return null;
 
-            if (_zip != null)
+            if (_archive != null)
             {
-                string? prefix = ZipPatchSource.FindSubDir(_zip, folderName);
+                string? prefix = ArchivePatchFolderResolver.FindSubDir(_archive.EntryPaths, folderName);
 
-                return prefix == null ? null : PatchFileIndex.Build(_zip, prefix);
+                return prefix == null ? null : PatchFileIndex.Build(_archive, prefix);
             }
 
             string? dir = PatchFolderResolver.FindSubDir(_diskPath!, folderName);
@@ -339,7 +354,116 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             if (!HasSource)
                 return null;
 
-            return _zip != null ? PatchFileIndex.Build(_zip, "") : PatchFileIndex.Build(_diskPath!);
+            var combined = new PatchFileIndex();
+
+            if (_archive != null)
+            {
+                combined.Entries.AddRange(PatchFileIndex.BuildTopLevelOnly(_archive, "").Entries);
+
+                string? exefsPrefix = ArchivePatchFolderResolver.FindSubDir(_archive.EntryPaths, "exefs");
+
+                if (exefsPrefix != null)
+                    combined.Entries.AddRange(PatchFileIndex.BuildTopLevelOnly(_archive, ParentPrefix(exefsPrefix)).Entries);
+
+                string? romfsPrefix = ArchivePatchFolderResolver.FindSubDir(_archive.EntryPaths, "romfs");
+
+                if (romfsPrefix != null)
+                    combined.Entries.AddRange(PatchFileIndex.BuildTopLevelOnly(_archive, ParentPrefix(romfsPrefix)).Entries);
+
+                foreach (string codeFileName in new[] { "code.bin", "code.ips" })
+                {
+                    string? codeParent = FindFileParentPrefix(_archive.EntryPaths, codeFileName);
+
+                    if (codeParent != null)
+                        combined.Entries.AddRange(PatchFileIndex.BuildTopLevelOnly(_archive, codeParent).Entries);
+                }
+            }
+            else
+            {
+                combined.Entries.AddRange(PatchFileIndex.BuildTopLevelOnly(_diskPath!).Entries);
+
+                string? exefsDir = PatchFolderResolver.FindSubDir(_diskPath!, "exefs");
+
+                if (exefsDir != null)
+                    combined.Entries.AddRange(PatchFileIndex.BuildTopLevelOnly(Path.GetDirectoryName(exefsDir)!).Entries);
+
+                string? romfsDir = PatchFolderResolver.FindSubDir(_diskPath!, "romfs");
+
+                if (romfsDir != null)
+                    combined.Entries.AddRange(PatchFileIndex.BuildTopLevelOnly(Path.GetDirectoryName(romfsDir)!).Entries);
+
+                foreach (string codeFileName in new[] { "code.bin", "code.ips" })
+                {
+                    string? codeParent = FindFileParentDir(_diskPath!, codeFileName);
+
+                    if (codeParent != null)
+                        combined.Entries.AddRange(PatchFileIndex.BuildTopLevelOnly(codeParent).Entries);
+                }
+            }
+
+            return combined.HasAnyFile ? combined : null;
+        }
+
+        private static string ParentPrefix(string subDirPrefix)
+        {
+            string trimmed = subDirPrefix.TrimEnd('/');
+            int lastSlash = trimmed.LastIndexOf('/');
+
+            return lastSlash < 0 ? "" : trimmed[..(lastSlash + 1)];
+        }
+
+        private static string? FindFileParentPrefix(IReadOnlyList<string> entryPaths, string fileName)
+        {
+            string? best = null;
+            int bestDepth = int.MaxValue;
+
+            foreach (string path in entryPaths)
+            {
+                int lastSlash = path.LastIndexOf('/');
+                string name = lastSlash < 0 ? path : path[(lastSlash + 1)..];
+
+                if (!string.Equals(name, fileName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string parent = lastSlash < 0 ? "" : path[..(lastSlash + 1)];
+                int depth = parent.Count(c => c == '/');
+
+                if (depth < bestDepth)
+                {
+                    bestDepth = depth;
+                    best = parent;
+                }
+            }
+
+            return best;
+        }
+
+        private static string? FindFileParentDir(string root, string fileName)
+        {
+            if (!Directory.Exists(root))
+                return null;
+
+            string? best = null;
+            int bestDepth = int.MaxValue;
+
+            foreach (string file in Directory.EnumerateFiles(root, fileName, SearchOption.AllDirectories))
+            {
+                string? parent = Path.GetDirectoryName(file);
+
+                if (parent == null)
+                    continue;
+
+                string relative = Path.GetRelativePath(root, parent);
+                int depth = relative == "." ? 0 : relative.Count(c => c == Path.DirectorySeparatorChar) + 1;
+
+                if (depth < bestDepth)
+                {
+                    bestDepth = depth;
+                    best = parent;
+                }
+            }
+
+            return best;
         }
 
         public PatchFolderFileSource? CreateRomfsSource(string folderName)
@@ -347,11 +471,11 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             if (!HasSource)
                 return null;
 
-            if (_zip != null)
+            if (_archive != null)
             {
-                string? prefix = ZipPatchSource.FindSubDir(_zip, folderName);
+                string? prefix = ArchivePatchFolderResolver.FindSubDir(_archive.EntryPaths, folderName);
 
-                return prefix == null ? null : PatchFolderFileSource.ForZip(_zip, prefix);
+                return prefix == null ? null : PatchFolderFileSource.ForArchive(_archive, prefix);
             }
 
             string? dir = PatchFolderResolver.FindSubDir(_diskPath!, folderName);
@@ -359,7 +483,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             return dir == null ? null : PatchFolderFileSource.ForFolder(dir);
         }
 
-        public void Dispose() => _zip?.Dispose();
+        public void Dispose() => _archive?.Dispose();
     }
 
     private async Task<INcsdSource> OpenSourceAsync(string inputPath, KeyStore keyStore, CancellationToken ct)

@@ -114,7 +114,7 @@ public static class ExeFsPacker
 
             if (binRef != null)
             {
-                byte[] patchData = await binRef.ReadSmallFileBytesAsync(ct); // exefs 개별 파일은 원래 작음(수십MB 이내) — 안전
+                byte[] patchData = await binRef.ReadSmallFileBytesAsync(ct);
 
                 patchedFiles.Add(new ExeFsFile
                 {
@@ -155,7 +155,6 @@ public static class ExeFsPacker
                     HashValid = false,
                 });
 
-                log?.Invoke($"패치 완료: {ipsRef.DisplayName}", LogLevel.Info);
                 patchedCount++;
             }
             else

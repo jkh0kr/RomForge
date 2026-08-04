@@ -5,7 +5,6 @@ using Patch.Core.Services;
 using RomForge.Core.Models.WiiU;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using WiiU.Core.Models;
@@ -186,19 +185,20 @@ public sealed class RepackService()
         var result = new List<WupFileEntry>();
         var overwriteFiles = new Dictionary<string, PatchFileRef>(StringComparer.Ordinal);
         var binaryPatches = new Dictionary<string, PatchFileRef>(StringComparer.Ordinal);
-        ZipArchive? zip = null;
+
+        IArchivePatchSource? archive = null;
 
         if (patchPath is not null)
         {
             PatchFileIndex index;
 
-            if (ZipPatchSource.IsZipPath(patchPath))
+            if (ArchivePatchSourceFactory.IsArchivePath(patchPath))
             {
-                zip = ZipFile.OpenRead(patchPath);
+                archive = ArchivePatchSourceFactory.Open(patchPath);
 
-                string prefix = ZipPatchSource.FindPatchRoot(zip, PatchAnchors) ?? "";
+                string prefix = ArchivePatchFolderResolver.FindPatchRoot(archive.EntryPaths, PatchAnchors) ?? "";
 
-                index = PatchFileIndex.Build(zip, prefix);
+                index = PatchFileIndex.Build(archive, prefix);
             }
             else
             {
@@ -220,10 +220,19 @@ public sealed class RepackService()
         }
 
         var sourceFiles = new HashSet<string>(source.EnumerateFiles(), StringComparer.Ordinal);
-        int matchedCount = overwriteFiles.Keys.Count(sourceFiles.Contains) + binaryPatches.Keys.Count(sourceFiles.Contains);
+        int overwriteMatched = overwriteFiles.Keys.Count(sourceFiles.Contains);
+        int binaryMatched = binaryPatches.Keys.Count(sourceFiles.Contains);
 
-        if (patchPath is not null && matchedCount == 0)
+        if (patchPath is not null && overwriteMatched == 0 && binaryMatched == 0)
             log?.Invoke("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
+        else if (patchPath is not null)
+        {
+            if (overwriteMatched > 0)
+                log?.Invoke($"교체 완료: {overwriteMatched}개 파일", LogLevel.Ok);
+
+            if (binaryMatched > 0)
+                log?.Invoke($"패치 적용 완료: {binaryMatched}개 파일", LogLevel.Ok);
+        }
 
         foreach (string relPath in sourceFiles)
         {
@@ -239,7 +248,6 @@ public sealed class RepackService()
             if (binaryPatches.TryGetValue(relPath, out var patchRef))
             {
                 byte[] originalData;
-
                 using (var srcStream = source.OpenRead(relPath))
                 using (var ms = new MemoryStream())
                 {
@@ -259,7 +267,7 @@ public sealed class RepackService()
             result.Add(new WupFileEntry(relPath, () => capturedSource.OpenRead(capturedRelPath), capturedSource.GetFileSize(capturedRelPath)));
         }
 
-        return (result, zip);
+        return (result, archive);
     }
 
     public static async Task UnpackAsync(IReadOnlyList<TitleInputEntry> entries, string keysTxtPath, string outputPath, Action<ProgressInfo>? progress = null, Action<string, LogLevel>? log = null, CancellationToken ct = default)

@@ -1,18 +1,13 @@
-﻿using System.IO.Compression;
+﻿namespace Patch.Core.Services;
 
-namespace Patch.Core.Services;
-
-public static class ZipPatchSource
+public static class ArchivePatchFolderResolver
 {
-    public static bool IsZipPath(string? path) =>
-        !string.IsNullOrEmpty(path) && File.Exists(path) && string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase);
-
-    public static string? FindSubDir(ZipArchive archive, string folderName)
+    public static string? FindSubDir(IReadOnlyList<string> entryPaths, string folderName)
     {
         string? best = null;
         int bestDepth = int.MaxValue;
 
-        foreach (string dir in CollectDirs(archive))
+        foreach (string dir in CollectDirs(entryPaths))
         {
             if (dir.Length == 0)
                 continue;
@@ -35,9 +30,9 @@ public static class ZipPatchSource
         return best;
     }
 
-    public static string? FindPatchRoot(ZipArchive archive, params string[] anchorNames)
+    public static string? FindPatchRoot(IReadOnlyList<string> entryPaths, params string[] anchorNames)
     {
-        var allDirs = CollectDirs(archive);
+        var allDirs = CollectDirs(entryPaths);
         string? best = null;
         int bestDepth = int.MaxValue;
 
@@ -60,16 +55,12 @@ public static class ZipPatchSource
         return best;
     }
 
-    private static HashSet<string> CollectDirs(ZipArchive archive)
+    private static HashSet<string> CollectDirs(IReadOnlyList<string> entryPaths)
     {
         var dirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "" };
 
-        foreach (var entry in archive.Entries)
+        foreach (string path in entryPaths)
         {
-            if (string.IsNullOrEmpty(entry.Name))
-                continue;
-
-            string path = entry.FullName.Replace('\\', '/');
             int idx = path.LastIndexOf('/');
             string dir = idx < 0 ? "" : path[..idx];
 

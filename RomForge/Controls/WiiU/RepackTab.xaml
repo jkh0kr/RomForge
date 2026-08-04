@@ -84,7 +84,15 @@
                                         <DataTemplate>
                                             <Border Width="32" Height="32" CornerRadius="4" Background="#3A3A40" BorderBrush="#5A5A62" BorderThickness="1"
                                                     ToolTip="{Binding PatchDisplay}"
-                                                    AllowDrop="True" DragEnter="PatchDropTarget_DragEnter" DragLeave="PatchDropTarget_DragLeave" Drop="PatchDropTarget_Drop">
+                                                    AllowDrop="True" DragEnter="PatchDropTarget_DragEnter" DragLeave="PatchDropTarget_DragLeave" Drop="PatchDropTarget_Drop"
+                                                    MouseLeftButtonUp="PatchDropTarget_Click"
+                                                    Cursor="Hand">
+                                                <Border.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="폴더 선택..." Click="PatchMenu_SelectFolder_Click"/>
+                                                        <MenuItem Header="압축파일 선택(zip/7z)..." Click="PatchMenu_SelectArchive_Click"/>
+                                                    </ContextMenu>
+                                                </Border.ContextMenu>
                                                 <Image Source="{Binding PatchIconSource}" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality"/>
                                             </Border>
                                         </DataTemplate>

@@ -8,12 +8,14 @@ public class IconConverter : IMultiValueConverter
 {
     public object? Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (values.Length < 3) return null;
+        if (values.Length < 3) 
+            return null;
 
         bool isRunning = values[0] is true;
         string iconPath = isRunning ? values[2] as string ?? string.Empty : values[1] as string ?? string.Empty;
 
-        if (string.IsNullOrEmpty(iconPath)) return null;
+        if (string.IsNullOrEmpty(iconPath)) 
+            return null;
 
         try
         {

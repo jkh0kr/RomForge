@@ -31,10 +31,7 @@ public partial class ConverterTab : UserControl
 
     private void OnScrollToItemRequested(WiiUFileItem item)
     {
-        Dispatcher.InvokeAsync(() =>
-        {
-            lvFiles.ScrollIntoView(item);
-        }, DispatcherPriority.Background);
+        Dispatcher.InvokeAsync(() => lvFiles.ScrollIntoView(item), DispatcherPriority.Background);
     }
 
     private void LvFiles_DragOver(object sender, DragEventArgs e)
@@ -42,6 +39,7 @@ public partial class ConverterTab : UserControl
         e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
             ? DragDropEffects.Copy
             : DragDropEffects.None;
+
         e.Handled = true;
     }
 
@@ -120,9 +118,6 @@ public partial class ConverterTab : UserControl
         if (selected.Count == 0)
             return;
 
-        // WiiU items are often folders themselves (WUP/Loadiine) rather than files, so open the
-        // item's own path directly when it's a directory, and its containing folder otherwise -
-        // unlike the 3DS tab (whose items are always plain files).
         string target = Directory.Exists(selected[0].FilePath)
             ? selected[0].FilePath
             : Path.GetDirectoryName(selected[0].FilePath) ?? selected[0].FilePath;

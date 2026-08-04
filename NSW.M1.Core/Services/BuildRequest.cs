@@ -1,4 +1,5 @@
 ﻿using NSW.HacPack.Models;
+using Patch.Core.Services;
 using static LibHac.Ns.ApplicationControlProperty;
 
 namespace NSW.M1.Core.Services;
@@ -7,7 +8,7 @@ public sealed record BuildRequest(string BaseFilePath, string UpdateFilePath, IR
 {
     public Language Language;
 
-    public bool HasPatch => !string.IsNullOrEmpty(PatchDir) && Directory.Exists(PatchDir);
+    public bool HasPatch => !string.IsNullOrEmpty(PatchDir) && (Directory.Exists(PatchDir) || ArchivePatchSourceFactory.IsArchivePath(PatchDir));
 
     public IReadOnlyDictionary<string, string> DlcPatchDirs { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 

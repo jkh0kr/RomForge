@@ -1,7 +1,6 @@
 ﻿using Common;
 using Patch.Core;
 using Patch.Core.Services;
-using System.IO.Compression;
 using WiiU.Core.Models;
 
 namespace WiiU.Core.Services;
@@ -23,7 +22,7 @@ public sealed class WiiURepackService
 
         var resolved = new List<(string TitleFolder, ITitleSource Source, Dictionary<string, PatchFileRef> OverwriteFiles, Dictionary<string, PatchFileRef> BinaryPatches, List<string> Paths)>();
         var seenFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var openZips = new List<ZipArchive>(); // 쓰기 루프가 끝날 때까지 살아있어야 zip 엔트리 스트림을 열 수 있음
+        var openArchives = new List<IArchivePatchSource>();
 
         try
         {
@@ -43,13 +42,13 @@ public sealed class WiiURepackService
                 {
                     PatchFileIndex index;
 
-                    if (ZipPatchSource.IsZipPath(entry.PatchFolder))
+                    if (ArchivePatchSourceFactory.IsArchivePath(entry.PatchFolder))
                     {
-                        var archive = ZipFile.OpenRead(entry.PatchFolder);
+                        var archive = ArchivePatchSourceFactory.Open(entry.PatchFolder);
 
-                        openZips.Add(archive);
+                        openArchives.Add(archive);
 
-                        string prefix = ZipPatchSource.FindPatchRoot(archive, PatchAnchors) ?? "";
+                        string prefix = ArchivePatchFolderResolver.FindPatchRoot(archive.EntryPaths, PatchAnchors) ?? "";
 
                         index = PatchFileIndex.Build(archive, prefix);
                     }
@@ -73,15 +72,21 @@ public sealed class WiiURepackService
                 }
 
                 var sourcePaths = new HashSet<string>(entry.Source.EnumerateFiles(), StringComparer.Ordinal);
-                int matchedCount = overwriteFiles.Keys.Count(sourcePaths.Contains) + binaryPatches.Keys.Count(sourcePaths.Contains);
+                int overwriteMatched = overwriteFiles.Keys.Count(sourcePaths.Contains);
+                int binaryMatched = binaryPatches.Keys.Count(sourcePaths.Contains);
 
-                if (entry.PatchFolder is not null && matchedCount == 0)
+                if (entry.PatchFolder is not null && overwriteMatched == 0 && binaryMatched == 0)
                     log?.Invoke($"패치 대상 파일이 존재하지 않습니다. ({titleFolder})", LogLevel.Error);
+                else if (entry.PatchFolder is not null)
+                {
+                    if (overwriteMatched > 0)
+                        log?.Invoke($"교체 완료: {overwriteMatched}개 파일 ({titleFolder})", LogLevel.Ok);
+
+                    if (binaryMatched > 0)
+                        log?.Invoke($"패치 적용 완료: {binaryMatched}개 파일 ({titleFolder})", LogLevel.Ok);
+                }
 
                 var paths = new SortedSet<string>(sourcePaths, StringComparer.Ordinal);
-
-                foreach (var p in overwriteFiles.Keys)
-                    paths.Add(p);
 
                 resolved.Add((titleFolder, entry.Source, overwriteFiles, binaryPatches, new List<string>(paths)));
             }
@@ -127,7 +132,7 @@ public sealed class WiiURepackService
         }
         finally
         {
-            foreach (var archive in openZips)
+            foreach (var archive in openArchives)
                 archive.Dispose();
         }
     }
@@ -140,14 +145,12 @@ public sealed class WiiURepackService
         if (binaryPatches.TryGetValue(path, out var patchRef))
         {
             byte[] originalData;
-
             using (var srcStream = source.OpenRead(path))
             using (var ms = new MemoryStream())
             {
                 srcStream.CopyTo(ms);
                 originalData = ms.ToArray();
             }
-
             byte[] patchData = patchRef.ReadSmallFileBytes();
             byte[] patchedData = UniversalPatcher.ApplyPatchAsync(originalData, patchData, null, ct).GetAwaiter().GetResult();
 
