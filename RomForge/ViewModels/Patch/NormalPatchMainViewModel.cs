@@ -158,9 +158,7 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                     actualSourcePath = await SourceArchiveExtractor.ExtractCandidateAsync(SourcePath, extractDir, entryKey, BuildProgressReporter(), ct);
                 }
                 else
-                {
                     actualSourcePath = extractResult.ResolvedPath!;
-                }
 
                 Log($"원본 압축 해제 완료: {Path.GetFileName(actualSourcePath)}", LogLevel.Ok);
             }
@@ -184,6 +182,7 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         {
             Log($"패치 취소: {SourcePath}", LogLevel.Error);
             CleanupTask();
+
             if (outputPath is not null)
                 orchestrator.Cleanup(outputPath);
         }
@@ -191,6 +190,7 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         {
             Log($"패치 실패: {ex.Message}", LogLevel.Error);
             CleanupTask();
+
             if (outputPath is not null)
                 orchestrator.Cleanup(outputPath);
         }

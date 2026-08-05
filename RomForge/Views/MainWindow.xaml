@@ -52,6 +52,16 @@
             <TabItem IsEnabled="{Binding IsIdle}">
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image Source="/Assets/Images/Convert.png" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="변환" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </TabItem.Header>
+                <controls:CdConvertTab/>
+            </TabItem>
+
+            <TabItem IsEnabled="{Binding IsIdle}">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Image Source="/Assets/Images/Switch.png" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
                         <TextBlock Text="Switch" VerticalAlignment="Center"/>
                     </StackPanel>

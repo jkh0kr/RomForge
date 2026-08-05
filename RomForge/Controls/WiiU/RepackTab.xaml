@@ -89,8 +89,16 @@
                                                     Cursor="Hand">
                                                 <Border.ContextMenu>
                                                     <ContextMenu>
-                                                        <MenuItem Header="폴더 선택..." Click="PatchMenu_SelectFolder_Click"/>
-                                                        <MenuItem Header="압축파일 선택(zip/7z)..." Click="PatchMenu_SelectArchive_Click"/>
+                                                        <MenuItem Header="폴더 선택..." Click="PatchMenu_SelectFolder_Click">
+                                                            <MenuItem.Icon>
+                                                                <Image Source="/Assets/Images/AddFolder.png" Width="24" Height="24"/>
+                                                            </MenuItem.Icon>
+                                                        </MenuItem>
+                                                        <MenuItem Header="압축파일 선택(zip/7z)..." Click="PatchMenu_SelectArchive_Click">
+                                                            <MenuItem.Icon>
+                                                                <Image Source="/Assets/Images/ZipFolder.png" Width="24" Height="24"/>
+                                                            </MenuItem.Icon>
+                                                        </MenuItem>
                                                     </ContextMenu>
                                                 </Border.ContextMenu>
                                                 <Image Source="{Binding PatchIconSource}" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality"/>

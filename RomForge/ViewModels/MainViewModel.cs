@@ -28,6 +28,8 @@ public class MainViewModel : ToolTabViewModel
 
     public CompressMainViewModel CompressVM { get; } = new();
 
+    public CdConvertMainViewModel CdConvertVM { get; } = new();
+
     public SwitchMainViewModel SwitchMainVM { get; } = new();
 
     public WiiUMainViewModel WiiUMainVM { get; } = new();
@@ -66,11 +68,12 @@ public class MainViewModel : ToolTabViewModel
     {
         0 => PatchVM.LogEntries,
         1 => CompressVM.LogEntries,
-        2 => SwitchMainVM.LogEntries,
-        3 => WiiUMainVM.LogEntries,
-        4 => Main3DsVM.LogEntries,
-        5 => PSMainVM.LogEntries,
-        6 => UtilMainVM.LogEntries,
+        2 => CdConvertVM.LogEntries,
+        3 => SwitchMainVM.LogEntries,
+        4 => WiiUMainVM.LogEntries,
+        5 => Main3DsVM.LogEntries,
+        6 => PSMainVM.LogEntries,
+        7 => UtilMainVM.LogEntries,
         _ => PatchVM.LogEntries
     };
 
@@ -85,6 +88,7 @@ public class MainViewModel : ToolTabViewModel
 
         Tools.Add(PatchVM);
         Tools.Add(CompressVM);
+        Tools.Add(CdConvertVM);
         Tools.Add(SwitchMainVM);
         Tools.Add(WiiUMainVM);
         Tools.Add(Main3DsVM);

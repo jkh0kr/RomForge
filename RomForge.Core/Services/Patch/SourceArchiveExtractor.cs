@@ -45,7 +45,6 @@ public static class SourceArchiveExtractor
         Task.Run(() =>
         {
             using var archive = ArchiveFactory.OpenArchive(archivePath);
-
             var entries = archive.Entries.Where(e => !e.IsDirectory && e.Key is not null).ToList();
 
             if (entries.Count == 0)
@@ -69,18 +68,13 @@ public static class SourceArchiveExtractor
 
             if (candidates.Count == 0)
             {
-                candidates = entries
+                candidates = [.. entries
                     .Where(e => !IgnoredExtensions.Contains(Path.GetExtension(e.Key), StringComparer.OrdinalIgnoreCase))
-                    .Where(e => e.Size >= TinySizeThresholdBytes)
-                    .ToList();
+                    .Where(e => e.Size >= TinySizeThresholdBytes)];
             }
 
             if (candidates.Count == 0)
-            {
-                candidates = entries
-                    .Where(e => !IgnoredExtensions.Contains(Path.GetExtension(e.Key), StringComparer.OrdinalIgnoreCase))
-                    .ToList();
-            }
+                candidates = [.. entries.Where(e => !IgnoredExtensions.Contains(Path.GetExtension(e.Key), StringComparer.OrdinalIgnoreCase))];
 
             if (candidates.Count == 0)
                 throw new InvalidOperationException("압축 안에서 패치 대상으로 볼 만한 파일을 찾을 수 없습니다.");
@@ -102,17 +96,13 @@ public static class SourceArchiveExtractor
         Task.Run(() =>
         {
             using var archive = ArchiveFactory.OpenArchive(archivePath);
-
             var entries = archive.Entries.Where(e => !e.IsDirectory && e.Key is not null).ToList();
-
-            var entry = entries.FirstOrDefault(e => string.Equals(e.Key, entryKey, StringComparison.Ordinal));
-
-            if (entry is null)
-                throw new InvalidOperationException("선택한 파일을 압축 안에서 찾을 수 없습니다.");
+            var entry = entries.FirstOrDefault(e => string.Equals(e.Key, entryKey, StringComparison.Ordinal)) ?? throw new InvalidOperationException("선택한 파일을 압축 안에서 찾을 수 없습니다.");
 
             if (string.Equals(Path.GetExtension(entry.Key), ".cue", StringComparison.OrdinalIgnoreCase))
             {
                 var cueResult = ResolveCue(entry, entries, extractDir, progress, ct);
+
                 return cueResult.ResolvedPath!;
             }
 
@@ -125,17 +115,13 @@ public static class SourceArchiveExtractor
     {
         var cueExtracted = ExtractEntries([cueEntry], extractDir, progress, ct);
         string cuePath = cueExtracted[cueEntry.Key!];
-
         var referencedBins = ConversionSource.ParseBinsFromCue(cuePath);
-
         string cueDir = GetEntryDirectory(cueEntry.Key!);
-
         var binEntries = new List<IArchiveEntry>();
 
         foreach (var bin in referencedBins)
         {
             string binFileName = Path.GetFileName(bin);
-
             var match = entries.FirstOrDefault(e =>
                 GetEntryDirectory(e.Key!) == cueDir &&
                 string.Equals(Path.GetFileName(e.Key), binFileName, StringComparison.OrdinalIgnoreCase));
@@ -156,6 +142,7 @@ public static class SourceArchiveExtractor
     {
         string normalized = key.Replace('\\', '/');
         int lastSlash = normalized.LastIndexOf('/');
+
         return lastSlash >= 0 ? normalized[..lastSlash] : string.Empty;
     }
 
@@ -163,10 +150,8 @@ public static class SourceArchiveExtractor
     {
         long totalBytes = entries.Sum(e => e.Size);
         long writtenTotal = 0;
-
         var reporter = new ProgressReporter("원본 압축 해제 중...", string.Empty, totalBytes, progress);
         var report = reporter.CreateAction();
-
         var result = new Dictionary<string, string>();
         byte[] buffer = new byte[81920];
 
@@ -176,8 +161,8 @@ public static class SourceArchiveExtractor
 
             string relativePath = entry.Key!.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
             string destPath = Path.Combine(extractDir, relativePath);
-
             string? destDir = Path.GetDirectoryName(destPath);
+
             if (!string.IsNullOrEmpty(destDir))
                 Directory.CreateDirectory(destDir);
 
@@ -185,6 +170,7 @@ public static class SourceArchiveExtractor
             using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write))
             {
                 int bytesRead;
+
                 while ((bytesRead = entryStream.Read(buffer, 0, buffer.Length)) > 0)
                 {
                     ct.ThrowIfCancellationRequested();
