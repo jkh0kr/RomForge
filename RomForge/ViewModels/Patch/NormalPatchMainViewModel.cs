@@ -3,6 +3,7 @@ using Common.WPF.ViewModels;
 using NSW.WPF.Services;
 using RomForge.Core;
 using RomForge.Core.Models;
+using RomForge.Core.Models.Patch;
 using RomForge.Core.Services.Compression;
 using RomForge.Core.Services.Patch;
 using System.Diagnostics;
@@ -57,6 +58,8 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
             OnPropertyChanged(nameof(AutoCompress));
         }
     }
+
+    public Func<IReadOnlyList<ArchiveCandidate>, Task<string?>>? RequestSourceSelectionAsync { get; set; }
 
     public string SourceLabel => Path.GetFileName(SourcePath) ?? "원본 파일을 드래그하거나 클릭하세요";
 
@@ -121,10 +124,8 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
         var ct = _runCts.Token;
         string outputDir = Path.Combine(Path.GetDirectoryName(SourcePath)!, "output");
-        string outputPath = Path.Combine(outputDir, Path.GetFileName(SourcePath));
-        outputPath = Utils.GetUniqueFilePath(outputPath);
-
-        Log($"패치 시작: {Path.GetFileName(SourcePath)}", LogLevel.Highlight);
+        string? extractDir = null;
+        string? outputPath = null;
 
         var orchestrator = new PatchOrchestrator(Log, BuildProgressReporter(), AutoCompress, AppConfig.Instance.Dolphin.CompressLevel);
         var stopwatch = Stopwatch.StartNew();
@@ -133,9 +134,43 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         {
             Directory.CreateDirectory(outputDir);
 
-            var detected = FormatDetector.Detect(SourcePath);
+            string actualSourcePath = SourcePath;
 
-            await orchestrator.PatchAsync(SourcePath, PatchPath, detected, outputDir, outputPath, ct);
+            if (SourceArchiveExtractor.IsArchivePath(SourcePath))
+            {
+                Log($"원본 압축 해제 시작: {Path.GetFileName(SourcePath)}", LogLevel.Highlight);
+
+                extractDir = Path.Combine(outputDir, "_src_" + Path.GetFileNameWithoutExtension(SourcePath));
+                Directory.CreateDirectory(extractDir);
+
+                var extractResult = await SourceArchiveExtractor.ExtractAsync(SourcePath, extractDir, BuildProgressReporter(), ct);
+
+                if (extractResult.NeedsSelection)
+                {
+                    Log($"압축 안에 패치 대상 후보가 {extractResult.Candidates.Count}개 있습니다. 선택이 필요합니다.", LogLevel.Highlight);
+
+                    if (RequestSourceSelectionAsync is null)
+                        throw new InvalidOperationException("압축 안에 후보가 여러 개인데 선택 UI가 연결되어 있지 않습니다.");
+
+                    actualSourcePath = await RequestSourceSelectionAsync(extractResult.Candidates)
+                        ?? throw new OperationCanceledException();
+                }
+                else
+                {
+                    actualSourcePath = extractResult.ResolvedPath!;
+                }
+
+                Log($"원본 압축 해제 완료: {Path.GetFileName(actualSourcePath)}", LogLevel.Ok);
+            }
+
+            outputPath = Path.Combine(outputDir, Path.GetFileName(actualSourcePath));
+            outputPath = Utils.GetUniqueFilePath(outputPath);
+
+            Log($"패치 시작: {Path.GetFileName(actualSourcePath)}", LogLevel.Highlight);
+
+            var detected = FormatDetector.Detect(actualSourcePath);
+
+            await orchestrator.PatchAsync(actualSourcePath, PatchPath, detected, outputDir, outputPath, ct);
 
             stopwatch.Stop();
 
@@ -147,13 +182,30 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
         {
             Log($"패치 취소: {SourcePath}", LogLevel.Error);
             CleanupTask();
-            orchestrator.Cleanup(outputPath);
+            if (outputPath is not null)
+                orchestrator.Cleanup(outputPath);
         }
         catch (Exception ex)
         {
             Log($"패치 실패: {ex.Message}", LogLevel.Error);
             CleanupTask();
-            orchestrator.Cleanup(outputPath);
+            if (outputPath is not null)
+                orchestrator.Cleanup(outputPath);
+        }
+        finally
+        {
+            if (extractDir is not null && Directory.Exists(extractDir))
+            {
+                try
+                {
+                    Directory.Delete(extractDir, true);
+                    Log("원본 압축 해제 임시 파일 정리 완료", LogLevel.Ok);
+                }
+                catch (Exception ex)
+                {
+                    Log($"압축 해제 임시 파일 정리 실패: {ex.Message}", LogLevel.Error);
+                }
+            }
         }
     }
 
