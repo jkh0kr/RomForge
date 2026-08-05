@@ -138,12 +138,12 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
             if (SourceArchiveExtractor.IsArchivePath(SourcePath))
             {
-                Log($"원본 압축 해제 시작: {Path.GetFileName(SourcePath)}", LogLevel.Highlight);
+                Log($"원본 압축 확인 중: {Path.GetFileName(SourcePath)}", LogLevel.Highlight);
 
                 extractDir = Path.Combine(outputDir, "_src_" + Path.GetFileNameWithoutExtension(SourcePath));
                 Directory.CreateDirectory(extractDir);
 
-                var extractResult = await SourceArchiveExtractor.ExtractAsync(SourcePath, extractDir, BuildProgressReporter(), ct);
+                var extractResult = await SourceArchiveExtractor.AnalyzeAndExtractAsync(SourcePath, extractDir, BuildProgressReporter(), ct);
 
                 if (extractResult.NeedsSelection)
                 {
@@ -152,8 +152,10 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                     if (RequestSourceSelectionAsync is null)
                         throw new InvalidOperationException("압축 안에 후보가 여러 개인데 선택 UI가 연결되어 있지 않습니다.");
 
-                    actualSourcePath = await RequestSourceSelectionAsync(extractResult.Candidates)
+                    string entryKey = await RequestSourceSelectionAsync(extractResult.Candidates)
                         ?? throw new OperationCanceledException();
+
+                    actualSourcePath = await SourceArchiveExtractor.ExtractCandidateAsync(SourcePath, extractDir, entryKey, BuildProgressReporter(), ct);
                 }
                 else
                 {
