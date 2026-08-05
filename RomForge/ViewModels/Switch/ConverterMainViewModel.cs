@@ -92,12 +92,15 @@ public class ConverterMainViewModel : ToolTabViewModel
 
             if (info != null)
             {
-                item.TitleName = info.TitleName;
-                item.TitleID = info.TitleId;
-                item.Version = info.DisplayVersion;
-                item.FileType = info.Type;
-                if (info.IconData != null)
-                    item.Icon = info.IconData.ToBitmapImage();
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    item.TitleName = info.TitleName;
+                    item.TitleID = info.TitleId;
+                    item.Version = info.DisplayVersion;
+                    item.FileType = info.Type;
+                    if (info.IconData != null)
+                        item.Icon = info.IconData.ToBitmapImage();
+                });
             }
 
             if (string.IsNullOrEmpty(item.TitleName))

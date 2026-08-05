@@ -3,24 +3,32 @@ using System.Windows.Media;
 
 namespace NSW.WPF.ViewModels;
 
-public class GameFile(string filePath) : FileItemBase(filePath, Core.Properties.Resources.Status_Analyzing)
+public class GameFile(string filePath) : FileItemBase(filePath, "대기중")
 {
     private string? _titleName;
     private string? _titleId;
     private string? _version;
     private ImageSource? _icon;
     private string? _patchPath;
+    private string _fileType = string.Empty;
 
     public string FileType
     {
-        get => Status;
-        set => Status = value;
+        get => _fileType;
+        set
+        {
+            if (SetProperty(ref _fileType, value))
+            {
+                OnPropertyChanged(nameof(IsKeyMissing));
+                OnPropertyChanged(nameof(TypeBackground));
+                OnPropertyChanged(nameof(TypeForeground));
+            }
+        }
     }
 
     protected override void OnStatusChanged()
     {
-        OnPropertyChanged(nameof(TypeBackground));
-        OnPropertyChanged(nameof(TypeForeground));
+        base.OnStatusChanged();
     }
 
     public string? TitleName
