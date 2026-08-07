@@ -9,6 +9,7 @@ public enum RomFormat
     Bin,
     Cue,
     Gdi,
+    Ccd,
     Chd,
 
     // 3DS

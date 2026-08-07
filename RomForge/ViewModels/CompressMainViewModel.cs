@@ -1,4 +1,6 @@
 ﻿using _3DS.Core.Services;
+using CD.Core.Services.Readers;
+using CD.Core.Services.Writers;
 using CHD.Core.Services;
 using Common;
 using Common.WPF.ViewModels;
@@ -20,7 +22,7 @@ public class CompressMainViewModel : ToolTabViewModel
 {
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".iso", ".cue", ".gdi", ".chd",
+        ".iso", ".cue", ".gdi", ".ccd", ".chd",
         ".nsp", ".nsz", ".xci", ".xcz",
         ".gcm", ".wbfs", ".gcz", ".wia", ".rvz",
         ".3ds", ".cci", ".cia", ".zcci"
@@ -161,6 +163,38 @@ public class CompressMainViewModel : ToolTabViewModel
                             break;
                         case RomFormat.ZCci:
                             await Z3dsArchiveService.DecompressAsync(item.FilePath, progressHandler, logWrapper, _cts.Token);
+                            break;
+                        case RomFormat.Ccd:
+                            {
+                                AppendLog($"[{item.FileName}] CCD → BIN+CUE 변환 중...", LogLevel.Info);
+
+                                var discReader = DiscImageReaderFactory.Resolve(item.FilePath);
+                                var discImage = discReader.Read(item.FilePath);
+                                var tempCuePath = await BinCueWriter.WriteAsync(discImage, item.Directory, item.FileName, progressHandler, _cts.Token);
+                                var tempBinPath = Path.ChangeExtension(tempCuePath, ".bin");
+
+                                try
+                                {
+                                    AppendLog($"[{item.FileName}] BIN+CUE → CHD 압축 중...", LogLevel.Info);
+
+                                    FileConverter chdFromCcd = new(AppConfig.Instance.Chdman.Compression);
+
+                                    chdFromCcd.LogMessage += (_, e) => AppendLog(e.Message, e.Level);
+
+                                    var chdFromCcdResult = await chdFromCcd.ConvertFileAsync(tempCuePath, progressHandler, _cts.Token);
+
+                                    if (!chdFromCcdResult.Success)
+                                        throw new InvalidOperationException(chdFromCcdResult.Message);
+                                }
+                                finally
+                                {
+                                    if (File.Exists(tempCuePath))
+                                        File.Delete(tempCuePath);
+
+                                    if (File.Exists(tempBinPath))
+                                        File.Delete(tempBinPath);
+                                }
+                            }
                             break;
                         case RomFormat.Iso:
                         case RomFormat.Cue:

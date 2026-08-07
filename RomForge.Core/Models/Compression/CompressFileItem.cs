@@ -28,6 +28,7 @@ public class CompressFileItem(string filePath) : FileItemBase(filePath)
         ["iso"] = "#FFF9A6",
         ["cue"] = "#EAE2A6",
         ["gdi"] = "#D2DAA5",
+        ["ccd"] = "#A6C8E2",
 
         ["nsp"] = "#FFA4B3",
         ["xci"] = "#FFB1C1",
@@ -80,6 +81,11 @@ public class CompressFileItem(string filePath) : FileItemBase(filePath)
                             : string.Empty;
                     })
                     .Where(f => !string.IsNullOrEmpty(f))),
+
+            "ccd" => ParsedSum([
+                Path.GetFileNameWithoutExtension(filePath) + ".img",
+                Path.GetFileNameWithoutExtension(filePath) + ".sub"
+            ]),
 
             _ => base.CalculateSize(filePath)
         };

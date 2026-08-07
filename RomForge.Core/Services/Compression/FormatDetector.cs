@@ -15,6 +15,7 @@ public static class FormatDetector
             case "cue": return Result(RomFormat.Cue, ConvertDirection.Compress, "chd");
             case "bin": return Result(RomFormat.Bin, ConvertDirection.Compress, "chd");
             case "gdi": return Result(RomFormat.Gdi, ConvertDirection.Compress, "chd");
+            case "ccd": return Result(RomFormat.Ccd, ConvertDirection.Compress, "chd");
             case "nsp": return Result(RomFormat.Nsp, ConvertDirection.Compress, "nsz");
             case "nsz": return Result(RomFormat.Nsz, ConvertDirection.Decompress, "nsp");
             case "xci": return Result(RomFormat.Xci, ConvertDirection.Compress, "xcz");
