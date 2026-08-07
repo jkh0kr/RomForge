@@ -23,6 +23,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Border Grid.Column="0" Margin="0,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6" AllowDrop="True" PreviewDragEnter="TxtPatch_DragEnter" PreviewDragOver="TxtPatch_DragOver" PreviewDrop="TxtRom_Drop">
                     <Grid>
@@ -30,8 +31,11 @@
                         <TextBlock Text="롬파일(.3ds, .cci, .cia)을 드래그&amp;드롭하세요" Visibility="{Binding InputHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False"/>
                     </Grid>
                 </Border>
-                <Button Grid.Column="1" x:Name="btnOpenRomFile" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseInputCommand}" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0">
+                <Button Grid.Column="1" x:Name="btnOpenRomFile" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseInputCommand}" IsEnabled="{Binding IsIdle}" Margin="5,0,5,0">
                     <Image Source="/Assets/Images/AddFile.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
+                </Button>
+                <Button Grid.Column="2" x:Name="btnHelp" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Click="BtnHelp_Click" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0" ToolTip="도움말">
+                    <Image Source="/Assets/Images/Help.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
                 </Button>
             </Grid>
         </StackPanel>

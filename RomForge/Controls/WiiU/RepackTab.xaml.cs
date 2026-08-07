@@ -182,6 +182,17 @@ namespace RomForge.Controls.WiiU
                 ViewModel.SelectedEntry.PatchPath = null;
         }
 
+        private void BtnHelp_Click(object sender, RoutedEventArgs e)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://sinjunyoung.github.io/RomForge/wiiu-repack/",
+                UseShellExecute = true
+            };
+
+            System.Diagnostics.Process.Start(psi);
+        }
+
         private void LvFiles_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
             var selected = ViewModel?.SelectedEntry;

@@ -197,8 +197,11 @@
                 <Button Width="30" Height="30" Margin="0,0,0,8" Padding="0" BorderThickness="1" ToolTip="선택 삭제" Style="{StaticResource GrayButton}" Click="BtnRemoveFile_Click">
                     <Image Source="/Assets/Images/Delete.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                 </Button>
-                <Button Width="30" Height="30" Padding="0" BorderThickness="1" ToolTip="전체 삭제" Style="{StaticResource GrayButton}" Click="BtnRemoveAllFiles_Click">
+                <Button Width="30" Height="30" Margin="0,0,0,8" Padding="0" BorderThickness="1" ToolTip="전체 삭제" Style="{StaticResource GrayButton}" Click="BtnRemoveAllFiles_Click">
                     <Image Source="/Assets/Images/Clear.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
+                </Button>
+                <Button Width="30" Height="30" Padding="0" BorderThickness="1" ToolTip="도움말" Style="{StaticResource GrayButton}" Click="BtnHelp_Click">
+                    <Image Source="/Assets/Images/Help.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                 </Button>
             </StackPanel>
         </Grid>

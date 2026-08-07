@@ -171,8 +171,11 @@
                     <Button Width="30" Height="30" Margin="0,0,0,8" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding RemoveSelectedCommand}">
                         <Image Source="/Assets/Images/Delete.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="선택 삭제"/>
                     </Button>
-                    <Button Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding RemoveAllCommand}">
+                    <Button Width="30" Height="30" Margin="0,0,0,8" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding RemoveAllCommand}">
                         <Image Source="/Assets/Images/Clear.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="모두 삭제"/>
+                    </Button>
+                    <Button Width="30" Height="30" Padding="0" BorderThickness="1" ToolTip="도움말" Style="{StaticResource GrayButton}" Click="BtnHelp_Click">
+                        <Image Source="/Assets/Images/Help.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                     </Button>
                 </StackPanel>
             </Grid>

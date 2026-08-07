@@ -218,6 +218,17 @@ public partial class SwitchTitleListControl : UserControl
         UpdateDropHint();
     }
 
+    private void BtnHelp_Click(object sender, RoutedEventArgs e)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "https://sinjunyoung.github.io/RomForge/switch-unpack-repack/",
+            UseShellExecute = true
+        };
+
+        System.Diagnostics.Process.Start(psi);
+    }    
+
     private void LvFiles_KeyUp(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Delete) 
@@ -399,7 +410,7 @@ public partial class SwitchTitleListControl : UserControl
         if (sender is not FrameworkElement { DataContext: GameFile file }) 
             return;
 
-        var dlg = new Microsoft.Win32.OpenFileDialog
+        var dlg = new OpenFileDialog
         {
             Title = $"{file.TitleName}에 적용할 한글패치 압축파일 선택",
             Filter = "압축파일 (*.zip;*.7z)|*.zip;*.7z"

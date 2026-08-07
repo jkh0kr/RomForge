@@ -25,6 +25,7 @@
     <None Remove="Assets\Images\Excel.png" />
     <None Remove="Assets\Images\FontSize.png" />
     <None Remove="Assets\Images\Hash.png" />
+    <None Remove="Assets\Images\Help.png" />
     <None Remove="Assets\Images\Insert.png" />
     <None Remove="Assets\Images\Keygen.png" />
     <None Remove="Assets\Images\Left.png" />
@@ -59,6 +60,7 @@
     <Resource Include="Assets\Images\FontSize.png" />
     <Resource Include="Assets\Images\Hash.png" />
     <Resource Include="Assets\Images\HDD.png" />
+    <Resource Include="Assets\Images\Help.png" />
     <Resource Include="Assets\Images\Insert.png" />
     <Resource Include="Assets\Images\Keygen.png" />
     <Resource Include="Assets\Images\Left.png" />

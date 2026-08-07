@@ -110,5 +110,16 @@ namespace RomForge.Controls._3DS
 
             _ = ViewModel.StartAsync(BuildMode.RebuildOnly);
         }
+
+        private void BtnHelp_Click(object sender, RoutedEventArgs e)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://sinjunyoung.github.io/RomForge/3ds-merge/",
+                UseShellExecute = true
+            };
+
+            System.Diagnostics.Process.Start(psi);
+        }
     }
 }
