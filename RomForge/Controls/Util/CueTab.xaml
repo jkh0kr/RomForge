@@ -163,8 +163,6 @@
                             <TextBlock Text="전체 삭제" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-
-                    <Border BorderBrush="#3F3F46" BorderThickness="1,0,0,0" Margin="0,4,15,4"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

@@ -3,6 +3,10 @@
 public class DiscImage
 {
     public List<DiscTrack> Tracks { get; set; } = [];
+
+    public int TrackCount => Tracks.Count;
+
+    public bool IsSingleTrack => TrackCount == 1;
 }
 
 public class DiscTrack

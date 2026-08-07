@@ -25,7 +25,11 @@ public partial class NormalTab : UserControl
     {
         InitializeComponent();
 
-        Loaded += (_, _) => ViewModel.PatchVM.NormalVM.RequestSourceSelectionAsync = ShowSourceSelectionDialogAsync;
+        Loaded += (_, _) => 
+        { 
+            if(ViewModel != null)
+                ViewModel.PatchVM.NormalVM.RequestSourceSelectionAsync = ShowSourceSelectionDialogAsync; 
+        };
     }
 
     private Task<string?> ShowSourceSelectionDialogAsync(IReadOnlyList<ArchiveCandidate> candidates)
@@ -68,8 +72,10 @@ public partial class NormalTab : UserControl
             itemStyle.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, 2)));
 
             var itemTemplate = new ControlTemplate(typeof(ListBoxItem));
-            var itemBorder = new FrameworkElementFactory(typeof(Border));
-            itemBorder.Name = "ItemBorder";
+            FrameworkElementFactory itemBorder = new (typeof(Border))
+            {
+                Name = "ItemBorder"
+            };
             itemBorder.SetValue(Border.BackgroundProperty, Brushes.Transparent);
             itemBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
             itemBorder.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Control.PaddingProperty));

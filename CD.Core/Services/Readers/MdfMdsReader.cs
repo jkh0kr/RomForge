@@ -7,7 +7,9 @@ namespace CD.Core.Services.Readers;
 public class MdfMdsReader : IDiscImageReader
 {
     private const string Signature = "MEDIA DESCRIPTOR";
-    private const int HeaderSize = 0x58;
+
+    private const int SessionOffsetFieldPosition = 0x50;
+    private const int MinHeaderSize = SessionOffsetFieldPosition + 4;
     private const int SessionBlockSize = 0x18;
     private const int TrackBlockSize = 0x50;
     private const int OutputSectorSize = 2352;
@@ -54,7 +56,7 @@ public class MdfMdsReader : IDiscImageReader
 
     private static void ValidateSignature(byte[] mds, string filePath)
     {
-        if (mds.Length < HeaderSize)
+        if (mds.Length < MinHeaderSize)
             throw new InvalidDataException($"MDS 파일이 너무 작습니다(헤더 크기 미만): {filePath}");
 
         var signature = System.Text.Encoding.ASCII.GetString(mds, 0, Signature.Length);
@@ -65,13 +67,13 @@ public class MdfMdsReader : IDiscImageReader
 
     private static (uint TrackBlocksOffset, int TotalDataBlocks) ReadSessionInfo(byte[] mds, string filePath)
     {
-        var sessionBlockOffset = HeaderSize;
+        var sessionBlockOffset = BitConverter.ToUInt32(mds, SessionOffsetFieldPosition);
 
-        if (sessionBlockOffset + SessionBlockSize > mds.Length)
-            throw new InvalidDataException($"MDS 파일에 세션 블록이 존재하지 않습니다(파일이 너무 작음): {filePath}");
+        if (sessionBlockOffset == 0 || (long)sessionBlockOffset + SessionBlockSize > mds.Length)
+            throw new InvalidDataException($"MDS 세션 블록 오프셋이 비정상입니다(0x{sessionBlockOffset:X}). 헤더 구조가 예상과 다르거나 손상된 파일일 수 있습니다: {filePath}");
 
         var totalDataBlocks = mds[sessionBlockOffset + 0x0A];
-        var offset = BitConverter.ToUInt32(mds, sessionBlockOffset + 0x14);
+        var offset = BitConverter.ToUInt32(mds, (int)sessionBlockOffset + 0x14);
 
         if (offset == 0 || offset >= mds.Length)
             throw new InvalidDataException($"MDS 트랙 블록 오프셋이 비정상입니다(0x{offset:X}). 헤더 구조가 예상과 다를 수 있습니다: {filePath}");

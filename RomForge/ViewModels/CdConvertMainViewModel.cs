@@ -59,6 +59,7 @@ public class CdConvertMainViewModel : ToolTabViewModel
             var item = new CdConvertFileItem(path);
 
             FileItems.Add(item);
+            ProbeTrackCount(item);
 
             for (int i = 0; i < FileItems.Count; i++)
                 FileItems[i].No = i + 1;
@@ -66,6 +67,28 @@ public class CdConvertMainViewModel : ToolTabViewModel
 
         OnPropertyChanged(nameof(HintVisibility));
         CommandManager.InvalidateRequerySuggested();
+    }
+
+    // 목록에 파일을 추가한 시점에 미리 메타데이터를 읽어 트랙 수를 확인해둔다.
+    // MDS 파싱은 헤더/트랙 정보만 읽는 가벼운 작업이라(실제 오디오/데이터는 나중에 스트리밍) 즉시 수행해도 무리 없다.
+    // 여기서 트랙 수가 정해져야 UI에서 단일트랙일 때만 ISO 선택지를 보여줄 수 있다.
+    private static void ProbeTrackCount(CdConvertFileItem item)
+    {
+        if (item.SourceFormat != CdSourceFormat.MdfMds)
+            return;
+
+        try
+        {
+            var reader = DiscImageReaderFactory.Resolve(item.FilePath);
+            var discImage = reader.Read(item.FilePath);
+
+            item.TrackCount = discImage.TrackCount;
+        }
+        catch
+        {
+            // 여기서 실패해도 무시한다. 실제 오류는 변환 실행 시 다시 시도되며 그때 로그에 표시된다.
+            item.TrackCount = 0;
+        }
     }
 
     public void RemoveItems(IEnumerable<CdConvertFileItem> items)
@@ -138,12 +161,29 @@ public class CdConvertMainViewModel : ToolTabViewModel
                                 var reader = DiscImageReaderFactory.Resolve(item.FilePath);
                                 var discImage = reader.Read(item.FilePath);
 
-                                await BinCueWriter.WriteAsync(
-                                    discImage,
-                                    item.Directory,
-                                    item.FileName,
-                                    progressHandler,
-                                    _cts.Token);
+                                // 향후 CCD+IMG+SUB 등 새 소스 포맷이 추가되어도 여기서 얻은
+                                // discImage(공통 DiscImage 모델)를 그대로 아래 출력 라이터에 넘기면 된다.
+                                switch (item.OutputFormat)
+                                {
+                                    case CdOutputFormat.Iso:
+                                        await IsoWriter.WriteAsync(
+                                            discImage,
+                                            item.Directory,
+                                            item.FileName,
+                                            progressHandler,
+                                            _cts.Token);
+                                        break;
+
+                                    case CdOutputFormat.BinCue:
+                                    default:
+                                        await BinCueWriter.WriteAsync(
+                                            discImage,
+                                            item.Directory,
+                                            item.FileName,
+                                            progressHandler,
+                                            _cts.Token);
+                                        break;
+                                }
                             }
                             break;
                     }

@@ -60,7 +60,7 @@
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Width="470">
+                    <GridViewColumn Width="360">
                         <GridViewColumn.Header>
                             <GridViewColumnHeader Tag="FileName"/>
                         </GridViewColumn.Header>
@@ -95,6 +95,33 @@
                                 <Border Background="{Binding ExtensionBackground}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Center" Margin="2,0">
                                     <TextBlock Text="{Binding ExtensionLabel}" Foreground="#111111" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Width="110">
+                        <GridViewColumn.Header>
+                            <GridViewColumnHeader Tag="OutputFormat"/>
+                        </GridViewColumn.Header>
+                        <GridViewColumn.HeaderTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="/Assets/Images/Convert.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="출력 포맷" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </GridViewColumn.HeaderTemplate>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <ComboBox Margin="4,0"
+                                          ItemsSource="{Binding AvailableOutputFormats}"
+                                          SelectedItem="{Binding OutputFormat, Mode=TwoWay}"
+                                          IsEnabled="{Binding DataContext.CdConvertVM.IsLocked, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBool}}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Converter={StaticResource CdOutputFormatLabelConverter}}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
@@ -166,6 +193,9 @@
                             <Run Text="MDF+MDS" Foreground="#FFFFFF" FontWeight="Bold"/>
                             <Run Text=" ➔ " Foreground="#FF9800" FontWeight="Bold"/>
                             <Run Text="BIN+CUE" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            <Run Text=" / " Foreground="#777777"/>
+                            <Run Text="ISO" Foreground="#FFFFFF" FontWeight="Bold"/>
+                            <Run Text="(단일 트랙)" Foreground="#777777"/>
                             <Run Text="  (그 외 포맷은 추가 예정)" Foreground="#777777"/>
                         </TextBlock>
                     </Grid>
