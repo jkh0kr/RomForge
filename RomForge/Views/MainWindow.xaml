@@ -4,7 +4,6 @@
         xmlns:views="clr-namespace:RomForge.Views"
         xmlns:controls="clr-namespace:RomForge.Controls"
         xmlns:patch="clr-namespace:RomForge.Controls.Patch"
-        xmlns:web="clr-namespace:RomForge.Controls.Web"
         xmlns:switch="clr-namespace:RomForge.Controls.Switch"
         xmlns:wiiu="clr-namespace:RomForge.Controls.WiiU"
         xmlns:_3ds="clr-namespace:RomForge.Controls._3DS"
@@ -56,7 +55,7 @@
                         <TextBlock Text="변환" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <controls:CdConvertTab/>
+                <controls:ConvertTab/>
             </TabItem>
 
             <TabItem IsEnabled="{Binding IsIdle}">

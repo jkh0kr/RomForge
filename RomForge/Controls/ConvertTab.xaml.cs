@@ -1,6 +1,5 @@
 ﻿using Microsoft.Win32;
 using NSW.WPF.Services;
-using RomForge.Core.Models.CD;
 using RomForge.ViewModels;
 using System.ComponentModel;
 using System.IO;
@@ -12,26 +11,26 @@ using System.Windows.Threading;
 
 namespace RomForge.Controls;
 
-public partial class CdConvertTab : UserControl
+public partial class ConvertTab : UserControl
 {
     private string? _lastSortColumn;
     private ListSortDirection _lastSortDirection;
 
     private MainViewModel ViewModel => (MainViewModel)DataContext;
 
-    public CdConvertTab()
+    public ConvertTab()
     {
         InitializeComponent();
 
-        DataContextChanged += CdConvertTab_DataContextChanged;
+        DataContextChanged += UnifiedConvertTab_DataContextChanged;
     }
 
-    private void CdConvertTab_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private void UnifiedConvertTab_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (ViewModel?.CdConvertVM != null)
+        if (ViewModel?.UnifiedConvertVM != null)
         {
-            ViewModel.CdConvertVM.ScrollToItemRequested -= OnScrollToItemRequested;
-            ViewModel.CdConvertVM.ScrollToItemRequested += OnScrollToItemRequested;
+            ViewModel.UnifiedConvertVM.ScrollToItemRequested -= OnScrollToItemRequested;
+            ViewModel.UnifiedConvertVM.ScrollToItemRequested += OnScrollToItemRequested;
         }
     }
 
@@ -50,10 +49,10 @@ public partial class CdConvertTab : UserControl
         e.Handled = true;
     }
 
-    private void LvFiles_Drop(object sender, DragEventArgs e)
+    private async void LvFiles_Drop(object sender, DragEventArgs e)
     {
         if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
-            ViewModel.CdConvertVM.AddPaths(paths);
+            await ViewModel.UnifiedConvertVM.AddPaths(paths);
     }
 
     private void LvFiles_KeyUp(object sender, KeyEventArgs e)
@@ -61,24 +60,22 @@ public partial class CdConvertTab : UserControl
         if (e.Key != Key.Delete)
             return;
 
-        var selected = lvFiles.SelectedItems.Cast<CdConvertFileItem>().ToList();
-
-        ViewModel.CdConvertVM.RemoveItems(selected);
+        ViewModel.UnifiedConvertVM.RemoveItems([.. lvFiles.SelectedItems.Cast<object>()]);
     }
 
-    private void BtnAddFiles_Click(object sender, RoutedEventArgs e)
+    private async void BtnAddFiles_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new OpenFileDialog
         {
             Multiselect = true,
-            Filter = CdConvertMainViewModel.GetFileDialogFilter()
+            Filter = "지원 파일|*.nsp;*.xci;*.cci;*.3ds;*.cia;*.wud;*.wux;*.wua;*.mds;*.ccd;*.pbp|모든 파일|*.*"
         };
 
         if (dlg.ShowDialog() == true)
-            ViewModel.CdConvertVM.AddPaths(dlg.FileNames);
+            await ViewModel.UnifiedConvertVM.AddPaths(dlg.FileNames);
     }
 
-    private void BtnAddFolder_Click(object sender, RoutedEventArgs e)
+    private async void BtnAddFolder_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog
         {
@@ -87,17 +84,13 @@ public partial class CdConvertTab : UserControl
         };
 
         if (dlg.ShowDialog() == true)
-            ViewModel.CdConvertVM.AddPaths([dlg.SelectedPath]);
+            await ViewModel.UnifiedConvertVM.AddPaths([dlg.SelectedPath]);
     }
 
-    private void BtnRemove_Click(object sender, RoutedEventArgs e)
-    {
-        var selected = lvFiles.SelectedItems.Cast<CdConvertFileItem>().ToList();
+    private void BtnRemove_Click(object sender, RoutedEventArgs e) =>
+        ViewModel.UnifiedConvertVM.RemoveItems([.. lvFiles.SelectedItems.Cast<object>()]);
 
-        ViewModel.CdConvertVM.RemoveItems(selected);
-    }
-
-    private void BtnClear_Click(object sender, RoutedEventArgs e) => ViewModel.CdConvertVM.ClearItems();
+    private void BtnClear_Click(object sender, RoutedEventArgs e) => ViewModel.UnifiedConvertVM.ClearItems();
 
     private void LvFiles_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
@@ -107,14 +100,13 @@ public partial class CdConvertTab : UserControl
 
     private void MenuItem_OpenFolder_Click(object sender, RoutedEventArgs e)
     {
-        var selected = lvFiles.SelectedItems.Cast<CdConvertFileItem>().ToList();
-
-        if (selected.Count == 0)
+        if (lvFiles.SelectedItems.Count == 0)
             return;
 
-        string? dir = Path.GetDirectoryName(selected[0].FilePath);
+        if (lvFiles.SelectedItems[0] is not Common.WPF.ViewModels.FileItemBase item)
+            return;
 
-        dir?.OpenFolder();
+        Path.GetDirectoryName(item.FilePath)?.OpenFolder();
     }
 
     private void GridViewColumnHeader_Click(object sender, RoutedEventArgs e)

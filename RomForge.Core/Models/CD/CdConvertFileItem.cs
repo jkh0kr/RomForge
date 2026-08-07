@@ -3,20 +3,7 @@ using System.Windows.Media;
 
 namespace RomForge.Core.Models.CD;
 
-public enum CdSourceFormat
-{
-    Unknown,
-    MdfMds,
-    CcdImgSub,
-}
-
-public enum CdOutputFormat
-{
-    BinCue,
-    Iso,
-}
-
-public class CdConvertFileItem(string filePath) : FileItemBase(filePath)
+public class CdConvertFileItem(string filePath) : FileItemBase(filePath), Common.WPF.ViewModels.IConvertible
 {
     public CdSourceFormat SourceFormat => Extension switch
     {
@@ -36,6 +23,7 @@ public class CdConvertFileItem(string filePath) : FileItemBase(filePath)
             {
                 OnPropertyChanged(nameof(IsMultiTrack));
                 OnPropertyChanged(nameof(AvailableOutputFormats));
+                OnPropertyChanged(nameof(AvailableFormats));
 
                 if (IsMultiTrack && OutputFormat == CdOutputFormat.Iso)
                     OutputFormat = CdOutputFormat.BinCue;
@@ -60,7 +48,10 @@ public class CdConvertFileItem(string filePath) : FileItemBase(filePath)
                 value = CdOutputFormat.BinCue;
 
             if (SetProperty(ref _outputFormat, value))
+            {
                 OnPropertyChanged(nameof(ExtensionLabel));
+                OnPropertyChanged(nameof(SelectedTargetFormat));
+            }
         }
     }
 
@@ -69,6 +60,14 @@ public class CdConvertFileItem(string filePath) : FileItemBase(filePath)
         CdSourceFormat.MdfMds or CdSourceFormat.CcdImgSub => $"{Extension}→{(OutputFormat == CdOutputFormat.Iso ? "iso" : "cue")}",
         _ => Extension
     };
+
+    public List<string> AvailableFormats => [.. AvailableOutputFormats.Select(f => f == CdOutputFormat.Iso ? "ISO" : "BIN+CUE")];
+
+    public string SelectedTargetFormat
+    {
+        get => OutputFormat == CdOutputFormat.Iso ? "ISO" : "BIN+CUE";
+        set => OutputFormat = value == "ISO" ? CdOutputFormat.Iso : CdOutputFormat.BinCue;
+    }
 
     public Brush ExtensionBackground => ExtensionColorMap.Resolve(Extension, ColorMap);
 

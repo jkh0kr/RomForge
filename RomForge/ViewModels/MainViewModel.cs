@@ -8,7 +8,6 @@ using RomForge.ViewModels.PS;
 using RomForge.ViewModels.Settings;
 using RomForge.ViewModels.Switch;
 using RomForge.ViewModels.Util;
-using RomForge.ViewModels.Web;
 using RomForge.ViewModels.WiiU;
 using System.Collections.ObjectModel;
 
@@ -28,7 +27,7 @@ public class MainViewModel : ToolTabViewModel
 
     public CompressMainViewModel CompressVM { get; } = new();
 
-    public CdConvertMainViewModel CdConvertVM { get; } = new();
+    public ConvertMainViewModel UnifiedConvertVM { get; } = new();
 
     public SwitchMainViewModel SwitchMainVM { get; } = new();
 
@@ -68,7 +67,7 @@ public class MainViewModel : ToolTabViewModel
     {
         0 => PatchVM.LogEntries,
         1 => CompressVM.LogEntries,
-        2 => CdConvertVM.LogEntries,
+        2 => UnifiedConvertVM.LogEntries,
         3 => SwitchMainVM.LogEntries,
         4 => WiiUMainVM.LogEntries,
         5 => Main3DsVM.LogEntries,
@@ -84,11 +83,12 @@ public class MainViewModel : ToolTabViewModel
         PatchVM = new PatchMainViewModel(async (file) => await MapsToHashAndProcess(file));
         SwitchMainVM.MergeVM.SettingsClicked += async (s, e) => await NavigateSwitchCompressSettings();
         Main3DsVM.RunNavigateCerts += MainVM_RunNavigateCerts;
+        UnifiedConvertVM.RunNavigateCerts += MainVM_RunNavigateCerts;
         PSMainVM.RunNavigatePackingSettings += PS1MainVM_RunNavigatePackingSettings;
 
         Tools.Add(PatchVM);
         Tools.Add(CompressVM);
-        Tools.Add(CdConvertVM);
+        Tools.Add(UnifiedConvertVM);
         Tools.Add(SwitchMainVM);
         Tools.Add(WiiUMainVM);
         Tools.Add(Main3DsVM);

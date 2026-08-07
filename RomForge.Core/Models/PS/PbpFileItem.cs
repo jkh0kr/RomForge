@@ -3,7 +3,7 @@ using System.Windows.Media.Imaging;
 
 namespace RomForge.Core.Models.PS;
 
-public class PbpFileItem(string filePath) : FileItemBase(filePath)
+public class PbpFileItem(string filePath) : FileItemBase(filePath), Common.WPF.ViewModels.IConvertible
 {
     private BitmapSource? _icon;
     private string _titleId = string.Empty;
@@ -42,4 +42,12 @@ public class PbpFileItem(string filePath) : FileItemBase(filePath)
     }
 
     protected override string FormatSize(long bytes) => PickPack.Disk.ETC.FileSize.FormatSize(bytes);
+
+    public List<string> AvailableFormats { get; } = ["ISO"];
+
+    public string SelectedTargetFormat
+    {
+        get => "ISO";
+        set { }
+    }
 }

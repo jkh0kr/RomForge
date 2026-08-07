@@ -4,7 +4,7 @@ internal static class SectorStreamCopier
 {
     private const int BufferSize = 4 << 20;
 
-    public static async Task CopySectorsAsync(Stream source, Stream destination, int sectorCount, int sourceSectorSize, int outputSectorSize, Action<int>? onSectorsWritten, CancellationToken ct)
+    public static async Task CopySectorsAsync(Stream source, Stream destination, int sectorCount, int sourceSectorSize, int outputSectorSize, Action<int>? onSectorsWritten, CancellationToken ct=default)
     {
         if (sourceSectorSize == outputSectorSize)
         {
@@ -36,7 +36,7 @@ internal static class SectorStreamCopier
         }
     }
 
-    private static async Task CopyRawAsync(Stream source, Stream destination, long totalBytes, int sectorSize, Action<int>? onSectorsWritten, CancellationToken ct)
+    private static async Task CopyRawAsync(Stream source, Stream destination, long totalBytes, int sectorSize, Action<int>? onSectorsWritten, CancellationToken ct=default)
     {
         var buffer = new byte[BufferSize];
         var remaining = totalBytes;
