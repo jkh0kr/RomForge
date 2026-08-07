@@ -10,11 +10,11 @@ public static class IsoWriter
     public static async Task<string> WriteAsync(DiscImage image, string outputDir, string outputBaseName, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
         if (image.Tracks.Count != 1)
-            throw new NotSupportedException($"ISO 변환은 단일 트랙 이미지에서만 가능합니다(현재 트랙 수: {image.Tracks.Count}). 멀티트랙 이미지는 BIN+CUE로 변환하세요.");
+            throw new NotSupportedException($"ISO 변환은 단일 트랙 이미지에서만 가능합니다(현재 트랙 수: {image.Tracks.Count}).");
 
         Directory.CreateDirectory(outputDir);
 
-        var isoPath = Path.Combine(outputDir, $"{outputBaseName}.iso");
+        var isoPath = Utils.GetUniqueFilePath(Path.Combine(outputDir, $"{outputBaseName}.iso"));
         var track = image.Tracks[0];
         var totalSectors = track.TotalSectors;
         long sectorsDone = 0;
@@ -28,17 +28,16 @@ public static class IsoWriter
                 track.TotalSectors,
                 track.SourceSectorSize,
                 OutputSectorSize,
-                () =>
+                count =>
                 {
-                    sectorsDone++;
+                    sectorsDone += count;
 
-                    if (sectorsDone % 256 == 0 || sectorsDone == totalSectors)
-                        progress?.Report(new ProgressInfo(
-                            (int)(totalSectors > 0 ? sectorsDone * 100 / totalSectors : 100),
-                            "ISO 변환 중",
-                            outputBaseName,
-                            string.Empty,
-                            string.Empty));
+                    progress?.Report(new ProgressInfo(
+                        (int)(totalSectors > 0 ? sectorsDone * 100 / totalSectors : 100),
+                        "ISO 변환 중",
+                        outputBaseName,
+                        string.Empty,
+                        string.Empty));
                 },
                 ct);
         }

@@ -11,9 +11,21 @@ public static class BinCueWriter
     {
         Directory.CreateDirectory(outputDir);
 
-        var binFileName = $"{outputBaseName}.bin";
-        var cuePath = Path.Combine(outputDir, $"{outputBaseName}.cue");
-        var binPath = Path.Combine(outputDir, binFileName);
+        var baseName = outputBaseName;
+        string cuePath, binPath;
+
+        while (true)
+        {
+            cuePath = Path.Combine(outputDir, $"{baseName}.cue");
+            binPath = Path.Combine(outputDir, $"{baseName}.bin");
+
+            if (!File.Exists(cuePath) && !File.Exists(binPath))
+                break;
+
+            baseName += "_";
+        }
+
+        var binFileName = Path.GetFileName(binPath);
 
         var totalSectors = image.Tracks.Sum(t => (long)t.TotalSectors);
         long sectorsDone = 0;
@@ -35,17 +47,16 @@ public static class BinCueWriter
                     track.TotalSectors,
                     track.SourceSectorSize,
                     OutputSectorSize,
-                    () =>
+                    count =>
                     {
-                        sectorsDone++;
+                        sectorsDone += count;
 
-                        if (sectorsDone % 256 == 0 || sectorsDone == totalSectors)
-                            progress?.Report(new ProgressInfo(
-                                (int)(totalSectors > 0 ? sectorsDone * 100 / totalSectors : 100),
-                                "BIN/CUE 변환 중",
-                                outputBaseName,
-                                string.Empty,
-                                string.Empty));
+                        progress?.Report(new ProgressInfo(
+                            (int)(totalSectors > 0 ? sectorsDone * 100 / totalSectors : 100),
+                            "BIN/CUE 변환 중",
+                            outputBaseName,
+                            string.Empty,
+                            string.Empty));
                     },
                     ct);
 

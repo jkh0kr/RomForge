@@ -7,6 +7,7 @@ public static class DiscImageReaderFactory
     private static readonly IDiscImageReader[] Readers =
     [
         new MdfMdsReader(),
+        new CcdImgSubReader(),
     ];
 
     public static IDiscImageReader Resolve(string filePath)

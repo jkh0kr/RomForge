@@ -7,7 +7,6 @@ namespace CD.Core.Services.Readers;
 public class MdfMdsReader : IDiscImageReader
 {
     private const string Signature = "MEDIA DESCRIPTOR";
-
     private const int SessionOffsetFieldPosition = 0x50;
     private const int MinHeaderSize = SessionOffsetFieldPosition + 4;
     private const int SessionBlockSize = 0x18;

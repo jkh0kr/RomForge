@@ -17,6 +17,7 @@ public class CdConvertMainViewModel : ToolTabViewModel
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".mds",
+        ".ccd",
     };
 
     private CancellationTokenSource _cts = new();
@@ -47,6 +48,7 @@ public class CdConvertMainViewModel : ToolTabViewModel
     public void AddPaths(IEnumerable<string> paths)
     {
         var existing = FileItems.Select(f => f.FilePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var newItems = new List<CdConvertFileItem>();
 
         foreach (var path in ExpandPaths(paths))
         {
@@ -59,34 +61,36 @@ public class CdConvertMainViewModel : ToolTabViewModel
             var item = new CdConvertFileItem(path);
 
             FileItems.Add(item);
-            ProbeTrackCount(item);
-
-            for (int i = 0; i < FileItems.Count; i++)
-                FileItems[i].No = i + 1;
+            newItems.Add(item);
         }
+
+        for (int i = 0; i < FileItems.Count; i++)
+            FileItems[i].No = i + 1;
 
         OnPropertyChanged(nameof(HintVisibility));
         CommandManager.InvalidateRequerySuggested();
+
+        foreach (var item in newItems)
+            _ = ProbeTrackCountAsync(item);
     }
 
-    // 목록에 파일을 추가한 시점에 미리 메타데이터를 읽어 트랙 수를 확인해둔다.
-    // MDS 파싱은 헤더/트랙 정보만 읽는 가벼운 작업이라(실제 오디오/데이터는 나중에 스트리밍) 즉시 수행해도 무리 없다.
-    // 여기서 트랙 수가 정해져야 UI에서 단일트랙일 때만 ISO 선택지를 보여줄 수 있다.
-    private static void ProbeTrackCount(CdConvertFileItem item)
+    private static async Task ProbeTrackCountAsync(CdConvertFileItem item)
     {
-        if (item.SourceFormat != CdSourceFormat.MdfMds)
+        if (item.SourceFormat == CdSourceFormat.Unknown)
             return;
 
         try
         {
-            var reader = DiscImageReaderFactory.Resolve(item.FilePath);
-            var discImage = reader.Read(item.FilePath);
+            var trackCount = await Task.Run(() =>
+            {
+                var reader = DiscImageReaderFactory.Resolve(item.FilePath);
+                return reader.Read(item.FilePath).TrackCount;
+            });
 
-            item.TrackCount = discImage.TrackCount;
+            item.TrackCount = trackCount;
         }
         catch
         {
-            // 여기서 실패해도 무시한다. 실제 오류는 변환 실행 시 다시 시도되며 그때 로그에 표시된다.
             item.TrackCount = 0;
         }
     }
@@ -157,12 +161,11 @@ public class CdConvertMainViewModel : ToolTabViewModel
                     switch (item.SourceFormat)
                     {
                         case CdSourceFormat.MdfMds:
+                        case CdSourceFormat.CcdImgSub:
                             {
                                 var reader = DiscImageReaderFactory.Resolve(item.FilePath);
                                 var discImage = reader.Read(item.FilePath);
 
-                                // 향후 CCD+IMG+SUB 등 새 소스 포맷이 추가되어도 여기서 얻은
-                                // discImage(공통 DiscImage 모델)를 그대로 아래 출력 라이터에 넘기면 된다.
                                 switch (item.OutputFormat)
                                 {
                                     case CdOutputFormat.Iso:
