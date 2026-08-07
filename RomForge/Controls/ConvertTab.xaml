@@ -45,9 +45,14 @@
             </ListView.ContextMenu>
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Width="60">
+                    <GridViewColumn Width="50">
                         <GridViewColumn.Header>
-                            <GridViewColumnHeader Tag="No" Content="No."/>
+                            <GridViewColumnHeader Tag="No">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Image Source="/Assets/Images/List.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </GridViewColumnHeader>
                         </GridViewColumn.Header>
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -56,23 +61,18 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="80">
+                    <GridViewColumn Width="370">
                         <GridViewColumn.Header>
-                            <GridViewColumnHeader Tag="Extension" Content="포맷"/>
+                            <GridViewColumnHeader Tag="FileName"/>
                         </GridViewColumn.Header>
-                        <GridViewColumn.CellTemplate>
+                        <GridViewColumn.HeaderTemplate>
                             <DataTemplate>
-                                <Border Background="{Binding ExtensionBackground}" CornerRadius="4" Padding="6,2" HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding Extension}" FontSize="11" FontWeight="Bold"/>
-                                </Border>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="/Assets/Images/AddFile.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="파일명" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-
-                    <GridViewColumn Width="300">
-                        <GridViewColumn.Header>
-                            <GridViewColumnHeader Tag="FileName" Content="파일명"/>
-                        </GridViewColumn.Header>
+                        </GridViewColumn.HeaderTemplate>
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
@@ -80,21 +80,39 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="100">
+                    <GridViewColumn Width="80">
                         <GridViewColumn.Header>
-                            <GridViewColumnHeader Tag="FileSizeBytes" Content="크기"/>
+                            <GridViewColumnHeader Tag="Extension"/>
                         </GridViewColumn.Header>
+                        <GridViewColumn.HeaderTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Image Source="/Assets/Images/Input.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="입력" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </GridViewColumn.HeaderTemplate>
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding FileSize}" Foreground="#AAAAAA" HorizontalAlignment="Right"/>
+                                <Border Background="{Binding ExtensionBackground}" CornerRadius="4" Padding="6,2" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding Extension}" Foreground="Black" FontSize="11" FontWeight="Bold"/>
+                                </Border>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
                     <GridViewColumn Width="120">
                         <GridViewColumn.Header>
-                            <GridViewColumnHeader Tag="SelectedTargetFormat" Content="출력 포맷"/>
+                            <GridViewColumnHeader Tag="SelectedTargetFormat"/>
                         </GridViewColumn.Header>
+                        <GridViewColumn.HeaderTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="/Assets/Images/Output.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="출력" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </GridViewColumn.HeaderTemplate>
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <ComboBox Margin="4,0"
@@ -104,10 +122,37 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
+                    <GridViewColumn Width="100">
+                        <GridViewColumn.Header>
+                            <GridViewColumnHeader Tag="FileSizeBytes"/>
+                        </GridViewColumn.Header>
+                        <GridViewColumn.HeaderTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="/Assets/Images/FileSizeBytes.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="용량" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </GridViewColumn.HeaderTemplate>
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding FileSize}" Foreground="#AAAAAA" HorizontalAlignment="Right"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
                     <GridViewColumn Width="140">
                         <GridViewColumn.Header>
-                            <GridViewColumnHeader Tag="Progress" Content="진행률"/>
+                            <GridViewColumnHeader Tag="Progress"/>
                         </GridViewColumn.Header>
+                        <GridViewColumn.HeaderTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="/Assets/Images/Progress.png" Width="24" Height="24" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="진행률" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </GridViewColumn.HeaderTemplate>
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <Grid Margin="6,0">
@@ -121,16 +166,6 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="80">
-                        <GridViewColumn.Header>
-                            <GridViewColumnHeader Tag="Status" Content="상태"/>
-                        </GridViewColumn.Header>
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Status}" HorizontalAlignment="Center"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
                 </GridView>
             </ListView.View>
         </ListView>

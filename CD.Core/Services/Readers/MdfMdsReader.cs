@@ -154,6 +154,76 @@ public class MdfMdsReader : IDiscImageReader
         return new SubStream(fs, length);
     }
 
+    public static IReadOnlyList<string> GetReferencedFileNames(string mdsPath)
+    {
+        var mds = File.ReadAllBytes(mdsPath);
+
+        ValidateSignature(mds, mdsPath);
+
+        var (trackBlocksOffset, totalDataBlocks) = ReadSessionInfo(mds, mdsPath);
+        var blockAreaEnd = (int)trackBlocksOffset + totalDataBlocks * TrackBlockSize;
+
+        if (blockAreaEnd > mds.Length)
+            throw new InvalidDataException($"MDS 트랙 블록 영역이 파일 범위를 벗어납니다(블록 수={totalDataBlocks}): {mdsPath}");
+
+        var names = new List<string>();
+
+        for (var pos = (int)trackBlocksOffset; pos < blockAreaEnd; pos += TrackBlockSize)
+        {
+            var point = mds[pos + 0x04];
+
+            if (point < MinRealTrackPoint || point > MaxRealTrackPoint)
+                continue;
+
+            var numFilenames = BitConverter.ToUInt32(mds, pos + 0x30);
+            var filenameBlockOffset = BitConverter.ToUInt32(mds, pos + 0x34);
+
+            names.Add(numFilenames > 0 && filenameBlockOffset > 0 && filenameBlockOffset < mds.Length
+                ? ReadFilenameBlock(mds, filenameBlockOffset)
+                : "*.mdf");
+        }
+
+        if (names.Count == 0)
+            names.Add("*.mdf");
+
+        return names.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    // 트랙 블록의 filename_offset(0x34)이 가리키는 위치: u32 실제문자열오프셋 + u8 포맷(0=8bit,1=16bit)
+    private static string ReadFilenameBlock(byte[] mds, uint filenameBlockOffset)
+    {
+        if (filenameBlockOffset + 5 > mds.Length)
+            return "*.mdf";
+
+        var nameOffset = BitConverter.ToUInt32(mds, (int)filenameBlockOffset);
+        var format = mds[(int)filenameBlockOffset + 4];
+
+        if (nameOffset >= mds.Length)
+            return "*.mdf";
+
+        return format == 1 ? ReadUtf16Nul(mds, (int)nameOffset) : ReadAsciiNul(mds, (int)nameOffset);
+    }
+
+    private static string ReadAsciiNul(byte[] mds, int offset)
+    {
+        var end = offset;
+
+        while (end < mds.Length && mds[end] != 0)
+            end++;
+
+        return System.Text.Encoding.ASCII.GetString(mds, offset, end - offset);
+    }
+
+    private static string ReadUtf16Nul(byte[] mds, int offset)
+    {
+        var end = offset;
+
+        while (end + 1 < mds.Length && !(mds[end] == 0 && mds[end + 1] == 0))
+            end += 2;
+
+        return System.Text.Encoding.Unicode.GetString(mds, offset, end - offset);
+    }
+
     private static string MapTrackMode(byte mode) => mode switch
     {
         TrackModeAudio => CueFormatStrings.Audio,

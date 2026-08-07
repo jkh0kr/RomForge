@@ -70,7 +70,7 @@
 
                 <ListView.View>
                     <GridView>
-                        <GridViewColumn Width="70">
+                        <GridViewColumn Width="50">
                             <GridViewColumn.Header>
                                 <GridViewColumnHeader Tag="No">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

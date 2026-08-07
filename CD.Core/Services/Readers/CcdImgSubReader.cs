@@ -12,6 +12,10 @@ public class CcdImgSubReader : IDiscImageReader
     private static readonly Regex TrackHeaderRegex = new(@"^\[TRACK\s+\d+\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex ModeRegex = new(@"^MODE\s*=\s*(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex IndexRegex = new(@"^INDEX\s+(\d+)\s*=\s*(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex EntryHeaderRegex = new(@"^\[Entry\s+\d+\]$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex PointRegex = new(@"^Point\s*=\s*0x([0-9A-Fa-f]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex ControlRegex = new(@"^Control\s*=\s*0x([0-9A-Fa-f]+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex PlbaRegex = new(@"^PLBA\s*=\s*(-?\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public bool CanRead(string filePath)
     {
@@ -25,19 +29,31 @@ public class CcdImgSubReader : IDiscImageReader
     {
         var imgPath = ResolveSiblingPath(filePath, ".img");
         var lines = File.ReadAllLines(filePath);
-
-        var rawTracks = ParseTracks(lines);
-
-        if (rawTracks.Count == 0)
-            throw new InvalidDataException($"CCD 파일에서 유효한 [TRACK] 섹션을 찾지 못했습니다: {filePath}");
-
         var imgLength = new FileInfo(imgPath).Length;
 
         if (imgLength % SectorSize != 0)
             throw new InvalidDataException($"IMG 파일 크기가 섹터 크기(2352)의 배수가 아닙니다: {imgPath}");
 
         var totalImgSectors = imgLength / SectorSize;
-        var tracks = BuildDiscTracks(rawTracks, imgPath, totalImgSectors, filePath);
+        var rawTracks = ParseTracks(lines);
+        List<DiscTrack> tracks;
+
+        if (rawTracks.Count > 0)
+            tracks = BuildDiscTracks(rawTracks, imgPath, totalImgSectors, filePath);
+        else
+        {
+            var entries = ParseEntries(lines);
+
+            if (entries.Count == 0)
+                throw new InvalidDataException($"CCD 파일에서 유효한 [TRACK] 또는 [Entry] 섹션을 찾지 못했습니다: {filePath}");
+
+            if (entries.Count > 1)
+                throw new InvalidDataException(
+                    $"[TRACK] 섹션이 없고 [Entry]로 확인된 트랙이 {entries.Count}개(멀티트랙)입니다. " +
+                    $"Entry 정보만으로는 트랙 간 pregap을 알 수 없어 정확한 변환이 불가능합니다: {filePath}");
+
+            tracks = BuildDiscTracksFromEntries(entries, imgPath, totalImgSectors, filePath);
+        }
 
         return new DiscImage { Tracks = tracks };
     }
@@ -127,11 +143,9 @@ public class CcdImgSubReader : IDiscImageReader
 
             var trackStart = index0 ?? index1;
             var pregapSectors = index0.HasValue ? index1 - index0.Value : 0;
-
             var nextStart = i + 1 < rawTracks.Count
                 ? (rawTracks[i + 1].Index0 ?? rawTracks[i + 1].Index1)
                 : totalImgSectors;
-
             var lengthSectors = nextStart - index1;
 
             if (trackStart < 0 || nextStart > totalImgSectors || lengthSectors <= 0)
@@ -155,6 +169,112 @@ public class CcdImgSubReader : IDiscImageReader
         }
 
         return tracks;
+    }
+
+    private static List<DiscTrack> BuildDiscTracksFromEntries(List<(int Point, byte Control, long Plba)> entries, string imgPath, long totalImgSectors, string ccdFilePath)
+    {
+        var (_, control, plba) = entries[0];
+
+        var trackStart = plba;
+        var lengthSectors = totalImgSectors - trackStart;
+
+        if (trackStart < 0 || lengthSectors <= 0)
+            throw new InvalidDataException(
+                $"Entry 기반 트랙의 섹터 범위가 IMG 파일 크기를 벗어나거나 비정상입니다 " +
+                $"(start={trackStart}, length={lengthSectors}, imgSectors={totalImgSectors}): {ccdFilePath}");
+
+        var isData = (control & 0x04) != 0;
+        var dataType = isData ? MapTrackMode(DetectDataMode(imgPath, trackStart)) : CueFormatStrings.Audio;
+        var streamOffset = trackStart * SectorSize;
+        var streamLength = lengthSectors * SectorSize;
+
+        return
+        [
+            new DiscTrack
+            {
+                Number = 1,
+                DataType = dataType,
+                PregapSectors = 0,
+                LengthSectors = (int)lengthSectors,
+                SourceSectorSize = SectorSize,
+                SubchannelSize = 0,
+                OpenSectorStream = () => OpenTrackStream(imgPath, streamOffset, streamLength)
+            }
+        ];
+    }
+
+    private static List<(int Point, byte Control, long Plba)> ParseEntries(string[] lines)
+    {
+        var entries = new List<(int Point, byte Control, long Plba)>();
+        var inEntry = false;
+        int point = -1;
+        byte control = 0;
+        long? plba = null;
+
+        void FlushCurrent()
+        {
+            if (!inEntry || plba is null)
+                return;
+
+            if (point is >= 1 and <= 99)
+                entries.Add((point, control, plba.Value));
+        }
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+
+            if (EntryHeaderRegex.IsMatch(line))
+            {
+                FlushCurrent();
+
+                inEntry = true;
+                point = -1;
+                control = 0;
+                plba = null;
+
+                continue;
+            }
+
+            if (!inEntry)
+                continue;
+
+            var pointMatch = PointRegex.Match(line);
+
+            if (pointMatch.Success)
+            {
+                point = Convert.ToInt32(pointMatch.Groups[1].Value, 16);
+                continue;
+            }
+
+            var controlMatch = ControlRegex.Match(line);
+
+            if (controlMatch.Success)
+            {
+                control = Convert.ToByte(controlMatch.Groups[1].Value, 16);
+                continue;
+            }
+
+            var plbaMatch = PlbaRegex.Match(line);
+
+            if (plbaMatch.Success)
+                plba = long.Parse(plbaMatch.Groups[1].Value);
+        }
+
+        FlushCurrent();
+
+        return entries.OrderBy(e => e.Point).ToList();
+    }
+
+    private static int DetectDataMode(string imgPath, long lba)
+    {
+        using var fs = new FileStream(imgPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        fs.Seek(lba * SectorSize, SeekOrigin.Begin);
+
+        var header = new byte[16];
+        var read = fs.Read(header, 0, header.Length);
+
+        return read >= 16 && header[15] == 2 ? 2 : 1;
     }
 
     private static SubStream OpenTrackStream(string imgPath, long startOffset, long length)

@@ -1,4 +1,6 @@
+using CD.Core.Services.Readers;
 using Common.WPF.ViewModels;
+using System.IO;
 using System.Windows.Media;
 
 namespace RomForge.Core.Models.CD;
@@ -79,4 +81,27 @@ public class CdConvertFileItem(string filePath) : FileItemBase(filePath), Common
     };
 
     protected override string FormatSize(long bytes) => PickPack.Disk.ETC.FileSize.FormatSize(bytes);
+
+    protected override long CalculateSize(string filePath)
+    {
+        var selfSize = new FileInfo(filePath).Length;
+        var dir = Directory;
+
+        static long SumExisting(IEnumerable<string> paths) => paths.Where(File.Exists).Sum(p => new FileInfo(p).Length);
+
+        return Extension switch
+        {
+            "mds" => selfSize + SumExisting(MdfMdsReader.GetReferencedFileNames(filePath)
+                .Select(name => name == "*.mdf"
+                    ? Path.ChangeExtension(filePath, ".mdf")
+                    : Path.Combine(dir, name))),
+
+            "ccd" => selfSize + SumExisting([
+                Path.ChangeExtension(filePath, ".img"),
+                Path.ChangeExtension(filePath, ".sub")
+            ]),
+
+            _ => base.CalculateSize(filePath)
+        };
+    }
 }

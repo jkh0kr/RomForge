@@ -43,11 +43,11 @@ public class PbpFileItem(string filePath) : FileItemBase(filePath), Common.WPF.V
 
     protected override string FormatSize(long bytes) => PickPack.Disk.ETC.FileSize.FormatSize(bytes);
 
-    public List<string> AvailableFormats { get; } = ["ISO"];
+    public List<string> AvailableFormats { get; } = ["BIN+CUE"];
 
     public string SelectedTargetFormat
     {
-        get => "ISO";
+        get => "BIN+CUE";
         set { }
     }
 }
