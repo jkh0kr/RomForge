@@ -93,7 +93,7 @@ public partial class ConverterTab : UserControl
         {
             Title = "변환할 파일 선택",
             Multiselect = true,
-            Filter = "PSP 파일|*.iso;*.cso;*.zso;*.chd|모든 파일|*.*"
+            Filter = "PS 파일|*.iso;*.cso;*.zso;*.chd|모든 파일|*.*"
         };
 
         if (dialog.ShowDialog() == true)

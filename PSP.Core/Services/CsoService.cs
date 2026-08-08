@@ -169,7 +169,143 @@ public class CsoService
         await output.WriteAsync(indexBytes, ct);
     }
 
-    public static async Task CompressFromChdAsync(string chdPath, Stream output, byte version = 1, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
+    public static async Task TranscodeAsync(Stream input, Stream output, byte[]? targetMagic = null, bool targetIsLz4 = false, byte targetVersion = 1, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
+    {
+        var magic = new byte[4];
+
+        await input.ReadExactlyAsync(magic, ct);
+
+        bool isZso = magic.SequenceEqual(CsoHeader.MagicZSO);
+
+        if (!isZso && !magic.SequenceEqual(CsoHeader.MagicCSO))
+            throw new InvalidDataException("CSO/ZSO 매직 불일치");
+
+        var headerBytes = new byte[HeaderSize - 4];
+
+        await input.ReadExactlyAsync(headerBytes, ct);
+
+        var header = new CsoHeader
+        {
+            HeaderSize = BinaryPrimitives.ReadUInt32LittleEndian(headerBytes.AsSpan()[0..]),
+            UncompressedSize = BinaryPrimitives.ReadUInt64LittleEndian(headerBytes.AsSpan()[4..]),
+            BlockSize = BinaryPrimitives.ReadUInt32LittleEndian(headerBytes.AsSpan()[12..]),
+            Version = headerBytes[16],
+            IndexShift = headerBytes[17],
+        };
+
+        int blockCount = (int)Math.Ceiling((double)header.UncompressedSize / header.BlockSize);
+        var srcIndex = new uint[blockCount + 1];
+        var srcIndexBytes = new byte[(blockCount + 1) * 4];
+
+        await input.ReadExactlyAsync(srcIndexBytes, ct);
+
+        for (int i = 0; i <= blockCount; i++)
+            srcIndex[i] = BinaryPrimitives.ReadUInt32LittleEndian(srcIndexBytes.AsSpan(i * 4));
+
+        targetMagic ??= CsoHeader.MagicCSO;
+        targetIsLz4 = targetIsLz4 || targetVersion == 2;
+
+        await output.WriteAsync(targetMagic, ct);
+
+        var dstHeaderBytes = new byte[HeaderSize - 4];
+
+        BinaryPrimitives.WriteUInt32LittleEndian(dstHeaderBytes.AsSpan()[0..], HeaderSize);
+        BinaryPrimitives.WriteUInt64LittleEndian(dstHeaderBytes.AsSpan()[4..], header.UncompressedSize);
+        BinaryPrimitives.WriteUInt32LittleEndian(dstHeaderBytes.AsSpan()[12..], header.BlockSize);
+
+        dstHeaderBytes[16] = targetVersion;
+        dstHeaderBytes[17] = 0;
+
+        await output.WriteAsync(dstHeaderBytes, ct);
+
+        long dstIndexOffset = output.Position;
+        var dstIndex = new uint[blockCount + 1];
+
+        await output.WriteAsync(new byte[(blockCount + 1) * 4], ct);
+
+        var rawBuf = new byte[header.BlockSize];
+        var compBuf = new byte[header.BlockSize * 2];
+        var reporter = progress is null ? null : new ProgressReporter("변환 중...", string.Empty, blockCount, progress);
+        var report = reporter?.CreateAction();
+
+        for (int i = 0; i < blockCount; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            uint entry = srcIndex[i];
+            uint nextEntry = srcIndex[i + 1];
+            bool srcUncompressed = (entry & 0x80000000u) != 0;
+            long offset = (long)(entry & 0x7FFFFFFFu) << header.IndexShift;
+            long nextOffset = (long)(nextEntry & 0x7FFFFFFFu) << header.IndexShift;
+            int blockLen = (int)(nextOffset - offset);
+
+            input.Seek(offset, SeekOrigin.Begin);
+
+            var compressed = new byte[blockLen];
+
+            await input.ReadExactlyAsync(compressed, ct);
+
+            int rawLen;
+
+            if (srcUncompressed)
+            {
+                compressed.CopyTo(rawBuf, 0);
+                rawLen = blockLen;
+            }
+            else if (header.Version == 2 || isZso)
+                rawLen = LZ4Codec.Decode(compressed, 0, blockLen, rawBuf, 0, (int)header.BlockSize);
+            else
+            {
+                using var ms = new MemoryStream(compressed);
+                using var ds = new DeflateStream(ms, CompressionMode.Decompress);
+                using var rawMs = new MemoryStream(rawBuf);
+
+                await ds.CopyToAsync(rawMs, ct);
+                rawLen = (int)rawMs.Position;
+            }
+
+            long dstBlockOffset = output.Position;
+
+            dstIndex[i] = (uint)dstBlockOffset;
+
+            int compLen;
+            bool dstUncompressed;
+
+            if (targetIsLz4)
+            {
+                compLen = LZ4Codec.Encode(rawBuf, 0, rawLen, compBuf, 0, compBuf.Length);
+                dstUncompressed = compLen <= 0 || compLen >= rawLen;
+            }
+            else
+            {
+                using var compressor = new DeflateCompressor(1);
+                compLen = compressor.Compress(rawBuf.AsSpan(0, rawLen), compBuf);
+                dstUncompressed = compLen <= 0 || compLen >= rawLen;
+            }
+
+            if (dstUncompressed)
+            {
+                dstIndex[i] |= 0x80000000u;
+                await output.WriteAsync(rawBuf.AsMemory(0, rawLen), ct);
+            }
+            else
+                await output.WriteAsync(compBuf.AsMemory(0, compLen), ct);
+
+            report?.Invoke(i + 1, blockCount);
+        }
+
+        dstIndex[blockCount] = (uint)output.Position;
+        output.Seek(dstIndexOffset, SeekOrigin.Begin);
+
+        var dstIndexBytes = new byte[(blockCount + 1) * 4];
+
+        for (int i = 0; i <= blockCount; i++)
+            BinaryPrimitives.WriteUInt32LittleEndian(dstIndexBytes.AsSpan(i * 4), dstIndex[i]);
+
+        await output.WriteAsync(dstIndexBytes, ct);
+    }
+
+    public static async Task CompressFromChdAsync(string chdPath, Stream output, byte[]? magic = null, byte version = 1, bool isLz4 = false, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
         var info = ChdInfoReader.ReadChdInfo(chdPath);
 
@@ -185,14 +321,14 @@ public class CsoService
             long totalLength = (long)info.LogicalBytes;
             using var chdStream = new ChdReadStream(wrapper, totalLength);
 
-            await CompressAsync(chdStream, output, version: version, progress: progress, ct: ct);
+            await CompressAsync(chdStream, output, magic: magic, version: version, isLz4: isLz4, progress: progress, ct: ct);
         }
         else if (info.SourceType == ChdSourceType.ISO)
         {
             long totalLength = (long)info.Tracks[0].Frames * 2048;
             using var chdStream = new ChdCdReadStream(wrapper, totalLength);
 
-            await CompressAsync(chdStream, output, version: version, progress: progress, ct: ct);
+            await CompressAsync(chdStream, output, magic: magic, version: version, isLz4: isLz4, progress: progress, ct: ct);
         }
     }
 

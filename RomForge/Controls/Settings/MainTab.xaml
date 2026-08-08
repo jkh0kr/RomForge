@@ -28,7 +28,7 @@
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Image Source="/Assets/Images/PS1.png" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="PSP" VerticalAlignment="Center"/>
+                        <TextBlock Text="PS" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
                 <local:PSSettingsTab DataContext="{Binding PS1}"/>

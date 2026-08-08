@@ -1,5 +1,6 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
+using PSP.Core.Models;
 using PSP.Core.Services;
 using RomForge.Core;
 using RomForge.Core.UI.Command;
@@ -21,7 +22,7 @@ public class PSPConverterViewModel : ToolTabViewModel
     private readonly CsoService _csoService = new();
 
     private static readonly HashSet<string> SupportedExtensions =
-        [".iso", ".cso", ".chd"];
+        [".iso", ".cso", ".zso", ".chd"];
 
     #endregion
 
@@ -125,7 +126,7 @@ public class PSPConverterViewModel : ToolTabViewModel
             {
                 int totalCount = FileItems.Count;
 
-                AppendLog($"총 {totalCount}개의 PSP 변환 작업을 시작합니다.", LogLevel.Highlight);
+                AppendLog($"총 {totalCount}개의 변환 작업을 시작합니다.", LogLevel.Highlight);
 
                 int cnt = 0;
 
@@ -159,17 +160,37 @@ public class PSPConverterViewModel : ToolTabViewModel
                                     await CsoService.CompressAsync(input, output, progress: progressHandler, ct: _cts.Token);
                                 break;
 
+                            case ("iso", "zso"):
+                                await using (var input = File.OpenRead(item.FilePath))
+                                await using (var output = File.Create(outPath))
+                                    await CsoService.CompressAsync(input, output, magic: CsoHeader.MagicZSO, isLz4: true, progress: progressHandler, ct: _cts.Token);
+                                break;
+
                             case ("iso", "chd"):
                                 await _csoService.CompressToChdAsync(item.FilePath, outPath, AppConfig.Instance.Chdman.Compression, progressHandler, _cts.Token);
                                 break;
 
                             case ("cso", "iso"):
+                            case ("zso", "iso"):
                                 await using (var input = File.OpenRead(item.FilePath))
                                 await using (var output = File.Create(outPath))
                                     await CsoService.DecompressAsync(input, output, progressHandler, _cts.Token);
                                 break;
 
+                            case ("cso", "zso"):
+                                await using (var input = File.OpenRead(item.FilePath))
+                                await using (var output = File.Create(outPath))
+                                    await CsoService.TranscodeAsync(input, output, targetMagic: CsoHeader.MagicZSO, targetIsLz4: true, progress: progressHandler, ct: _cts.Token);
+                                break;
+
+                            case ("zso", "cso"):
+                                await using (var input = File.OpenRead(item.FilePath))
+                                await using (var output = File.Create(outPath))
+                                    await CsoService.TranscodeAsync(input, output, targetMagic: CsoHeader.MagicCSO, targetIsLz4: false, progress: progressHandler, ct: _cts.Token);
+                                break;
+
                             case ("cso", "chd"):
+                            case ("zso", "chd"):
                                 await _csoService.CompressCsoToChdAsync(item.FilePath, outPath, progressHandler, AppConfig.Instance.Chdman.Compression, _cts.Token);
                                 break;
 
@@ -180,6 +201,11 @@ public class PSPConverterViewModel : ToolTabViewModel
                             case ("chd", "cso"):
                                 await using (var output = File.Create(outPath))
                                     await CsoService.CompressFromChdAsync(item.FilePath, output, version: 1, progress: progressHandler, ct: _cts.Token);
+                                break;
+
+                            case ("chd", "zso"):
+                                await using (var output = File.Create(outPath))
+                                    await CsoService.CompressFromChdAsync(item.FilePath, output, magic: CsoHeader.MagicZSO, isLz4: true, progress: progressHandler, ct: _cts.Token);
                                 break;
 
                             default:

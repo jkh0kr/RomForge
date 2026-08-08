@@ -245,12 +245,12 @@
             <Grid Grid.Column="2">
                 <StackPanel VerticalAlignment="Top">
                     <StackPanel Orientation="Horizontal" Margin="10,0,0,0">
-                        <TextBlock Text="타이틀명" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                        <TextBlock Text="게임명" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBox x:Name="txtGameName" FontSize="11" Margin="10,5,0,0" HorizontalAlignment="Stretch"/>
 
                     <StackPanel Orientation="Horizontal" Margin="10,10,0,0">
-                        <TextBlock Text="변경할 Title ID" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                        <TextBlock Text="ID" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBox x:Name="txtOverrideTitleId" FontSize="11" Margin="10,5,0,0" HorizontalAlignment="Stretch" MaxLength="16" CharacterCasing="Upper" ToolTip="16자리 16진수 (예: 0100000000010000). 비워두면 원본 Title ID 유지."/>
 
@@ -263,7 +263,7 @@
                         <TextBlock Text="멀티롬 인덱스" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <ComboBox x:Name="cbxMultiRom" Grid.Column="1" FontSize="11" Margin="10,5,0,0" VerticalAlignment="Center">
+                    <ComboBox x:Name="cbxMultiRom" Grid.Column="1" FontSize="11" Margin="10,5,0,0" Height ="25" VerticalAlignment="Center">
                         <ComboBox.ItemContainerStyle>
                             <Style TargetType="ComboBoxItem">
                                 <Setter Property="HorizontalContentAlignment" Value="Left"/>

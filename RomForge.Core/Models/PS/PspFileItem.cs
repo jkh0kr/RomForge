@@ -11,14 +11,16 @@ public class PspFileItem(string filePath) : ConvertibleFileItemBase(filePath, "ë
     {
         ["iso"] = "#94C8FF",
         ["cso"] = "#94FFB5",
+        ["zso"] = "#FFD494",
         ["chd"] = "#D494FF",
     };
 
     protected override IReadOnlyList<string> GetAvailableFormats(string extension) => extension switch
     {
-        "iso" => ["CSO", "CHD"],
-        "cso" => ["ISO", "CHD"],
-        "chd" => ["ISO", "CSO"],
+        "iso" => ["CSO", "ZSO", "CHD"],
+        "cso" => ["ISO", "ZSO", "CHD"],
+        "zso" => ["ISO", "CSO", "CHD"],
+        "chd" => ["ISO", "CSO", "ZSO"],
         _ => []
     };
 
