@@ -16,6 +16,8 @@ public static class FormatDetector
             case "bin": return Result(RomFormat.Bin, ConvertDirection.Compress, "chd");
             case "gdi": return Result(RomFormat.Gdi, ConvertDirection.Compress, "chd");
             case "ccd": return Result(RomFormat.Ccd, ConvertDirection.Compress, "chd");
+            case "img" when File.Exists(Path.ChangeExtension(filePath, ".ccd")):
+                return Result(RomFormat.Ccd, ConvertDirection.Compress, "chd");
             case "nsp": return Result(RomFormat.Nsp, ConvertDirection.Compress, "nsz");
             case "nsz": return Result(RomFormat.Nsz, ConvertDirection.Decompress, "nsp");
             case "xci": return Result(RomFormat.Xci, ConvertDirection.Compress, "xcz");

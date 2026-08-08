@@ -1,4 +1,6 @@
-﻿using CHD.Core.Services;
+﻿using CD.Core.Services.Readers;
+using CD.Core.Services.Writers;
+using CHD.Core.Services;
 using Common;
 using DolphinTool.Core.Services;
 using RomForge.Core.Models.Compression;
@@ -8,10 +10,45 @@ namespace RomForge.Core.Services.Patch;
 
 public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<ProgressInfo> progress, int dolphinCompressLevel)
 {
-    public async Task ConvertAsync(DetectResult detected, string outputPath, string? outputCuePath, List<string> copiedTrackPaths, CancellationToken ct)
+    public async Task ConvertAsync(DetectResult detected, string outputPath, string? outputCuePath, List<string> copiedTrackPaths, string? outputCcdPath, string outputDir, CancellationToken ct)
     {
         switch (detected.Format)
         {
+            case RomFormat.Ccd:
+                {
+                    progress.Report(new ProgressInfo { Label = "BIN/CUE 변환 중...", Percent = 0 });
+
+                    var discReader = DiscImageReaderFactory.Resolve(outputCcdPath!);
+                    var discImage = discReader.Read(outputCcdPath!);
+                    var tempCuePath = await BinCueWriter.WriteAsync(discImage, outputDir, Path.GetFileNameWithoutExtension(outputPath), progress, ct);
+                    var tempBinPath = Path.ChangeExtension(tempCuePath, ".bin");
+
+                    try
+                    {
+                        progress.Report(new ProgressInfo { Label = "CHD 변환 중...", Percent = 0 });
+
+                        FileConverter converter = new(AppConfig.Instance.Chdman.Compression);
+                        converter.LogMessage += (_, e) => log(e.Message, e.Level);
+
+                        var chdResult = await converter.ConvertFileAsync(tempCuePath, progress, ct);
+
+                        if (!chdResult.Success)
+                            throw new Exception($"CHD 변환 실패: {chdResult.Message}");
+
+                        File.Delete(outputPath);
+                        File.Delete(outputCcdPath!);
+                    }
+                    finally
+                    {
+                        if (File.Exists(tempCuePath))
+                            File.Delete(tempCuePath);
+
+                        if (File.Exists(tempBinPath))
+                            File.Delete(tempBinPath);
+                    }
+
+                    break;
+                }
             case RomFormat.Bin:
                 {
                     progress.Report(new ProgressInfo { Label = "CHD 변환 중...", Percent = 0 });

@@ -8,17 +8,20 @@ namespace RomForge.Core.Services.Patch;
 public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressInfo> progress, bool autoCompress, int dolphinCompressLevel)
 {
     private string? _outputCuePath;
+    private string? _outputCcdPath;
     private List<string> _copiedTrackPaths = [];
     private readonly BinTrackCopier _binTrackCopier = new(log);
+    private readonly CcdCompanionCopier _ccdCompanionCopier = new(log);
     private readonly ZipCompressor _zipCompressor = new(log, progress);
     private readonly CompressKnownConverter _compressKnownConverter = new(log, progress, dolphinCompressLevel);
 
     public async Task PatchAsync(string sourcePath, string patchPath, DetectResult detected, string outputDir, string outputPath, CancellationToken ct)
     {
         _outputCuePath = null;
+        _outputCcdPath = null;
         _copiedTrackPaths = [];
 
-        bool isZipTarget = detected.Format is not (RomFormat.Bin or RomFormat.Iso or RomFormat.Gcm or RomFormat.Wii or RomFormat.Wbfs);
+        bool isZipTarget = detected.Format is not (RomFormat.Bin or RomFormat.Iso or RomFormat.Gcm or RomFormat.Wii or RomFormat.Wbfs or RomFormat.Ccd);
 
         await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct);
 
@@ -31,6 +34,11 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
             _outputCuePath = await _binTrackCopier.CopyBinTracksAsync(sourcePath, outputDir, outputPath, _copiedTrackPaths);
             skipCompress = _outputCuePath is null;
         }
+        else if (detected.Format == RomFormat.Ccd)
+        {
+            _outputCcdPath = _ccdCompanionCopier.CopyCcd(sourcePath, outputDir, outputPath);
+            skipCompress = _outputCcdPath is null;
+        }
 
         if (!autoCompress || skipCompress)
             return;
@@ -41,7 +49,7 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
             await _zipCompressor.CompressFromFileAsync(sourcePath, outputPath, outputDir, ct);
         }
         else
-            await _compressKnownConverter.ConvertAsync(detected, outputPath, _outputCuePath, _copiedTrackPaths, ct);
+            await _compressKnownConverter.ConvertAsync(detected, outputPath, _outputCuePath, _copiedTrackPaths, _outputCcdPath, outputDir, ct);
     }
 
     public void Cleanup(string outputPath)
@@ -53,6 +61,9 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
 
             if (_outputCuePath is not null && File.Exists(_outputCuePath))
                 File.Delete(_outputCuePath);
+
+            if (_outputCcdPath is not null && File.Exists(_outputCcdPath))
+                File.Delete(_outputCcdPath);
 
             foreach (var trackPath in _copiedTrackPaths)
                 if (File.Exists(trackPath))
