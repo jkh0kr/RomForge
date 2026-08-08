@@ -23,7 +23,7 @@
 - **설정** — 압축 세부 옵션(레벨, 알고리즘 등)을 여는 버튼
 - **시작 / 취소**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/compression-1.png) -->
+<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/5f65e339-4634-45a2-a121-49a637209e63" />
 
 ---
 
@@ -32,8 +32,6 @@
 1. 압축하거나 해제할 파일 또는 폴더를 목록에 드래그 앤 드롭합니다. 위 표에 있는 형식이면 자동으로 압축 또는 해제 방향이 정해집니다.
 2. 필요하면 **설정**에서 압축 옵션(압축 레벨, 알고리즘 등)을 조정합니다.
 3. **시작**을 눌러 진행합니다.
-
-<!-- TODO: 스크린샷 추가 (docs/assets/compression-2.png) -->
 
 ---
 
@@ -45,7 +43,8 @@
 
 PS2용 안드로이드 에뮬레이터(에테르 등)와의 호환을 위해 zlib이 필요한 경우가 아니라면 **zstd**를 사용하면 됩니다. 그 외 세부 옵션은 화면에 나온 그대로이므로 별도 설명은 생략합니다.
 
-<!-- TODO: 스크린샷 추가 (docs/assets/compression-3.png) -->
+<img width="900" height="170" alt="{1BAE73AF-AF18-46C2-8130-689E2D6311ED}" src="https://github.com/user-attachments/assets/6cac04b9-194c-41b2-bc13-4e626f8a068b" />
+
 
 ### Switch
 
@@ -62,7 +61,8 @@ zstd 계열은 압축 레벨을 0~22까지 지정할 수 있지만, RomForge에�
 
 압축 후 원본과 데이터가 동일한지 BLAKE3 해시로 검증합니다. 다른 플랫폼은 크게 문제가 없지만, Switch는 현세대 기기라 포맷이 바뀔 가능성이 있으므로 검증을 권장합니다. 검증 없이 원본을 삭제했다가 복구가 불가능해질 수 있습니다.
 
-<!-- TODO: 스크린샷 추가 (docs/assets/compression-4.png) -->
+<img width="900" height="200" alt="{FB6E9983-B013-4436-8FCF-1926D90C7FD7}" src="https://github.com/user-attachments/assets/64946626-bdf4-4378-9f9f-f572484185fd" />
+
 
 ### 아자하르 / 돌핀
 
