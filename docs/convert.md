@@ -9,8 +9,8 @@
 | **Switch** | NSP ↔ XCI |
 | **3DS** | CCI, 3DS ↔ CIA |
 | **Wii U** | WUD, WUX, WUA → WUP, Loadiine, WUA |
-| **CD** | MDF+MDS, CCD+IMG+SUB → BIN+CUE, ISO |
-| **PSP** | PBP → ISO |
+| **CD Image** | MDF+MDS, CCD+IMG+SUB → BIN+CUE, ISO |
+| **PSP** | PBP → BIN+CUE |
 
 ## 화면 구성
 
@@ -20,7 +20,7 @@
 - **파일 추가 / 폴더 추가 / 선택 삭제 / 전체 삭제**
 - **시작 / 취소**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/convert-1.png) -->
+<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/4123a3f8-11df-46e5-bc8f-5e72e1f10e70" />
 
 ---
 
