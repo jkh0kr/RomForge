@@ -6,18 +6,12 @@ using NSW.WPF.Models;
 using NSW.WPF.Services;
 using NSW.WPF.ViewModels;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 using System.Collections.ObjectModel;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using PixelFormat = System.Drawing.Imaging.PixelFormat;
 
 namespace NSW.WPF.UI;
 
@@ -40,6 +34,23 @@ public partial class LanguageTabControl : UserControl
         }
     }
 
+    public ulong? OverrideTitleId
+    {
+        get
+        {
+            if (!txtOverrideTitleId.Dispatcher.CheckAccess())
+                return txtOverrideTitleId.Dispatcher.Invoke(new Func<ulong?>(() => OverrideTitleId));
+
+            string text = txtOverrideTitleId.Text.Trim();
+            if (string.IsNullOrEmpty(text))
+                return null;
+
+            return ulong.TryParse(text, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out ulong titleId)
+                ? titleId
+                : null;
+        }
+    }
+
     private readonly string[] SupportedExts = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"];
 
     public LanguageTabControl()
@@ -53,7 +64,20 @@ public partial class LanguageTabControl : UserControl
         lbLanguages.SelectionChanged += LbLanguages_SelectionChanged;
         txtGameName.TextChanged += TxtGameName_TextChanged;
         txtPublisher.TextChanged += TxtPublisher_TextChanged;
+        txtOverrideTitleId.PreviewTextInput += TxtOverrideTitleId_PreviewTextInput;
+        DataObject.AddPastingHandler(txtOverrideTitleId, TxtOverrideTitleId_Pasting);
     }
+
+    private static void TxtOverrideTitleId_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        => e.Handled = !IsHexString(e.Text);
+
+    private void TxtOverrideTitleId_Pasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (!e.DataObject.GetDataPresent(DataFormats.Text) || !IsHexString((string)e.DataObject.GetData(DataFormats.Text)))
+            e.CancelCommand();
+    }
+
+    private static bool IsHexString(string s) => s.Length > 0 && s.All(Uri.IsHexDigit);
 
     public async Task UpdateLanguageTabAsync(IList<GameFile> gameFiles, string? unpackedDir = null)
     {
@@ -66,11 +90,14 @@ public partial class LanguageTabControl : UserControl
             CurrentMetadata = metadata;
             BindMetadataToUI(metadata);
         }
+
+        txtOverrideTitleId.Text = (gameFiles.FirstOrDefault(f => f.FileType.Contains('B'))
+            ?? gameFiles.FirstOrDefault(f => !string.IsNullOrEmpty(f.TitleID)))?.TitleID ?? string.Empty;
     }
 
     public void SyncMetadataFromUI()
     {
-        if (CurrentMetadata == null) 
+        if (CurrentMetadata == null)
             return;
 
         foreach (var item in LanguageList)
@@ -86,6 +113,7 @@ public partial class LanguageTabControl : UserControl
         LanguageList.Clear();
         txtGameName.Text = string.Empty;
         txtPublisher.Text = string.Empty;
+        txtOverrideTitleId.Text = string.Empty;
         imgGame.Source = null;
     }
 
@@ -93,7 +121,7 @@ public partial class LanguageTabControl : UserControl
     {
         var keySet = KeySetProvider.Instance.KeySet;
 
-        if (keySet == null) 
+        if (keySet == null)
             return null;
 
         var validPaths = gameFiles
@@ -133,7 +161,7 @@ public partial class LanguageTabControl : UserControl
 
     private void LbLanguages_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (lbLanguages.SelectedItem is not LanguageItem selectedItem) 
+        if (lbLanguages.SelectedItem is not LanguageItem selectedItem)
             return;
 
         txtGameName.Text = selectedItem.TitleName;
@@ -145,7 +173,7 @@ public partial class LanguageTabControl : UserControl
 
     private void TxtGameName_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (lbLanguages.SelectedItem is not LanguageItem selectedItem || CurrentMetadata == null) 
+        if (lbLanguages.SelectedItem is not LanguageItem selectedItem || CurrentMetadata == null)
             return;
 
         selectedItem.TitleName = txtGameName.Text;
@@ -158,7 +186,7 @@ public partial class LanguageTabControl : UserControl
 
     private void TxtPublisher_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (lbLanguages.SelectedItem is not LanguageItem selectedItem || CurrentMetadata == null) 
+        if (lbLanguages.SelectedItem is not LanguageItem selectedItem || CurrentMetadata == null)
             return;
 
         selectedItem.Publisher = txtPublisher.Text;
@@ -170,7 +198,7 @@ public partial class LanguageTabControl : UserControl
 
     private void BtnForceLanguage_Click(object sender, RoutedEventArgs e)
     {
-        if (lbLanguages.SelectedItem is not LanguageItem selectedItem) 
+        if (lbLanguages.SelectedItem is not LanguageItem selectedItem)
             return;
 
         ForcedLanguage = selectedItem.Language;
@@ -232,7 +260,7 @@ public partial class LanguageTabControl : UserControl
 
     private void ImgGame_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (imgGame.Source is not BitmapSource bitmapSource) 
+        if (imgGame.Source is not BitmapSource bitmapSource)
             return;
 
         var selectedLanguage = lbLanguages.SelectedItem as LanguageItem;
@@ -260,11 +288,11 @@ public partial class LanguageTabControl : UserControl
         finally
         {
             if (File.Exists(tempFilePath))
-                try 
-                { 
-                    File.Delete(tempFilePath); 
+                try
+                {
+                    File.Delete(tempFilePath);
                 }
-                catch 
+                catch
                 {
                 }
         }

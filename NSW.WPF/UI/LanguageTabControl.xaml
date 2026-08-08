@@ -128,7 +128,7 @@
                                 <Setter TargetName="border" Property="BorderBrush" Value="#888888"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#007ACC"/>                                
+                                <Setter TargetName="border" Property="Background" Value="#007ACC"/>
                                 <Setter TargetName="border" Property="BorderBrush" Value="#007ACC"/>
                                 <Setter TargetName="checkMark" Property="Visibility" Value="Visible"/>
                             </Trigger>
@@ -197,7 +197,7 @@
                                     <WrapPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
-                            <ItemsControl.Items>                                
+                            <ItemsControl.Items>
                                 <Border Background="#1A9E5B24" BorderBrush="#559E5B24" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="3,0">
                                     <TextBlock Text="PNG" Foreground="#FFA254" FontWeight="Bold" FontSize="10" VerticalAlignment="Center">
                                         <TextBlock.Effect>
@@ -248,6 +248,11 @@
                         <TextBlock Text="타이틀명" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
                     </StackPanel>
                     <TextBox x:Name="txtGameName" FontSize="11" Margin="10,5,0,0" HorizontalAlignment="Stretch"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="10,10,0,0">
+                        <TextBlock Text="변경할 Title ID" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBox x:Name="txtOverrideTitleId" FontSize="11" Margin="10,5,0,0" HorizontalAlignment="Stretch" MaxLength="16" CharacterCasing="Upper" ToolTip="16자리 16진수 (예: 0100000000010000). 비워두면 원본 Title ID 유지."/>
 
                     <StackPanel Orientation="Horizontal" Margin="10,10,0,0">
                         <TextBlock Text="배급사" FontSize="12" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>

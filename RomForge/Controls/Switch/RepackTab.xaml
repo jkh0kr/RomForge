@@ -33,7 +33,13 @@
                             <TextBlock Text="설정" VerticalAlignment="Center"/>
                         </StackPanel>
                     </TabItem.Header>
-                    <core:LanguageTabControl x:Name="langTab" IsEnabled="{Binding IsIdle}"/>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <core:LanguageTabControl x:Name="langTab" Grid.Row="0" IsEnabled="{Binding IsIdle}"/>
+                    </Grid>
                 </TabItem>
             </TabControl>
 
@@ -109,7 +115,7 @@
                     </ProgressBar.Template>
                 </ProgressBar>
             </Grid>
-            
+
         </Grid>
     </Grid>
 </UserControl>

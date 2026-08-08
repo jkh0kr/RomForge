@@ -27,8 +27,8 @@ namespace RomForge.ViewModels.Switch
         private string _progressLabel = "대기 중...";
         private string _progressTime = "00:00 경과";
         private string _outputPath = string.Empty;
-        private BuildMode? _currentMode;        
-        
+        private BuildMode? _currentMode;
+
         public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
         public int ProgressPct
@@ -69,7 +69,7 @@ namespace RomForge.ViewModels.Switch
 
         public Visibility OutputHintVisibility => string.IsNullOrEmpty(OutputPath) ? Visibility.Visible : Visibility.Collapsed;
 
-        public record BuildContext(IList<GameFile> GameFiles, GameMetadata? Metadata, ApplicationControlProperty.Language ForcedLanguage, byte? TargetIdOffset);
+        public record BuildContext(IList<GameFile> GameFiles, GameMetadata? Metadata, ApplicationControlProperty.Language ForcedLanguage, byte? TargetIdOffset, ulong? OverrideTitleId);
 
         public BuildContext? Context { get; set; }
 
@@ -162,8 +162,11 @@ namespace RomForge.ViewModels.Switch
                     req.UserMetadata = Context?.Metadata;
                     req.OverrideKeyGeneration = 1;
 
-                    if(Context?.TargetIdOffset.HasValue == true)
+                    if (Context?.TargetIdOffset.HasValue == true)
                         req.TargetIdOffset = Context?.TargetIdOffset;
+
+                    if (Context?.OverrideTitleId.HasValue == true)
+                        req.OverrideTitleId = Context?.OverrideTitleId;
 
                     string finalResult = await NspBuildService.Run(req, mode, progress, (msg, lvl) => Log(msg, lvl), token);
 
@@ -256,7 +259,7 @@ namespace RomForge.ViewModels.Switch
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "작업 폴더 선택" };
 
-            if (dlg.ShowDialog() == true) 
+            if (dlg.ShowDialog() == true)
                 OutputPath = dlg.FolderName;
         }
 

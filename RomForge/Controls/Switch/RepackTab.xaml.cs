@@ -1,6 +1,5 @@
 ﻿using NSW.Core.Enums;
 using RomForge.ViewModels.Switch;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using Path = System.IO.Path;
@@ -43,7 +42,7 @@ public partial class RepackTab : UserControl
     }
 
     private void SyncContext()
-        => ViewModel.Context = new RepackMainViewModel.BuildContext(titleList.GameFiles, langTab.CurrentMetadata, langTab.ForcedLanguage, langTab.TargetIdOffset);
+        => ViewModel.Context = new RepackMainViewModel.BuildContext(titleList.GameFiles, langTab.CurrentMetadata, langTab.ForcedLanguage, langTab.TargetIdOffset, langTab.OverrideTitleId);
 
     private async void BtnStart_Click(object sender, RoutedEventArgs e)
     {

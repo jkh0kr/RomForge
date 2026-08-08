@@ -32,6 +32,18 @@ public static class NpdmProcessor
         if (aci0.Magic != MagicAci0)
             throw new InvalidDataException("Invalid ACI0 magic!");
 
+        if (aci0.TitleId != settings.TitleId)
+        {
+            aci0.TitleId = settings.TitleId;
+            fl.Seek(npdm.Aci0Offset, SeekOrigin.Begin);
+            WriteStructureToStream(fl, aci0);
+
+            acid.TitleIdRangeMin = settings.TitleId;
+            acid.TitleIdRangeMax = settings.TitleId;
+            fl.Seek(npdm.AcidOffset, SeekOrigin.Begin);
+            WriteStructureToStream(fl, acid);
+        }
+
         if (settings.NoSelfSignNcaSignature2 == 0 || !string.IsNullOrEmpty(settings.NcaSignatureModulus))
         {
             fl.Seek(npdm.AcidOffset + 0x100, SeekOrigin.Begin);
@@ -77,6 +89,20 @@ public static class NpdmProcessor
         {
             Marshal.Copy(buf, 0, ptr, size);
             return Marshal.PtrToStructure<T>(ptr);
+        }
+        finally { Marshal.FreeHGlobal(ptr); }
+    }
+
+    private static void WriteStructureToStream<T>(Stream stream, T value) where T : struct
+    {
+        int size = Marshal.SizeOf<T>();
+        nint ptr = Marshal.AllocHGlobal(size);
+        try
+        {
+            Marshal.StructureToPtr(value, ptr, false);
+            byte[] buf = new byte[size];
+            Marshal.Copy(ptr, buf, 0, size);
+            stream.Write(buf, 0, size);
         }
         finally { Marshal.FreeHGlobal(ptr); }
     }
