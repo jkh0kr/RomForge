@@ -221,7 +221,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
     public async Task RepackDirectAsync(string inputPath, string outputCci, KeyStore keyStore, Action<long, long>? reporter = null, CancellationToken ct = default)
     {
-        log("메모리 기반 리팩 시작...", LogLevel.Highlight);
+        log("스트리밍 기반 리팩 시작...", LogLevel.Highlight);
 
         await using var source = await OpenSourceAsync(inputPath, keyStore, ct);
 
