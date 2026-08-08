@@ -16,7 +16,7 @@ Switch 게임 파일을 관리하고 언팩/리팩하는 탭입니다. 여러 �
     - 각 타이틀의 **한글패치** 칸을 클릭하거나 드래그하면 한글패치를 지정할 수 있습니다. **폴더** 또는 **압축파일(zip/7z)** 로 지정 가능합니다.
 - 오른쪽 버튼 — **파일 추가**, **폴더 추가**, **한글패치 일괄 지정**(폴더 또는 압축파일에서 title ID 기준으로 자동 매칭), **선택 삭제**, **전체 삭제**, **도움말**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/switch-repack-1.png) -->
+<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/80a68d22-b1c6-4c58-a0be-f380f92cbb1c" />
 
 ### 설정 탭
 
@@ -26,7 +26,7 @@ Switch 게임 파일을 관리하고 언팩/리팩하는 탭입니다. 여러 �
 - **멀티롬 인덱스** — 하나의 NSP 안에 여러 게임이 들어 있는 경우, 인덱스를 지정한 뒤 리팩하면 해당 인덱스의 게임만 별도 NSP로 만들 수 있습니다.
 - **강제 언어 설정 / 강제 언어 취소** — 강제 언어 설정을 적용하면 선택한 언어만 남기고 나머지는 전부 비활성화됩니다.
 
-<!-- TODO: 스크린샷 추가 (docs/assets/switch-repack-2.png) -->
+<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/0d7181ba-f9c2-4f7c-97b8-212f2fc00e0f" />
 
 ### 공통
 

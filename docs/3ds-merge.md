@@ -14,7 +14,7 @@
 - **롬 정보** — 롬파일을 지정하면 아이콘, 타이틀명, 배급사, 제품 코드, 지역, 암호화 여부가 자동으로 표시됩니다.
 - **진행률** — 진행률, 속도, 경과 시간
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-repack-1.png) -->
+<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/ab268743-8f3d-4326-b7f6-6e7daa08feed" />
 
 ---
 
@@ -30,7 +30,7 @@
 
 결과 파일은 롬파일이 있는 폴더 하위의 `output` 폴더에 생성됩니다.
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-repack-case1.png) -->
+<img width="850" height="664" alt="1786012000" src="https://github.com/user-attachments/assets/a4f17aca-8571-46ce-8287-a4183395234f" />
 
 ### 케이스 2) LayeredFS 방식 (대부분의 한글패치)
 
@@ -40,6 +40,8 @@ LayeredFS는 폴더 방식으로, 실행 중에 실시간으로 게임 파일을
 
 보통 압축파일 형태로 배포되며, 내부에 `exefs`, `romfs` 폴더가 보이고 루트에 `code.ips` 파일이 있을 수 있습니다.
 
+<img width="849" height="572" alt="1786012005" src="https://github.com/user-attachments/assets/a09ab86c-a6cc-4200-9df2-8d66dc221153" />
+
 !!! tip "code.ips는 자동 처리됩니다"
     `code.ips`가 보인다고 [패치] - [일반] 탭에서 `exefs/code.bin`을 따로 패치할 필요는 없습니다. [3DS - 리팩] 탭에서 리팩하면 자동으로 패치가 적용됩니다.
 
@@ -47,7 +49,7 @@ LayeredFS는 폴더 방식으로, 실행 중에 실시간으로 게임 파일을
 
 작업 폴더에 CCI 파일로 결과물이 생성됩니다.
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-repack-case2.png) -->
+<img width="850" height="664" alt="1786012008" src="https://github.com/user-attachments/assets/4aae5253-0205-44e2-aa95-501da0bdea3b" />
 
 ### 케이스 3) 내부 파일 단위 xdelta (기타 케이스)
 
@@ -63,7 +65,7 @@ romfs\CULDCEPT.DAT.xdelta
 
 정상적으로 처리되면 로그에 `romfs 패치 적용 완료: 1개 파일`처럼 표시됩니다.
 
-<!-- TODO: 스크린샷 추가 (docs/assets/3ds-repack-case3.png) -->
+<img width="850" height="664" alt="1786012011" src="https://github.com/user-attachments/assets/3ff8af8e-05db-437b-bfd8-fb5007b07686" />
 
 ---
 

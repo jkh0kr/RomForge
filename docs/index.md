@@ -7,7 +7,7 @@
 - Nintendo Switch (NSW)
 - Nintendo 3DS
 - Wii U
-- PSP / PBP
+- PSP
 - CHD 포맷
 - 패치(Patch) 적용
 

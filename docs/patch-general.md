@@ -17,7 +17,7 @@
 8. **패치 취소** — 진행 중인 패치를 취소하고, 만들어지던 파일은 삭제합니다
 9. **로그**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/patch-general-1.png) -->
+<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/53773d73-5b46-4765-83be-7e2ad69ad260" />
 
 ---
 
@@ -38,11 +38,12 @@
 
 ## 추천 사용 방법
 
-1. 원본 파일과 패치 파일을 함께 선택한 뒤, 1번 또는 2번 위치에 드래그 앤 드롭합니다.
-2. "패치 후 자동 압축" 옵션을 체크합니다.
-3. **패치 시작**을 누릅니다.
+1. 원본 파일과 패치 파일을 함께 선택한 뒤, 1번 또는 2번 위치에 드래그 앤 드롭합니다.   
+   (원본 파일이 압축(zip, rar, 7z) 파일 인 경우 자동으로 압축 해제 후 패치를 진행합니다.)
+3. "패치 후 자동 압축" 옵션을 체크합니다.
+4. **패치 시작**을 누릅니다.
 
-<!-- TODO: 스크린샷 추가 (docs/assets/patch-general-2.png, patch-general-3.png) -->
+<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/4e56dae1-80b3-4486-b239-29048a5607b0" />
 
 ---
 
@@ -56,4 +57,4 @@
 - **GCM / Wii / WBFS** → **RVZ**
 - **이외 기타** → **ZIP**
 
-<!-- TODO: 스크린샷 추가 (docs/assets/patch-general-4.png) -->
+<img width="800" height="50" alt="{37E82D57-1F15-4248-BDA0-4BEFB4135E5C}" src="https://github.com/user-attachments/assets/87f61d72-418a-4126-b231-7f1459d60433" />
