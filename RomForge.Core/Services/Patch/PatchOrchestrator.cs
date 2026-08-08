@@ -21,7 +21,7 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
         _outputCcdPath = null;
         _copiedTrackPaths = [];
 
-        bool isZipTarget = detected.Format is not (RomFormat.Bin or RomFormat.Iso or RomFormat.Gcm or RomFormat.Wii or RomFormat.Wbfs or RomFormat.Ccd);
+        bool isZipTarget = detected.Format is not (RomFormat.Bin or RomFormat.Iso or RomFormat.Gcm or RomFormat.Wii or RomFormat.Wbfs or RomFormat.Ccd or RomFormat.Cci or RomFormat.Cia);
 
         await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct);
 

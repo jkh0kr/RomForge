@@ -1,4 +1,5 @@
-﻿using CD.Core.Services.Readers;
+﻿using _3DS.Core.Services;
+using CD.Core.Services.Readers;
 using CD.Core.Services.Writers;
 using CHD.Core.Services;
 using Common;
@@ -83,6 +84,26 @@ public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<Prog
 
                     if (!chdResult.Success)
                         throw new Exception($"CHD 변환 실패: {chdResult.Message}");
+
+                    File.Delete(outputPath);
+
+                    break;
+                }
+            case RomFormat.Cci:
+                {
+                    progress.Report(new ProgressInfo { Label = "ZCCI 압축 중...", Percent = 0 });
+
+                    await Z3dsArchiveService.CompressAsync(outputPath, AppConfig.Instance.Azahar.CompressLevel, progress, log, ct);
+
+                    File.Delete(outputPath);
+
+                    break;
+                }
+            case RomFormat.Cia:
+                {
+                    progress.Report(new ProgressInfo { Label = "ZCCI 압축 중...", Percent = 0 });
+
+                    await Z3dsArchiveService.CompressFromCiaAsync(outputPath, AppConfig.Instance.Azahar.CompressLevel, progress, log, ct);
 
                     File.Delete(outputPath);
 
