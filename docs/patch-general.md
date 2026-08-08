@@ -1,4 +1,3 @@
-
 # 패치 - 일반
 
 일반적인 한글 패치를 진행하는 탭입니다.
@@ -18,7 +17,7 @@
 8. **패치 취소** — 진행 중인 패치를 취소하고, 만들어지던 파일은 삭제합니다
 9. **로그**
 
-<img width="850" height="682" alt="1783764352" src="https://github.com/user-attachments/assets/8b6b8f60-936a-443e-92a3-7af458ff53c0" />
+<!-- TODO: 스크린샷 추가 (docs/assets/patch-general-1.png) -->
 
 ---
 
@@ -43,7 +42,7 @@
 2. "패치 후 자동 압축" 옵션을 체크합니다.
 3. **패치 시작**을 누릅니다.
 
-<img width="850" height="682" alt="1783764352" src="https://github.com/user-attachments/assets/8b6b8f60-936a-443e-92a3-7af458ff53c0" />
+<!-- TODO: 스크린샷 추가 (docs/assets/patch-general-2.png, patch-general-3.png) -->
 
 ---
 
@@ -53,9 +52,8 @@
 
 패치가 끝난 뒤 자동으로 압축을 진행합니다.
 
-- chdman 계열(BIN/ISO 등) → **CHD**
-- 돌핀(GameCube/Wii) 계열 → **RVZ**
-- 그 외 파일 → **ZIP**
+- **BIN / ISO** → **CHD**
+- **GCM / Wii / WBFS** → **RVZ**
+- **이외 기타** → **ZIP**
 
-<img width="850" height="110" alt="1783766950" src="https://github.com/user-attachments/assets/3bf82449-8928-4b75-a602-f988a3835f0a" />
-
+<!-- TODO: 스크린샷 추가 (docs/assets/patch-general-4.png) -->
