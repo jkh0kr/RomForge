@@ -22,6 +22,7 @@ public static class UniversalPatcher
         {
             case PatchFormat.Xdelta: await Task.Run(() => Xdelta3.ApplyPatch(sourcePath, patchPath, outputPath, progress, ct), ct); break;
             case PatchFormat.Ips: await Ips.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct); break;
+            case PatchFormat.Ips32: await Ips32.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct); break;
             case PatchFormat.Bps: await Bps.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct); break;
             case PatchFormat.Ups: await Ups.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct); break;
             case PatchFormat.Ppf: await Ppf.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct); break;
@@ -38,6 +39,7 @@ public static class UniversalPatcher
         {
             PatchFormat.Xdelta => await Task.Run(() => Xdelta3.ApplyPatch(sourceData, patchData, progress, ct), ct),
             PatchFormat.Ips => await Ips.ApplyPatchAsync(sourceData, patchData, progress, ct),
+            PatchFormat.Ips32 => await Ips32.ApplyPatchAsync(sourceData, patchData, progress, ct),
             PatchFormat.Bps => await Bps.ApplyPatchAsync(sourceData, patchData, progress, ct),
             PatchFormat.Ups => await Ups.ApplyPatchAsync(sourceData, patchData, progress, ct),
             PatchFormat.Ppf => await Ppf.ApplyPatchAsync(sourceData, patchData, progress, ct),
@@ -67,6 +69,9 @@ public static class UniversalPatcher
 
         if (data.Length >= 3 && data[0] == 0xD6 && data[1] == 0xC3 && data[2] == 0xC4)
             return PatchFormat.Xdelta;
+
+        if (data.Length >= 5 && data[0] == 'I' && data[1] == 'P' && data[2] == 'S' && data[3] == '3' && data[4] == '2')
+            return PatchFormat.Ips32;
 
         if (data.Length >= 5 && data[0] == 'P' && data[1] == 'A' && data[2] == 'T' && data[3] == 'C' && data[4] == 'H')
             return PatchFormat.Ips;

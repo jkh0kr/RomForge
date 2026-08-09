@@ -105,13 +105,11 @@ public partial class SwitchTitleListControl : UserControl
     private void BulkPatchMenu_FromFolder_Click(object sender, RoutedEventArgs e)
     {
         var targets = GetBulkPatchTargets();
-
-        if (targets == null)
-            return;
+        if (targets == null) return;
 
         var dlg = new System.Windows.Forms.FolderBrowserDialog
         {
-            Description = "한글패치 루트 폴더 선택 (titleId 이름의 하위 폴더 또는 titleId.zip/titleId.7z 파일을 자동 매칭합니다)",
+            Description = "한글패치 루트 폴더 선택 (titleId 이름의 폴더 또는 titleId.zip/titleId.7z 파일을 자동 매칭합니다)",
             UseDescriptionForTitle = true
         };
 
@@ -131,8 +129,17 @@ public partial class SwitchTitleListControl : UserControl
                 continue;
             }
 
-            string[] strings = [".zip", ".7z"];
-            string? archiveCandidate = strings
+            string? recursiveMatch = PatchFolderResolver.FindSubDir(dlg.SelectedPath, file.TitleID!);
+
+            if (recursiveMatch != null)
+            {
+                file.PatchPath = recursiveMatch;
+                matched++;
+                continue;
+            }
+
+            string[] exts = [".zip", ".7z"]; 
+            string? archiveCandidate = exts
                 .Select(ext => Path.Combine(dlg.SelectedPath, file.TitleID! + ext))
                 .FirstOrDefault(File.Exists);
 

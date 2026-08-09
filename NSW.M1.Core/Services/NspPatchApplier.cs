@@ -1,5 +1,6 @@
 ﻿using Common;
 using NSW.M1.Core.Models;
+using Patch.Core;
 using Patch.Core.Formats;
 using Patch.Core.Services;
 using Path = System.IO.Path;
@@ -8,6 +9,8 @@ namespace NSW.M1.Core.Services;
 
 public static class NspPatchApplier
 {
+    private static readonly string[] PatchMarkerExtensions = [".xdelta", ".xdelta3", ".ips"];
+
     public static void ApplyPatch(string patchPath, UnpackResult unpackResult, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
     {
         string exefsDir = unpackResult.ExefsDirs.GetValueOrDefault((byte)0, string.Empty);
@@ -21,6 +24,7 @@ public static class NspPatchApplier
             matchedCount += ApplyArchiveSubDir(archive, "exefs", exefsDir, progress, log, "한글패치 ExeFS");
             matchedCount += ApplyArchiveSubDir(archive, "romfs", romfsDir, progress, log, "한글패치 RomFS");
             matchedCount += ApplyArchiveXdelta(archive, exefsDir, romfsDir, progress, log);
+            matchedCount += ApplyArchiveExefsPatches(archive, exefsDir, progress, log);
         }
         else
         {
@@ -84,6 +88,8 @@ public static class NspPatchApplier
                             log($"  ⚠️ xdelta 대상 원본 파일을 찾을 수 없음: {targetFileName}", LogLevel.Info);
                     }
                 }
+
+                matchedCount += ApplyFolderExefsPatches(patchPath, exefsDir, progress, log);
             }
         }
 
@@ -168,7 +174,7 @@ public static class NspPatchApplier
 
             string rel = key[prefix.Length..];
 
-            if (rel.Length == 0 || rel.EndsWith(".xdelta", StringComparison.OrdinalIgnoreCase))
+            if (rel.Length == 0 || PatchMarkerExtensions.Any(ext => rel.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
             var entry = archive.FindEntry(key);
@@ -334,9 +340,82 @@ public static class NspPatchApplier
         {
             log($"  ❌ {prefix} 패치 실패 ({shownName}): {ex.Message}", LogLevel.Error);
 
-            if (File.Exists(tempOutPath)) 
+            if (File.Exists(tempOutPath))
                 File.Delete(tempOutPath);
         }
+    }
+
+    public static int ApplyFolderExefsPatches(string patchPath, string exefsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    {
+        var ipsFiles = Directory.EnumerateFiles(patchPath, "*.ips", SearchOption.AllDirectories).ToList();
+
+        if (ipsFiles.Count == 0)
+            return 0;
+
+        var items = ipsFiles.Select(f => (BuildId: Path.GetFileNameWithoutExtension(f), ReadIps: (Func<byte[]>)(() => File.ReadAllBytes(f))));
+
+        return ApplyExefsPatchesCore(items, exefsDir, progress, log);
+    }
+
+    private static int ApplyArchiveExefsPatches(IArchivePatchSource archive, string exefsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    {
+        var ipsKeys = archive.EntryPaths.Where(k => k.EndsWith(".ips", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        if (ipsKeys.Count == 0)
+            return 0;
+
+        var items = ipsKeys.Select(k => (BuildId: Path.GetFileNameWithoutExtension(k), ReadIps: (Func<byte[]>)(() =>
+        {
+            var entry = archive.FindEntry(k)!;
+            using var src = entry.Open();
+            using var ms = new MemoryStream();
+            src.CopyTo(ms);
+            return ms.ToArray();
+        })));
+
+        return ApplyExefsPatchesCore(items, exefsDir, progress, log);
+    }
+
+    private static int ApplyExefsPatchesCore(IEnumerable<(string BuildId, Func<byte[]> ReadIps)> ipsItems, string exefsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    {
+        var buildIdMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var nsoPath in Directory.EnumerateFiles(exefsDir))
+        {
+            if (Path.GetFileName(nsoPath).Equals("main.npdm", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            byte[] data = File.ReadAllBytes(nsoPath);
+
+            if (!NsoTool.IsNso(data))
+                continue;
+
+            buildIdMap[NsoTool.GetBuildIdHex(data)] = nsoPath;
+        }
+
+        int count = 0;
+
+        foreach (var (buildId, readIps) in ipsItems)
+        {
+            if (!buildIdMap.TryGetValue(buildId, out var targetNso))
+            {
+                log($"  ⚠️ exefs_patches 대상 NSO를 찾을 수 없음 (build id 불일치): {buildId}", LogLevel.Info);
+                continue;
+            }
+
+            progress.Report((-1, $"exefs_patches 적용 중... ({Path.GetFileName(targetNso)})"));
+
+            byte[] nso = File.ReadAllBytes(targetNso);
+            byte[] plain = NsoTool.IsCompressed(nso) ? NsoTool.DecompressToPlain(nso) : nso;
+
+            byte[] patched = UniversalPatcher.ApplyPatchAsync(plain, readIps()).GetAwaiter().GetResult();
+
+            File.WriteAllBytes(targetNso, patched);
+            log($"  exefs_patches 적용 완료: {Path.GetFileName(targetNso)} ⬅️ {buildId}", LogLevel.Ok);
+            count++;
+        }
+
+        return count;
     }
 
     public static int MergeDirectory(string srcDir, string dstDir, Action<string, LogLevel>? log = null)
@@ -347,7 +426,7 @@ public static class NspPatchApplier
 
         foreach (var file in Directory.EnumerateFiles(srcDir, "*", SearchOption.AllDirectories))
         {
-            if (file.EndsWith(".xdelta", StringComparison.OrdinalIgnoreCase))
+            if (PatchMarkerExtensions.Any(ext => file.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
             string rel = Path.GetRelativePath(srcDir, file);

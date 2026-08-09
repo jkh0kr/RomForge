@@ -35,6 +35,28 @@ public static class PatchFolderResolver
         return null;
     }
 
+    public static string? FindAncestorSubDir(string? startPath, string folderName, int maxLevelsUp = 8)
+    {
+        if (string.IsNullOrEmpty(startPath))
+            return null;
+
+        var dir = Directory.Exists(startPath)
+            ? new DirectoryInfo(startPath)
+            : new DirectoryInfo(startPath).Parent;
+
+        for (int i = 0; i < maxLevelsUp && dir != null; i++)
+        {
+            string candidate = Path.Combine(dir.FullName, folderName);
+
+            if (Directory.Exists(candidate))
+                return candidate;
+
+            dir = dir.Parent;
+        }
+
+        return null;
+    }
+
     public static string? FindPatchRoot(string? patchRoot, params string[] anchorNames)
     {
         if (string.IsNullOrEmpty(patchRoot) || !Directory.Exists(patchRoot))
