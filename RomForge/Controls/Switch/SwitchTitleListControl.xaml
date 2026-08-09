@@ -121,7 +121,7 @@
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="한글패치" Width="60">
+                            <GridViewColumn Header="한글패치" Width="80">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Width="32" Height="32" CornerRadius="4" Background="#3A3A40" BorderBrush="#5A5A62" BorderThickness="1"

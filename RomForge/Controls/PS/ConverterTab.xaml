@@ -221,9 +221,16 @@
                                 </TextBlock>
                             </Border>
                             <Border Background="#1A9E2469" BorderBrush="#559E2469" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="4,0">
-                                <TextBlock Text="CHD" Foreground="#FF73C9" FontWeight="Bold" FontSize="11" VerticalAlignment="Center">
+                                <TextBlock Text="ZSO" Foreground="#FF73C9" FontWeight="Bold" FontSize="11" VerticalAlignment="Center">
                                     <TextBlock.Effect>
                                         <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#FF73C9" Opacity="0.4"/>
+                                    </TextBlock.Effect>
+                                </TextBlock>
+                            </Border>
+                            <Border Background="#1A1B8A5A" BorderBrush="#551B8A5A" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="4,0">
+                                <TextBlock Text="CHD" Foreground="#54FFB5" FontWeight="Bold" FontSize="11" VerticalAlignment="Center">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect BlurRadius="4" ShadowDepth="0" Color="#54FFB5" Opacity="0.4"/>
                                     </TextBlock.Effect>
                                 </TextBlock>
                             </Border>
