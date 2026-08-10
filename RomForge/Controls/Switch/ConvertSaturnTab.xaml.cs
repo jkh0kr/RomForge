@@ -29,7 +29,8 @@ namespace RomForge.Controls.Switch
 
             var files = (string[])e.Data.GetData(DataFormats.FileDrop);
 
-            if (files != null && files.Length > 0 && files[0].EndsWith(".cue", StringComparison.OrdinalIgnoreCase))
+            if (files != null && files.Length > 0 &&
+                (files[0].EndsWith(".cue", StringComparison.OrdinalIgnoreCase) || files[0].EndsWith(".chd", StringComparison.OrdinalIgnoreCase)))
                 ViewModel.CuePath = files[0];
         }
 

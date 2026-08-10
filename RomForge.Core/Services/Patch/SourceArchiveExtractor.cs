@@ -1,6 +1,8 @@
 ﻿using CHD.Core.Services;
 using Common;
+using Patch.Core.Services;
 using RomForge.Core.Models.Patch;
+using SevenZip;
 using SharpCompress.Archives;
 using System.IO;
 
@@ -44,8 +46,8 @@ public static class SourceArchiveExtractor
     public static Task<ArchiveExtractResult> AnalyzeAndExtractAsync(string archivePath, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct) =>
         Task.Run(() =>
         {
-            using var archive = ArchiveFactory.OpenArchive(archivePath);
-            var entries = archive.Entries.Where(e => !e.IsDirectory && e.Key is not null).ToList();
+            using var session = OpenSession(archivePath);
+            var entries = session.Entries.Where(e => !e.IsDirectory).ToList();
 
             if (entries.Count == 0)
                 throw new InvalidOperationException("압축 파일에 항목이 없습니다.");
@@ -54,13 +56,13 @@ public static class SourceArchiveExtractor
                 string.Equals(Path.GetExtension(e.Key), ".cue", StringComparison.OrdinalIgnoreCase)).ToList();
 
             if (cueEntries.Count == 1)
-                return ResolveCue(cueEntries[0], entries, extractDir, progress, ct);
+                return ResolveCue(session, cueEntries[0], entries, extractDir, progress, ct);
 
             if (cueEntries.Count > 1)
             {
                 return new ArchiveExtractResult
                 {
-                    Candidates = [.. cueEntries.Select(e => new ArchiveCandidate(e.Key!, e.Size))]
+                    Candidates = [.. cueEntries.Select(e => new ArchiveCandidate(e.Key, e.Size))]
                 };
             }
 
@@ -83,59 +85,62 @@ public static class SourceArchiveExtractor
             {
                 return new ArchiveExtractResult
                 {
-                    Candidates = [.. candidates.Select(e => new ArchiveCandidate(e.Key!, e.Size))]
+                    Candidates = [.. candidates.Select(e => new ArchiveCandidate(e.Key, e.Size))]
                 };
             }
 
-            var extracted = ExtractEntries(candidates, extractDir, progress, ct);
+            var extracted = ExtractEntries(session, candidates, extractDir, progress, ct);
 
-            return new ArchiveExtractResult { ResolvedPath = extracted[candidates[0].Key!] };
+            return new ArchiveExtractResult { ResolvedPath = extracted[candidates[0].Key] };
         }, ct);
 
     public static Task<string> ExtractCandidateAsync(string archivePath, string extractDir, string entryKey, IProgress<ProgressInfo> progress, CancellationToken ct) =>
         Task.Run(() =>
         {
-            using var archive = ArchiveFactory.OpenArchive(archivePath);
-            var entries = archive.Entries.Where(e => !e.IsDirectory && e.Key is not null).ToList();
-            var entry = entries.FirstOrDefault(e => string.Equals(e.Key, entryKey, StringComparison.Ordinal)) ?? throw new InvalidOperationException("선택한 파일을 압축 안에서 찾을 수 없습니다.");
+            using var session = OpenSession(archivePath);
+            var entries = session.Entries.Where(e => !e.IsDirectory).ToList();
+            var entry = entries.FirstOrDefault(e => string.Equals(e.Key, entryKey, StringComparison.Ordinal));
+
+            if (entry.Key is null)
+                throw new InvalidOperationException("선택한 파일을 압축 안에서 찾을 수 없습니다.");
 
             if (string.Equals(Path.GetExtension(entry.Key), ".cue", StringComparison.OrdinalIgnoreCase))
             {
-                var cueResult = ResolveCue(entry, entries, extractDir, progress, ct);
+                var cueResult = ResolveCue(session, entry, entries, extractDir, progress, ct);
 
                 return cueResult.ResolvedPath!;
             }
 
-            var extracted = ExtractEntries([entry], extractDir, progress, ct);
+            var extracted = ExtractEntries(session, [entry], extractDir, progress, ct);
 
-            return extracted[entry.Key!];
+            return extracted[entry.Key];
         }, ct);
 
-    private static ArchiveExtractResult ResolveCue(IArchiveEntry cueEntry, List<IArchiveEntry> entries, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct)
+    private static ArchiveExtractResult ResolveCue(IArchiveSession session, ArchiveEntryInfo cueEntry, List<ArchiveEntryInfo> entries, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct)
     {
-        var cueExtracted = ExtractEntries([cueEntry], extractDir, progress, ct);
-        string cuePath = cueExtracted[cueEntry.Key!];
+        var cueExtracted = ExtractEntries(session, [cueEntry], extractDir, progress, ct);
+        string cuePath = cueExtracted[cueEntry.Key];
         var referencedBins = ConversionSource.ParseBinsFromCue(cuePath);
-        string cueDir = GetEntryDirectory(cueEntry.Key!);
-        var binEntries = new List<IArchiveEntry>();
+        string cueDir = GetEntryDirectory(cueEntry.Key);
+        var binEntries = new List<ArchiveEntryInfo>();
 
         foreach (var bin in referencedBins)
         {
             string binFileName = Path.GetFileName(bin);
             var match = entries.FirstOrDefault(e =>
-                GetEntryDirectory(e.Key!) == cueDir &&
+                GetEntryDirectory(e.Key) == cueDir &&
                 string.Equals(Path.GetFileName(e.Key), binFileName, StringComparison.OrdinalIgnoreCase));
 
-            if (match is not null)
+            if (match.Key is not null)
                 binEntries.Add(match);
         }
 
         if (binEntries.Count == 0)
             throw new InvalidOperationException("CUE 파일이 참조하는 BIN 파일을 압축 안에서 찾을 수 없습니다.");
 
-        var binExtracted = ExtractEntries(binEntries, extractDir, progress, ct);
+        var binExtracted = ExtractEntries(session, binEntries, extractDir, progress, ct);
 
-        return new ArchiveExtractResult { ResolvedPath = binExtracted[binEntries[0].Key!] };
+        return new ArchiveExtractResult { ResolvedPath = binExtracted[binEntries[0].Key] };
     }
 
     private static string GetEntryDirectory(string key)
@@ -146,48 +151,165 @@ public static class SourceArchiveExtractor
         return lastSlash >= 0 ? normalized[..lastSlash] : string.Empty;
     }
 
-    private static Dictionary<string, string> ExtractEntries(List<IArchiveEntry> entries, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct)
+    private static Dictionary<string, string> ExtractEntries(IArchiveSession session, List<ArchiveEntryInfo> entries, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct) =>
+        session.Extract([.. entries.Select(e => e.Key)], extractDir, progress, ct);
+
+    private static IArchiveSession OpenSession(string archivePath) =>
+        string.Equals(Path.GetExtension(archivePath), ".7z", StringComparison.OrdinalIgnoreCase)
+            ? new NativeSevenZipSession(archivePath)
+            : new SharpCompressSession(archivePath);
+
+    private readonly record struct ArchiveEntryInfo(string Key, long Size, bool IsDirectory);
+
+    private interface IArchiveSession : IDisposable
     {
-        long totalBytes = entries.Sum(e => e.Size);
-        long writtenTotal = 0;
-        var reporter = new ProgressReporter("원본 압축 해제 중...", string.Empty, totalBytes, progress);
-        var report = reporter.CreateAction();
-        var result = new Dictionary<string, string>();
-        byte[] buffer = new byte[81920];
+        IReadOnlyList<ArchiveEntryInfo> Entries { get; }
 
-        foreach (var entry in entries)
+        Dictionary<string, string> Extract(List<string> keys, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct);
+    }
+
+    private sealed class SharpCompressSession : IArchiveSession
+    {
+        private readonly IArchive _archive;
+        private readonly Dictionary<string, IArchiveEntry> _byKey;
+
+        public IReadOnlyList<ArchiveEntryInfo> Entries { get; }
+
+        public SharpCompressSession(string archivePath)
         {
-            ct.ThrowIfCancellationRequested();
+            _archive = ArchiveFactory.OpenArchive(archivePath);
+            _byKey = new Dictionary<string, IArchiveEntry>(StringComparer.Ordinal);
 
-            string relativePath = entry.Key!.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
-            string destPath = Path.Combine(extractDir, relativePath);
-            string? destDir = Path.GetDirectoryName(destPath);
+            var entries = new List<ArchiveEntryInfo>();
 
-            if (!string.IsNullOrEmpty(destDir))
-                Directory.CreateDirectory(destDir);
-
-            using (var entryStream = entry.OpenEntryStream())
-            using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write))
+            foreach (var entry in _archive.Entries)
             {
-                int bytesRead;
+                if (entry.Key is null)
+                    continue;
 
-                while ((bytesRead = entryStream.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    ct.ThrowIfCancellationRequested();
-
-                    destStream.Write(buffer, 0, bytesRead);
-                    writtenTotal += bytesRead;
-
-                    if (totalBytes > 0)
-                        report(writtenTotal, totalBytes);
-                }
+                _byKey[entry.Key] = entry;
+                entries.Add(new ArchiveEntryInfo(entry.Key, entry.Size, entry.IsDirectory));
             }
 
-            result[entry.Key!] = destPath;
+            Entries = entries;
         }
 
-        reporter.ForceReport();
+        public Dictionary<string, string> Extract(List<string> keys, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct)
+        {
+            long totalBytes = keys.Sum(k => _byKey[k].Size);
+            long writtenTotal = 0;
+            var reporter = new ProgressReporter("원본 압축 해제 중...", string.Empty, totalBytes, progress);
+            var report = reporter.CreateAction();
+            var result = new Dictionary<string, string>();
+            byte[] buffer = new byte[81920];
 
-        return result;
+            foreach (var key in keys)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var entry = _byKey[key];
+                string relativePath = key.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+                string destPath = Path.Combine(extractDir, relativePath);
+                string? destDir = Path.GetDirectoryName(destPath);
+
+                if (!string.IsNullOrEmpty(destDir))
+                    Directory.CreateDirectory(destDir);
+
+                using (var entryStream = entry.OpenEntryStream())
+                using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write))
+                {
+                    int bytesRead;
+
+                    while ((bytesRead = entryStream.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        ct.ThrowIfCancellationRequested();
+
+                        destStream.Write(buffer, 0, bytesRead);
+                        writtenTotal += bytesRead;
+
+                        if (totalBytes > 0)
+                            report(writtenTotal, totalBytes);
+                    }
+                }
+
+                result[key] = destPath;
+            }
+
+            reporter.ForceReport();
+
+            return result;
+        }
+
+        public void Dispose() => _archive.Dispose();
+    }
+
+    private sealed class NativeSevenZipSession : IArchiveSession
+    {
+        private readonly SevenZipExtractor _extractor;
+        private readonly Dictionary<string, ArchiveFileInfo> _byKey;
+
+        public IReadOnlyList<ArchiveEntryInfo> Entries { get; }
+
+        public NativeSevenZipSession(string archivePath)
+        {
+            NativeSevenZip.EnsureInitialized();
+
+            _extractor = new SevenZipExtractor(archivePath);
+            _byKey = new Dictionary<string, ArchiveFileInfo>(StringComparer.Ordinal);
+
+            var entries = new List<ArchiveEntryInfo>();
+
+            foreach (var info in _extractor.ArchiveFileData)
+            {
+                string key = info.FileName.Replace('\\', '/');
+
+                _byKey[key] = info;
+                entries.Add(new ArchiveEntryInfo(key, (long)info.Size, info.IsDirectory));
+            }
+
+            Entries = entries;
+        }
+
+        public Dictionary<string, string> Extract(List<string> keys, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct)
+        {
+            long totalBytes = keys.Sum(k => (long)_byKey[k].Size);
+            var reporter = new ProgressReporter("원본 압축 해제 중...", string.Empty, totalBytes, progress);
+
+            void OnExtracting(object? sender, ProgressEventArgs e)
+            {
+                ct.ThrowIfCancellationRequested();                
+
+                reporter.ReportPercent(e.PercentDone / 100.0);
+            }
+
+            _extractor.Extracting += OnExtracting;
+
+            try
+            {
+                int[] indexes = [.. keys.Select(k => (int)_byKey[k].Index)];
+
+                _extractor.ExtractFiles(extractDir, indexes);
+            }
+            finally
+            {
+                _extractor.Extracting -= OnExtracting;
+            }
+
+            ct.ThrowIfCancellationRequested();
+            reporter.ForceReport();
+
+            var result = new Dictionary<string, string>();
+
+            foreach (var key in keys)
+            {
+                string relativePath = key.Replace('/', Path.DirectorySeparatorChar);
+
+                result[key] = Path.Combine(extractDir, relativePath);
+            }
+
+            return result;
+        }
+
+        public void Dispose() => _extractor.Dispose();
     }
 }

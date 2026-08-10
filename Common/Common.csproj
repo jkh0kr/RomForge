@@ -14,4 +14,15 @@
     <NoWarn>1701;1702;CS8600;CS8604</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Squid-Box.SevenZipSharp.Lite" Version="1.6.2.24" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="7z.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     <ExcludeFromSingleFile>false</ExcludeFromSingleFile>    
+</None>
+  </ItemGroup>
+
 </Project>

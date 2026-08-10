@@ -32,6 +32,7 @@ namespace RomForge.ViewModels.Switch
             ["60%", "80%", "100%", "120%"];
 
         private string _cuePath = string.Empty;
+        private string _resolvedCuePath = string.Empty;
         private string _nspPath = string.Empty;
         private string _workPath = string.Empty;
         private string _coverImagePath = string.Empty;
@@ -146,8 +147,53 @@ namespace RomForge.ViewModels.Switch
 
         private void BrowseCue()
         {
-            var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "CUE 파일|*.cue" };
+            var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "CUE/CHD 파일|*.cue;*.chd" };
             if (dlg.ShowDialog() == true) CuePath = dlg.FileName;
+        }
+
+        /// <summary>
+        /// 입력 경로가 CHD면 chdman으로 CUE/BIN을 추출해 그 CUE 경로를 반환한다.
+        /// 이미 CUE면 그대로 반환한다. 추출 결과는 임시 폴더에 캐시되어 재추출을 피한다.
+        /// </summary>
+        private static async Task<string> ResolveCuePathAsync(string inputPath, CancellationToken ct = default)
+        {
+            if (string.IsNullOrEmpty(inputPath) || !File.Exists(inputPath))
+                return inputPath;
+
+            if (!string.Equals(Path.GetExtension(inputPath), ".chd", StringComparison.OrdinalIgnoreCase))
+                return inputPath;
+
+            string fullPath = Path.GetFullPath(inputPath);
+            string hash = Convert.ToHexString(System.Security.Cryptography.MD5.HashData(Encoding.UTF8.GetBytes(fullPath)))[..8];
+            string extractDir = Path.Combine(Path.GetTempPath(), "RomForge_ChdExtract", hash);
+            Directory.CreateDirectory(extractDir);
+
+            string cuePath = Path.Combine(extractDir, Path.GetFileNameWithoutExtension(inputPath) + ".cue");
+
+            if (File.Exists(cuePath))
+                return cuePath;
+
+            using var chdman = new CHD.Core.Services.ChdmanService();
+            bool ok = await chdman.ExtractCdAsync(inputPath, cuePath, null, ct);
+
+            if (!ok || !File.Exists(cuePath))
+                throw new InvalidOperationException("CHD 파일을 CUE/BIN으로 추출하지 못했습니다.");
+
+            return cuePath;
+        }
+
+        private static void CleanupChdExtractCache(string resolvedCuePath, string originalInputPath)
+        {
+            if (string.IsNullOrEmpty(resolvedCuePath) || string.Equals(resolvedCuePath, originalInputPath, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            try
+            {
+                string? dir = Path.GetDirectoryName(resolvedCuePath);
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                    Directory.Delete(dir, true);
+            }
+            catch { }
         }
 
         private void BrowseNsp()
@@ -164,59 +210,77 @@ namespace RomForge.ViewModels.Switch
                 WorkPath = dlg.FolderName;
         }
 
-        private async Task ParseSaturnDataAsync(string cuePath)
+        /// <summary>
+        /// CD 타입 CHD는 프레임(섹터+서브코드) 단위로 저장되며, 한 프레임은 2352(섹터 데이터) + 96(서브코드) = 2448바이트다.
+        /// 트랙1 섹터0은 항상 hunk 0의 맨 앞 2352바이트와 정확히 일치하므로(chdman 추출 로직과 동일),
+        /// 통째로 풀지 않고 hunk 0만 읽어서 헤더(0x90바이트 이내)를 즉시 확인할 수 있다.
+        /// </summary>
+        private static byte[]? TryReadChdFirstSectorHeader(string chdPath)
         {
-            if (string.IsNullOrEmpty(cuePath) || !File.Exists(cuePath))
+            try
+            {
+                using var wrapper = new CHD.Core.Interop.LibChdrWrapper();
+                var result = wrapper.Open(chdPath);
+
+                if (result != CHD.Core.Interop.Enums.ChdrError.CHDERR_NONE || !wrapper.Header.HasValue)
+                    return null;
+
+                var hunk = wrapper.ReadHunk(0);
+                return hunk.Length >= 0x90 ? hunk : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private async Task ParseSaturnDataAsync(string inputPath)
+        {
+            if (string.IsNullOrEmpty(inputPath) || !File.Exists(inputPath))
                 return;
 
             try
             {
-                string binPath = string.Empty;
-                var lines = await File.ReadAllLinesAsync(cuePath);
+                byte[] header;
 
-                foreach (var line in lines)
+                if (string.Equals(Path.GetExtension(inputPath), ".chd", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (line.StartsWith("FILE", StringComparison.OrdinalIgnoreCase))
+                    header = await Task.Run(() => TryReadChdFirstSectorHeader(inputPath))
+                        ?? throw new InvalidOperationException("CHD 헤더를 읽을 수 없습니다.");
+                }
+                else
+                {
+                    string cuePath = inputPath;
+                    string binPath = string.Empty;
+                    var lines = await File.ReadAllLinesAsync(cuePath);
+
+                    foreach (var line in lines)
                     {
-                        var parts = line.Split('"');
-                        if (parts.Length > 1)
+                        if (line.StartsWith("FILE", StringComparison.OrdinalIgnoreCase))
                         {
-                            binPath = Path.Combine(Path.GetDirectoryName(cuePath)!, parts[1]);
-                            break;
+                            var parts = line.Split('"');
+                            if (parts.Length > 1)
+                            {
+                                binPath = Path.Combine(Path.GetDirectoryName(cuePath)!, parts[1]);
+                                break;
+                            }
                         }
                     }
+                    if (string.IsNullOrEmpty(binPath) || !File.Exists(binPath))
+                        return;
+
+                    using var fs = new FileStream(binPath, FileMode.Open, FileAccess.Read);
+
+                    if (fs.Length < 0x90)
+                        return;
+
+                    header = new byte[0x90];
+                    await fs.ReadAsync(header.AsMemory(0, 0x90));
                 }
-                if (string.IsNullOrEmpty(binPath) || !File.Exists(binPath))
-                    return;
 
-                using var fs = new FileStream(binPath, FileMode.Open, FileAccess.Read);
-
-                if (fs.Length < 0x90)
-                    return;
-
-                fs.Seek(0x30, SeekOrigin.Begin);
-
-                var buffer = new byte[10];
-
-                await fs.ReadAsync(buffer.AsMemory(0, 10));
-
-                GameId = Encoding.ASCII.GetString(buffer).Trim();
-
-                buffer = new byte[5];
-
-                fs.Seek(0x3B, SeekOrigin.Begin);
-
-                await fs.ReadAsync(buffer.AsMemory(0, 5));
-
-                GameVersion = Encoding.ASCII.GetString(buffer);
-
-                fs.Seek(0x70, SeekOrigin.Begin);
-
-                var titleBuffer = new byte[32];
-
-                await fs.ReadAsync(titleBuffer.AsMemory(0, 32));
-
-                GameTitle = Encoding.ASCII.GetString(titleBuffer).Trim();
+                GameId = Encoding.ASCII.GetString(header, 0x30, 10).Trim();
+                GameVersion = Encoding.ASCII.GetString(header, 0x3B, 5);
+                GameTitle = Encoding.ASCII.GetString(header, 0x70, 32).Trim();
 
                 await TryAutoDownloadCoverAsync(GameId);
             }
@@ -315,8 +379,14 @@ namespace RomForge.ViewModels.Switch
                 }
                 File.Delete(existingCuePath);
 
-                var newBins = CHD.Core.Services.ConversionSource.ParseBinsFromCue(CuePath);
-                if (newBins.Count == 0) throw new FileNotFoundException("입력한 CUE에서 참조하는 BIN 파일을 찾을 수 없습니다.");
+                if (string.Equals(Path.GetExtension(CuePath), ".chd", StringComparison.OrdinalIgnoreCase))
+                    Log("CHD를 CUE/BIN으로 추출 중...");
+
+                string resolvedCuePath = await ResolveCuePathAsync(CuePath, token);
+                _resolvedCuePath = resolvedCuePath;
+
+                var newBins = CHD.Core.Services.ConversionSource.ParseBinsFromCue(resolvedCuePath);
+                if (newBins.Count == 0) throw new FileNotFoundException("입력한 CUE/CHD에서 참조하는 BIN 파일을 찾을 수 없습니다.");
 
                 foreach (var bin in newBins)
                 {
@@ -336,7 +406,7 @@ namespace RomForge.ViewModels.Switch
 
                 ini.SetValue("Sound", "Volume", volumeMultiplier.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
                 await ini.SaveAsync();
-                await CopyFileAsync(CuePath, Path.Combine(targetDir, cueFileName), token);
+                await CopyFileAsync(resolvedCuePath, Path.Combine(targetDir, cueFileName), token);
 
                 uint crc = Crc32Helper.ComputeFile(newBins[0]);
                 string titleIdStr = Crc32Helper.BuildTitleId(crc);
@@ -371,6 +441,7 @@ namespace RomForge.ViewModels.Switch
             finally
             {
                 Directory.Delete(unpackedDir, true);
+                CleanupChdExtractCache(_resolvedCuePath, CuePath);
             }
         }
 
@@ -419,7 +490,14 @@ namespace RomForge.ViewModels.Switch
 
             if (string.IsNullOrEmpty(CuePath) || !File.Exists(CuePath))
             {
-                errorMsg = "CUE 파일을 선택하세요.";
+                errorMsg = "CUE/CHD 파일을 선택하세요.";
+                return false;
+            }
+
+            string ext = Path.GetExtension(CuePath).ToLowerInvariant();
+            if (ext != ".cue" && ext != ".chd")
+            {
+                errorMsg = "CUE 또는 CHD 파일만 지원합니다.";
                 return false;
             }
 
