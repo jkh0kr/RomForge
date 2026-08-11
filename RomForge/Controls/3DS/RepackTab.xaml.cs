@@ -28,6 +28,7 @@ namespace RomForge.Controls._3DS
 
                     if (string.Equals(extension, ".3ds", StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(extension, ".cci", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(extension, ".zcci", StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(extension, ".cia", StringComparison.OrdinalIgnoreCase))
                     {
                         ViewModel.InputPath = filePath;

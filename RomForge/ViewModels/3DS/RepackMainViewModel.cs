@@ -1,7 +1,9 @@
 ﻿using _3DS.Core.Crypto;
+using _3DS.Core.Services;
 using Common;
 using Common.WPF.ViewModels;
 using NSW.Core.Enums;
+using NSW.Utils;
 using NSW.WPF.Services;
 using NSW.WPF.UI;
 using RomForge.Core.Models;
@@ -32,6 +34,31 @@ public class RepackMainViewModel : ToolTabViewModel
     private string _progressTime = "00:00 경과";
     private string _progressSpeed = string.Empty;
     private TitleViewModel? _romInfo;
+
+    private RepackOutputFormat _outputFormat = RepackOutputFormat.Cci;
+    public RepackOutputFormat OutputFormat
+    {
+        get => _outputFormat;
+        set { _outputFormat = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsCciFormat)); OnPropertyChanged(nameof(IsZcciFormat)); OnPropertyChanged(nameof(IsCiaFormat)); }
+    }
+
+    public bool IsCciFormat
+    {
+        get => OutputFormat == RepackOutputFormat.Cci;
+        set { if (value) OutputFormat = RepackOutputFormat.Cci; }
+    }
+
+    public bool IsZcciFormat
+    {
+        get => OutputFormat == RepackOutputFormat.Zcci;
+        set { if (value) OutputFormat = RepackOutputFormat.Zcci; }
+    }
+
+    public bool IsCiaFormat
+    {
+        get => OutputFormat == RepackOutputFormat.Cia;
+        set { if (value) OutputFormat = RepackOutputFormat.Cia; }
+    }
 
     public string InputPath
     {
@@ -183,12 +210,12 @@ public class RepackMainViewModel : ToolTabViewModel
                 Directory.Delete(unpackedPath, true);
         }
 
-        string outputCci = Utils.GetUniqueFilePath(Path.Combine(OutputPath, Path.GetFileNameWithoutExtension(InputPath) + "_Repack.cci"));
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var progress = BuildProgressReporter();
         string inputFileName = Path.GetFileNameWithoutExtension(InputPath);
         var reporter = new ProgressReporter(inputFileName, string.Empty, 0, progress);
         bool isCompleted = false;
+        string? producedPath = null;
 
         try
         {
@@ -200,10 +227,16 @@ public class RepackMainViewModel : ToolTabViewModel
                     await _service.UnpackAsync(InputPath, unpackedPath, keyStore, reporter.CreateAction(), ct);
                     break;
                 case BuildMode.RebuildOnly:
-                    await _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, reporter.CreateAction(), ct);
+                    producedPath = await _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, _romInfo?.Publisher, reporter.CreateAction(), ct);
+                    producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
                     break;
                 case BuildMode.FullProcess:
-                    await _service.RepackDirectAsync(InputPath, outputCci, keyStore, reporter.CreateAction(), ct);
+                    string safeName = NspNameBuilder.SafeFileName(_romInfo?.ShortDescription ?? string.Empty);
+                    string fileName = string.IsNullOrEmpty(safeName) ? inputFileName : safeName;
+                    string outputCci = Utils.GetUniqueFilePath(Path.Combine(OutputPath, fileName + "_Repack.cci"));
+
+                    await _service.RepackDirectAsync(InputPath, outputCci, keyStore, _romInfo?.ShortDescription, _romInfo?.Publisher, reporter.CreateAction(), ct);
+                    producedPath = await FinalizeOutputFormatAsync(outputCci, keyStore, progress, ct);
                     break;
             }
 
@@ -225,13 +258,40 @@ public class RepackMainViewModel : ToolTabViewModel
         {
             if (!isCompleted)
             {
-                if (mode != BuildMode.UnpackOnly && File.Exists(outputCci))
-                    try { File.Delete(outputCci); } catch { }
+                if (mode != BuildMode.UnpackOnly && producedPath != null && File.Exists(producedPath))
+                    try { File.Delete(producedPath); } catch { }
 
                 if (mode == BuildMode.UnpackOnly && Directory.Exists(unpackedPath))
                     try { Directory.Delete(unpackedPath, true); } catch { }
             }
         }
+    }
+
+    private async Task<string> FinalizeOutputFormatAsync(string cciPath, KeyStore keyStore, Progress<ProgressInfo> progress, CancellationToken ct)
+    {
+        switch (OutputFormat)
+        {
+            case RepackOutputFormat.Zcci:
+                await Z3dsArchiveService.CompressAsync(cciPath, 18, progress, Log, ct);
+                TryDeleteFile(cciPath);
+
+                return Path.ChangeExtension(cciPath, ".zcci");
+
+            case RepackOutputFormat.Cia:
+                await new CciToCiaConverter(keyStore).ConvertAsync(cciPath, progress, Log, ct);
+                TryDeleteFile(cciPath);
+
+                return Path.ChangeExtension(cciPath, ".cia");
+
+            default:
+                return cciPath;
+        }
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        if (File.Exists(path))
+            try { File.Delete(path); } catch { }
     }
 
     private Progress<ProgressInfo> BuildProgressReporter() =>
@@ -305,7 +365,7 @@ public class RepackMainViewModel : ToolTabViewModel
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
             Title = "원본 파일 선택",
-            Filter = "3DS ROM 파일|*.cci;*.3ds;*.cia"
+            Filter = "3DS ROM 파일|*.cci;*.zcci;*.3ds;*.cia"
         };
 
         if (dlg.ShowDialog() == true)

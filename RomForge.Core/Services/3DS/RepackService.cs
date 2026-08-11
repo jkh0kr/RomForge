@@ -1,4 +1,5 @@
 ﻿using _3DS.Core.Crypto;
+using _3DS.Core.FileSystem;
 using _3DS.Core.Interfaces;
 using _3DS.Core.Models;
 using _3DS.Core.Services;
@@ -83,7 +84,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             reporter(totalBytes, totalBytes);
     }
 
-    public async Task RepackAsync(string unpackedPath, string outputPath, string? gameName, Action<long, long>? reporter = null, CancellationToken ct = default)
+    public async Task<string> RepackAsync(string unpackedPath, string outputPath, string? gameName, string? publisher = null, Action<long, long>? reporter = null, CancellationToken ct = default)
     {
         log("리팩 시작...", LogLevel.Highlight);
 
@@ -152,6 +153,13 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
             string exefsDir = Path.Combine(partDir, "exefs");
             var exefsFiles = Directory.Exists(exefsDir) ? ExeFsUnpacker.LoadFromDirectory(exefsDir) : [];
+
+            if (idx == 0 && ApplySmdhOverride(exefsFiles, gameName, publisher) is { } overriddenFiles)
+            {
+                exefsFiles = overriddenFiles;
+                log("게임명/배급사 정보를 변경했습니다.", LogLevel.Ok);
+            }
+
             byte[] exefsBlock = [];
 
             if (exefsFiles.Count > 0)
@@ -217,9 +225,11 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         }
 
         log($"출력: {outputCci}", LogLevel.Ok);
+
+        return outputCci;
     }
 
-    public async Task RepackDirectAsync(string inputPath, string outputCci, KeyStore keyStore, Action<long, long>? reporter = null, CancellationToken ct = default)
+    public async Task RepackDirectAsync(string inputPath, string outputCci, KeyStore keyStore, string? gameName = null, string? publisher = null, Action<long, long>? reporter = null, CancellationToken ct = default)
     {
         log("스트리밍 기반 리팩 시작...", LogLevel.Highlight);
 
@@ -250,9 +260,17 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
             if (unpack.ExeFs != null)
             {
+                IReadOnlyList<ExeFsFile> exefsSourceFiles = unpack.ExeFs.Files;
+
+                if (idx == 0 && ApplySmdhOverride(exefsSourceFiles, gameName, publisher) is { } overriddenFiles)
+                {
+                    exefsSourceFiles = overriddenFiles;
+                    log("게임명/배급사 정보를 변경했습니다.", LogLevel.Ok);
+                }
+
                 var exefsIndex = idx == 0 ? patchCtx.FindSubIndex("exefs") : null;
                 var rootIndex = idx == 0 ? patchCtx.RootIndex() : null;
-                var (data, patchedCount) = await ExeFsPacker.PackWithPatchAsync(unpack.ExeFs.Files, exefsIndex, unpack.ExHeader, rootIndex, log, ct);
+                var (data, patchedCount) = await ExeFsPacker.PackWithPatchAsync(exefsSourceFiles, exefsIndex, unpack.ExHeader, rootIndex, log, ct);
 
                 exefsBlock = data;
                 exefsPatchedCount += patchedCount;
@@ -287,6 +305,44 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         }
 
         log($"출력: {outputCci}", LogLevel.Ok);
+    }
+
+    private static List<ExeFsFile>? ApplySmdhOverride(IReadOnlyList<ExeFsFile> files, string? gameName, string? publisher)
+    {
+        if (string.IsNullOrEmpty(gameName) && string.IsNullOrEmpty(publisher))
+            return null;
+
+        int iconIndex = -1;
+
+        for (int i = 0; i < files.Count; i++)
+        {
+            if (files[i].Name == "icon")
+            {
+                iconIndex = i;
+
+                break;
+            }
+        }
+
+        if (iconIndex < 0)
+            return null;
+
+        byte[]? overridden = SmdhWriter.ApplyOverride(files[iconIndex].Data, gameName, publisher);
+
+        if (overridden == null)
+            return null;
+
+        var result = new List<ExeFsFile>(files);
+
+        result[iconIndex] = new ExeFsFile
+        {
+            Name = files[iconIndex].Name,
+            Data = overridden,
+            ExpectedHash = [],
+            HashValid = false,
+        };
+
+        return result;
     }
 
     private sealed class PatchSourceContext : IDisposable
@@ -493,7 +549,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         return ext switch
         {
             ".cia" => await new CiaReader(keyStore).OpenAsync(inputPath, (msg, level) => log(msg, level), ct),
-            ".cci" or ".3ds" => await CciSource.OpenAsync(inputPath, keyStore, (msg, level) => log(msg, level), ct),
+            ".cci" or ".zcci" or ".3ds"=> await CciSource.OpenAsync(inputPath, keyStore, (msg, level) => log(msg, level), ct),
             _ => throw new NotSupportedException($"지원하지 않는 파일 형식: {ext}")
         };
     }
