@@ -9,9 +9,11 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
 {
     private string? _outputCuePath;
     private string? _outputCcdPath;
+    private string? _outputGdiPath;
     private List<string> _copiedTrackPaths = [];
     private readonly BinTrackCopier _binTrackCopier = new(log);
     private readonly CcdCompanionCopier _ccdCompanionCopier = new(log);
+    private readonly GdiTrackCopier _gdiTrackCopier = new(log);
     private readonly ZipCompressor _zipCompressor = new(log, progress);
     private readonly CompressKnownConverter _compressKnownConverter = new(log, progress, dolphinCompressLevel);
 
@@ -19,9 +21,10 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
     {
         _outputCuePath = null;
         _outputCcdPath = null;
+        _outputGdiPath = null;
         _copiedTrackPaths = [];
 
-        bool isZipTarget = detected.Format is not (RomFormat.Bin or RomFormat.Iso or RomFormat.Gcm or RomFormat.Wii or RomFormat.Wbfs or RomFormat.Ccd or RomFormat.Cci or RomFormat.Cia);
+        bool isZipTarget = detected.Format is not (RomFormat.Bin or RomFormat.Iso or RomFormat.Gcm or RomFormat.Wii or RomFormat.Wbfs or RomFormat.Ccd or RomFormat.Cci or RomFormat.Cia or RomFormat.Gdi);
 
         await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct);
 
@@ -39,6 +42,11 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
             _outputCcdPath = _ccdCompanionCopier.CopyCcd(sourcePath, outputDir, outputPath);
             skipCompress = _outputCcdPath is null;
         }
+        else if (detected.Format == RomFormat.Gdi)
+        {
+            _outputGdiPath = _gdiTrackCopier.CopyGdiTracks(sourcePath, outputDir, outputPath, _copiedTrackPaths);
+            skipCompress = _outputGdiPath is null;
+        }
 
         if (!autoCompress || skipCompress)
             return;
@@ -49,7 +57,7 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
             await _zipCompressor.CompressFromFileAsync(sourcePath, outputPath, outputDir, ct);
         }
         else
-            await _compressKnownConverter.ConvertAsync(detected, outputPath, _outputCuePath, _copiedTrackPaths, _outputCcdPath, outputDir, ct);
+            await _compressKnownConverter.ConvertAsync(detected, outputPath, _outputCuePath, _copiedTrackPaths, _outputCcdPath, _outputGdiPath, outputDir, ct);
     }
 
     public void Cleanup(string outputPath)
@@ -64,6 +72,9 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
 
             if (_outputCcdPath is not null && File.Exists(_outputCcdPath))
                 File.Delete(_outputCcdPath);
+
+            if (_outputGdiPath is not null && File.Exists(_outputGdiPath))
+                File.Delete(_outputGdiPath);
 
             foreach (var trackPath in _copiedTrackPaths)
                 if (File.Exists(trackPath))

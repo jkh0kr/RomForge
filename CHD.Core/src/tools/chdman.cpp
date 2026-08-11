@@ -2700,7 +2700,7 @@ void do_extract_cd(parameters_map &params)
 
 	// GDIs will always output as split bin
 	bool is_splitbin = mode == MODE_GDI || params.find(OPTION_OUTPUT_SPLITBIN) != params.end();
-	if (!is_splitbin && cdrom->is_gdrom() && mode == MODE_CUEBIN)
+	if (!is_splitbin && mode == MODE_CUEBIN && (cdrom->is_gdrom() || toc.numtrks > 1))
 	{
 		// GD-ROM cue/bin is in Redump format which should always be split by tracks
 		util::stream_format(std::cout, "Warning: --%s is required for this specific combination of input disc type and output format, enabling automatically\n", OPTION_OUTPUT_SPLITBIN);

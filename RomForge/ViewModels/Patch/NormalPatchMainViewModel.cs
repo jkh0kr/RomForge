@@ -4,7 +4,6 @@ using NSW.WPF.Services;
 using RomForge.Core;
 using RomForge.Core.Models;
 using RomForge.Core.Models.Patch;
-using RomForge.Core.Services.Compression;
 using RomForge.Core.Services.Patch;
 using System.Diagnostics;
 using System.IO;
@@ -163,12 +162,16 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                 Log($"원본 압축 해제 완료: {Path.GetFileName(actualSourcePath)}", LogLevel.Ok);
             }
 
+            extractDir ??= Path.Combine(outputDir, "_src_" + Path.GetFileNameWithoutExtension(actualSourcePath));
+
+            var (resolvedSourcePath, detected) = await CompressedSourceDecompressor.ResolveAsync(actualSourcePath, extractDir, Log, BuildProgressReporter(), ct);
+
+            actualSourcePath = resolvedSourcePath;
+
             outputPath = Path.Combine(outputDir, Path.GetFileName(actualSourcePath));
             outputPath = Utils.GetUniqueFilePath(outputPath);
 
             Log($"패치 시작: {Path.GetFileName(actualSourcePath)}", LogLevel.Highlight);
-
-            var detected = FormatDetector.Detect(actualSourcePath);
 
             await orchestrator.PatchAsync(actualSourcePath, PatchPath, detected, outputDir, outputPath, ct);
 

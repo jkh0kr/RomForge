@@ -11,7 +11,7 @@ namespace RomForge.Core.Services.Patch;
 
 public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<ProgressInfo> progress, int dolphinCompressLevel)
 {
-    public async Task ConvertAsync(DetectResult detected, string outputPath, string? outputCuePath, List<string> copiedTrackPaths, string? outputCcdPath, string outputDir, CancellationToken ct)
+    public async Task ConvertAsync(DetectResult detected, string outputPath, string? outputCuePath, List<string> copiedTrackPaths, string? outputCcdPath, string? outputGdiPath, string outputDir, CancellationToken ct)
     {
         switch (detected.Format)
         {
@@ -64,6 +64,29 @@ public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<Prog
 
                     File.Delete(outputPath);
                     File.Delete(outputCuePath!);
+
+                    foreach (var trackPath in copiedTrackPaths)
+                        if (File.Exists(trackPath))
+                            File.Delete(trackPath);
+
+                    copiedTrackPaths.Clear();
+
+                    break;
+                }
+            case RomFormat.Gdi:
+                {
+                    progress.Report(new ProgressInfo { Label = "CHD 변환 중...", Percent = 0 });
+
+                    FileConverter converter = new(AppConfig.Instance.Chdman.Compression);
+                    converter.LogMessage += (_, e) => log(e.Message, e.Level);
+
+                    var chdResult = await converter.ConvertFileAsync(outputGdiPath!, progress, ct);
+
+                    if (!chdResult.Success)
+                        throw new Exception($"CHD 변환 실패: {chdResult.Message}");
+
+                    File.Delete(outputPath);
+                    File.Delete(outputGdiPath!);
 
                     foreach (var trackPath in copiedTrackPaths)
                         if (File.Exists(trackPath))
