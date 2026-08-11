@@ -96,16 +96,54 @@ public class ConversionSource
             if (string.IsNullOrWhiteSpace(line))
                 continue;
 
-            var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var tokens = SplitGdiLine(line);
 
-            if (tokens.Length >= 5)
+            if (tokens.Count >= 5)
             {
-                string fileName = tokens[4].Replace("\"", string.Empty);
+                string fileName = tokens[4].Trim('"');
                 files.Add(fileName);
             }
         }
 
         return files;
+    }
+
+    private static List<string> SplitGdiLine(string line)
+    {
+        var tokens = new List<string>();
+        int i = 0;
+
+        while (i < line.Length)
+        {
+            while (i < line.Length && char.IsWhiteSpace(line[i]))
+                i++;
+
+            if (i >= line.Length)
+                break;
+
+            if (line[i] == '"')
+            {
+                int end = line.IndexOf('"', i + 1);
+
+                if (end < 0)
+                    end = line.Length - 1;
+
+                tokens.Add(line.Substring(i, end - i + 1));
+
+                i = end + 1;
+            }
+            else
+            {
+                int start = i;
+
+                while (i < line.Length && !char.IsWhiteSpace(line[i]))
+                    i++;
+
+                tokens.Add(line[start..i]);
+            }
+        }
+
+        return tokens;
     }
 
     public string Validate()

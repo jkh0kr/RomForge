@@ -11,7 +11,8 @@ public class ChdInfoReader
     private const uint CDROM_OLD_METADATA = 0x43484344; // 'CHCD'
     private const uint CDROM_TRACK_METADATA = 0x43485452; // 'CHTR'
     private const uint CDROM_TRACK_METADATA2 = 0x43485432; // 'CHT2'
-    private const uint GDROM_TRACK_METADATA = 0x43484744; // 'CHGD'
+    private const uint GDROM_TRACK_METADATA = 0x43484754; // 'CHGT'
+    private const uint GDROM_OLD_METADATA = 0x43484744; // 'CHGD'
 
     private const uint DVD_METADATA = 0x44564420;
 
@@ -70,6 +71,16 @@ public class ChdInfoReader
             return;
         }
 
+        var gdromMetadata = wrapper.GetMetadata(GDROM_TRACK_METADATA, 0);
+        gdromMetadata ??= wrapper.GetMetadata(GDROM_OLD_METADATA, 0);
+
+        if (!string.IsNullOrEmpty(gdromMetadata))
+        {
+            ParseCdromMetadata(wrapper, info);
+            info.SourceType = ChdSourceType.GdRom;
+            return;
+        }
+
         var trackMetadata = wrapper.GetMetadata(CDROM_TRACK_METADATA2, 0);
 
         trackMetadata ??= wrapper.GetMetadata(CDROM_TRACK_METADATA, 0);
@@ -78,17 +89,16 @@ public class ChdInfoReader
         {
             ParseCdromMetadata(wrapper, info);
 
+            bool isSingleMode1 = info.TrackCount == 1
+                && info.Tracks.Length > 0
+                && info.Tracks[0].TrackType?.StartsWith("MODE1", StringComparison.OrdinalIgnoreCase) == true;
+
             if (info.TrackCount > 1)
                 info.SourceType = ChdSourceType.BinCue;
-            else
+            else if (isSingleMode1)
                 info.SourceType = ChdSourceType.ISO;
-        }
-        else
-        {
-            if (info.LogicalBytes > 700 * 1024 * 1024)
-                info.SourceType = ChdSourceType.HDD;
             else
-                info.SourceType = ChdSourceType.Unknown;
+                info.SourceType = ChdSourceType.BinCue;
         }
     }
 
@@ -102,6 +112,8 @@ public class ChdInfoReader
         {
             var metadata = wrapper.GetMetadata(CDROM_TRACK_METADATA2, trackIndex);
             metadata ??= wrapper.GetMetadata(CDROM_TRACK_METADATA, trackIndex);
+            metadata ??= wrapper.GetMetadata(GDROM_TRACK_METADATA, trackIndex);
+            metadata ??= wrapper.GetMetadata(GDROM_OLD_METADATA, trackIndex);
 
             if (string.IsNullOrEmpty(metadata))
                 break;

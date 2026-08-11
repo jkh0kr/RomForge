@@ -6,5 +6,6 @@ public enum ChdSourceType
     ISO,
     BinCue,
     HDD,
-    DVD
+    DVD,
+    GdRom
 }

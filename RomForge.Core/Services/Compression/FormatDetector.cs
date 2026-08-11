@@ -37,7 +37,10 @@ public static class FormatDetector
                 return Result(RomFormat.ZCci, ConvertDirection.Decompress, "cci");
 
             if (MatchMagic(header, "MComprHD"))
-                return Result(RomFormat.Chd, ConvertDirection.Decompress, "iso");
+            {
+                fs.Dispose();
+                return DetectChdResult(filePath);
+            }
 
             if (MatchBytes(header, 0, (byte)'R', (byte)'V', (byte)'Z', 0x01))
             {
@@ -91,6 +94,29 @@ public static class FormatDetector
         catch { }
 
         return new DetectResult { Format = RomFormat.Unknown, Direction = ConvertDirection.Unknown };
+    }
+
+    private static DetectResult DetectChdResult(string filePath)
+    {
+        try
+        {
+            var info = CHD.Core.Services.ChdInfoReader.ReadChdInfo(filePath);
+
+            var outExt = info.SourceType switch
+            {
+                CHD.Core.Models.Enums.ChdSourceType.GdRom => "gdi",
+                CHD.Core.Models.Enums.ChdSourceType.BinCue => "cue",
+                CHD.Core.Models.Enums.ChdSourceType.ISO => "iso",
+                CHD.Core.Models.Enums.ChdSourceType.DVD => "iso",
+                _ => "iso"
+            };
+
+            return Result(RomFormat.Chd, ConvertDirection.Decompress, outExt);
+        }
+        catch
+        {
+            return Result(RomFormat.Chd, ConvertDirection.Decompress, "iso");
+        }
     }
 
     private static DetectResult Result(RomFormat format, ConvertDirection dir, string outExt) => new()

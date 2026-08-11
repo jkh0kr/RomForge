@@ -74,9 +74,9 @@ public class CompressFileItem(string filePath) : FileItemBase(filePath)
                     .Where(l => !string.IsNullOrWhiteSpace(l))
                     .Select(l =>
                     {
-                        var parts = l.Trim().Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+                        var parts = SplitGdiLine(l.Trim());
 
-                        return parts.Length >= 5
+                        return parts.Count >= 5
                             ? parts[4].Trim('"')
                             : string.Empty;
                     })
@@ -92,4 +92,42 @@ public class CompressFileItem(string filePath) : FileItemBase(filePath)
     }
 
     protected override string FormatSize(long bytes) => PickPack.Disk.ETC.FileSize.FormatSize(bytes);
+
+    private static List<string> SplitGdiLine(string line)
+    {
+        var tokens = new List<string>();
+        int i = 0;
+
+        while (i < line.Length)
+        {
+            while (i < line.Length && char.IsWhiteSpace(line[i]))
+                i++;
+
+            if (i >= line.Length)
+                break;
+
+            if (line[i] == '"')
+            {
+                int end = line.IndexOf('"', i + 1);
+
+                if (end < 0)
+                    end = line.Length - 1;
+
+                tokens.Add(line.Substring(i, end - i + 1));
+
+                i = end + 1;
+            }
+            else
+            {
+                int start = i;
+
+                while (i < line.Length && !char.IsWhiteSpace(line[i]))
+                    i++;
+
+                tokens.Add(line[start..i]);
+            }
+        }
+
+        return tokens;
+    }
 }

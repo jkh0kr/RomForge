@@ -94,6 +94,47 @@ public class FileConverter : IDisposable
                     VerificationPerformed = true
                 };
             }
+            else if (info.SourceType == ChdSourceType.GdRom)
+            {
+                var gdiPath = Path.Combine(dir, name + ".gdi");
+                CurrentOutputPath = gdiPath;
+
+                Log("GDI 추출 중...");
+
+                bool extracted = await _chdman.ExtractCdAsync(chdPath, gdiPath, progress, cancellationToken);
+
+                if (!extracted)
+                    return ConversionResult.Fail("CHD 추출 실패");
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!File.Exists(gdiPath))
+                    return ConversionResult.Fail("GDI 파일 생성 실패");
+
+                var extractedTrackFiles = ConversionSource.ParseFilesFromGdi(gdiPath)
+                    .Select(f => Path.IsPathRooted(f) ? f : Path.Combine(dir, f))
+                    .ToList();
+
+                var missingTrackFile = extractedTrackFiles.FirstOrDefault(f => !File.Exists(f));
+
+                if (missingTrackFile != null)
+                    return ConversionResult.Fail($"트랙 파일 생성 실패: {Path.GetFileName(missingTrackFile)}");
+
+                Log($"GDI 추출 완료 ({extractedTrackFiles.Count}개 트랙 파일)", LogLevel.Ok);
+
+                CurrentOutputPath = null;
+
+                progress?.Report(new ProgressInfo { Label = "추출 완료", Percent = 100 });
+
+                return new ConversionResult
+                {
+                    Success = true,
+                    Message = $"추출 성공 (GDI, {extractedTrackFiles.Count}개 트랙 파일)",
+                    OutputFile = gdiPath,
+                    OutputFiles = [gdiPath, .. extractedTrackFiles],
+                    VerificationPerformed = false
+                };
+            }
             else
             {
                 var cuePath = Path.Combine(dir, name + ".cue");
@@ -363,22 +404,6 @@ public class FileConverter : IDisposable
         catch
         {
             return false;
-        }
-    }
-
-    private void CleanupExtractedFiles(string cuePath)
-    {
-        try
-        {
-            if (!File.Exists(cuePath))
-                return;
-
-            var bins = ConversionSource.ParseBinsFromCue(cuePath);
-            CleanupFiles([cuePath, .. bins]);
-        }
-        catch
-        {
-            CleanupFiles(cuePath);
         }
     }
 

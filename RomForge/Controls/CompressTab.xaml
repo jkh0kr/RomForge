@@ -183,7 +183,7 @@
                             <Run Text="  |  " Foreground="#555555"/>
                             <Run Text="CHD" Foreground="#FFFFFF" FontWeight="Bold"/>
                             <Run Text=" ➔ " Foreground="#00BCD4" FontWeight="Bold"/>
-                            <Run Text="ISO, CUE(BIN)" Foreground="#CCCCCC"/>
+                            <Run Text="ISO, CUE+BIN, GDI+BIN" Foreground="#CCCCCC"/>
                         </TextBlock>
 
                         <TextBlock Grid.Row="1" Grid.Column="2" Margin="0,0,0,4">

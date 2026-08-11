@@ -235,7 +235,7 @@ public sealed class ChdmanService : IDisposable
 
     public static long CalculateOriginalSize(ChdInfo info)
     {
-        if (info.SourceType is ChdSourceType.ISO or ChdSourceType.BinCue)
+        if (info.SourceType is ChdSourceType.ISO or ChdSourceType.BinCue or ChdSourceType.GdRom)
         {
             if (info.Tracks?.Length > 0)
             {
