@@ -153,13 +153,6 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
             string exefsDir = Path.Combine(partDir, "exefs");
             var exefsFiles = Directory.Exists(exefsDir) ? ExeFsUnpacker.LoadFromDirectory(exefsDir) : [];
-
-            if (idx == 0 && ApplySmdhOverride(exefsFiles, gameName, publisher) is { } overriddenFiles)
-            {
-                exefsFiles = overriddenFiles;
-                log("게임명/배급사 정보를 변경했습니다.", LogLevel.Ok);
-            }
-
             byte[] exefsBlock = [];
 
             if (exefsFiles.Count > 0)
@@ -171,6 +164,9 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
                 exefsBlock = data;
                 exefsPatchedCount += patchedCount;
             }
+
+            if (idx == 0 && exefsBlock.Length > 0 && (!string.IsNullOrEmpty(gameName) || !string.IsNullOrEmpty(publisher)))
+                ApplySmdhToMemory(exefsBlock, gameName, publisher, log);
 
             string romfsDir = Path.Combine(partDir, "romfs");
             RomFsUnpackResult? romfsResult = null;
@@ -262,12 +258,6 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             {
                 IReadOnlyList<ExeFsFile> exefsSourceFiles = unpack.ExeFs.Files;
 
-                if (idx == 0 && ApplySmdhOverride(exefsSourceFiles, gameName, publisher) is { } overriddenFiles)
-                {
-                    exefsSourceFiles = overriddenFiles;
-                    log("게임명/배급사 정보를 변경했습니다.", LogLevel.Ok);
-                }
-
                 var exefsIndex = idx == 0 ? patchCtx.FindSubIndex("exefs") : null;
                 var rootIndex = idx == 0 ? patchCtx.RootIndex() : null;
                 var (data, patchedCount) = await ExeFsPacker.PackWithPatchAsync(exefsSourceFiles, exefsIndex, unpack.ExHeader, rootIndex, log, ct);
@@ -275,6 +265,9 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
                 exefsBlock = data;
                 exefsPatchedCount += patchedCount;
             }
+
+            if (idx == 0 && exefsBlock.Length > 0 && (!string.IsNullOrEmpty(gameName) || !string.IsNullOrEmpty(publisher)))
+                ApplySmdhToMemory(exefsBlock, gameName, publisher, log);
 
             IRomFsFileSource? patchSource = null;
 
@@ -307,42 +300,25 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         log($"출력: {outputCci}", LogLevel.Ok);
     }
 
-    private static List<ExeFsFile>? ApplySmdhOverride(IReadOnlyList<ExeFsFile> files, string? gameName, string? publisher)
+    private static void ApplySmdhToMemory(byte[] exefsBlock, string? gameName, string? publisher, Action<string, LogLevel> log)
     {
-        if (string.IsNullOrEmpty(gameName) && string.IsNullOrEmpty(publisher))
-            return null;
-
-        int iconIndex = -1;
-
-        for (int i = 0; i < files.Count; i++)
+        const uint smdhMagic = 0x48444D53; // "SMDH"
+        for (int i = 0; i <= exefsBlock.Length - 4; i++)
         {
-            if (files[i].Name == "icon")
+            if (BitConverter.ToUInt32(exefsBlock, i) == smdhMagic)
             {
-                iconIndex = i;
+                byte[] iconData = new byte[0x36C0];
+                Array.Copy(exefsBlock, i, iconData, 0, 0x36C0);
 
-                break;
+                byte[]? overridden = SmdhWriter.ApplyOverride(iconData, gameName, publisher);
+                if (overridden != null)
+                {
+                    Array.Copy(overridden, 0, exefsBlock, i, 0x36C0);
+                    log("게임명/배급사 정보를 변경했습니다.", LogLevel.Ok);
+                    return;
+                }
             }
         }
-
-        if (iconIndex < 0)
-            return null;
-
-        byte[]? overridden = SmdhWriter.ApplyOverride(files[iconIndex].Data, gameName, publisher);
-
-        if (overridden == null)
-            return null;
-
-        var result = new List<ExeFsFile>(files);
-
-        result[iconIndex] = new ExeFsFile
-        {
-            Name = files[iconIndex].Name,
-            Data = overridden,
-            ExpectedHash = [],
-            HashValid = false,
-        };
-
-        return result;
     }
 
     private sealed class PatchSourceContext : IDisposable
