@@ -4,49 +4,61 @@ namespace Patch.Core.Services;
 
 public sealed class SevenZipArchivePatchSource : IArchivePatchSource
 {
-    private readonly SevenZipExtractor _extractor;
-    private readonly Dictionary<string, ArchiveFileInfo> _byPath;
+    private readonly string _tempDir;
+    private readonly Dictionary<string, string> _diskPaths = new(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyList<string> EntryPaths { get; }
 
-    public bool SupportsCheapRepeatedOpen => false;
+    public bool SupportsCheapRepeatedOpen => true;
 
     public SevenZipArchivePatchSource(string path)
     {
         NativeSevenZip.EnsureInitialized();
 
-        _extractor = new SevenZipExtractor(path);
-        _byPath = new Dictionary<string, ArchiveFileInfo>(StringComparer.OrdinalIgnoreCase);
+        _tempDir = Path.Combine(Path.GetDirectoryName(path)!, "romforge_7z_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_tempDir);
 
-        foreach (var info in _extractor.ArchiveFileData)
+        using (var extractor = new SevenZipExtractor(path))
         {
-            if (info.IsDirectory)
-                continue;
-
-            _byPath[info.FileName.Replace('\\', '/')] = info;
+            extractor.ExtractArchive(_tempDir);
         }
 
-        EntryPaths = [.. _byPath.Keys];
+        foreach (var filePath in Directory.GetFiles(_tempDir, "*", SearchOption.AllDirectories))
+        {
+            var relativePath = Path.GetRelativePath(_tempDir, filePath).Replace('\\', '/');
+            _diskPaths[relativePath] = filePath;
+        }
+
+        EntryPaths = [.. _diskPaths.Keys];
     }
 
-    public IArchivePatchEntry? FindEntry(string path) => _byPath.TryGetValue(path, out var info) ? new Entry(_extractor, info) : null;
-
-    public void Dispose() => _extractor.Dispose();
-
-    private sealed class Entry(SevenZipExtractor extractor, ArchiveFileInfo info) : IArchivePatchEntry
+    public IArchivePatchEntry? FindEntry(string path)
     {
-        public string FullPath => info.FileName.Replace('\\', '/');
+        if (!_diskPaths.TryGetValue(path, out var diskPath))
+            return null;
 
-        public long Length => (long)info.Size;
+        return new Entry(diskPath, path);
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(_tempDir))
+                Directory.Delete(_tempDir, recursive: true);
+        }
+        catch { }
+    }
+
+    private sealed class Entry(string diskPath, string fullPath) : IArchivePatchEntry
+    {
+        public string FullPath => fullPath;
+
+        public long Length => new FileInfo(diskPath).Length;
 
         public Stream Open()
         {
-            var stream = new MemoryStream();
-
-            extractor.ExtractFile(info.Index, stream);
-            stream.Position = 0;
-
-            return stream;
+            return new FileStream(diskPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
     }
 }
