@@ -302,7 +302,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
     private static void ApplySmdhToMemory(byte[] exefsBlock, string? gameName, string? publisher, Action<string, LogLevel> log)
     {
-        const uint smdhMagic = 0x48444D53; // "SMDH"
+        const uint smdhMagic = 0x48444D53;
         for (int i = 0; i <= exefsBlock.Length - 4; i++)
         {
             if (BitConverter.ToUInt32(exefsBlock, i) == smdhMagic)

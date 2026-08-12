@@ -15,7 +15,7 @@ namespace PSP.Core.Services;
 public class CsoService
 {
     private const uint HeaderSize = 0x18;
-    private const int IoBufferSize = 1 << 20; // 1 MiB - 스트림 버퍼링용
+    private const int IoBufferSize = 1 << 20;
 
     private readonly ChdmanService _chdman = new();
 

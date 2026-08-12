@@ -189,7 +189,6 @@ public class MdfMdsReader : IDiscImageReader
         return names.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    // 트랙 블록의 filename_offset(0x34)이 가리키는 위치: u32 실제문자열오프셋 + u8 포맷(0=8bit,1=16bit)
     private static string ReadFilenameBlock(byte[] mds, uint filenameBlockOffset)
     {
         if (filenameBlockOffset + 5 > mds.Length)
