@@ -224,10 +224,10 @@ public class RepackMainViewModel : ToolTabViewModel
             switch (mode)
             {
                 case BuildMode.UnpackOnly:
-                    await _service.UnpackAsync(InputPath, unpackedPath, keyStore, reporter.CreateAction(), ct);
+                    await Task.Run(() => _service.UnpackAsync(InputPath, unpackedPath, keyStore, reporter.CreateAction(), ct), ct);
                     break;
                 case BuildMode.RebuildOnly:
-                    producedPath = await _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, _romInfo?.Publisher, reporter.CreateAction(), ct);
+                    producedPath = await Task.Run(() => _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, _romInfo?.Publisher, reporter.CreateAction(), ct), ct);
                     producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
                     break;
                 case BuildMode.FullProcess:
@@ -235,7 +235,7 @@ public class RepackMainViewModel : ToolTabViewModel
                     string fileName = string.IsNullOrEmpty(safeName) ? inputFileName : safeName;
                     string outputCci = Utils.GetUniqueFilePath(Path.Combine(OutputPath, fileName + "_Repack.cci"));
 
-                    await _service.RepackDirectAsync(InputPath, outputCci, keyStore, _romInfo?.ShortDescription, _romInfo?.Publisher, reporter.CreateAction(), ct);
+                    await Task.Run(() => _service.RepackDirectAsync(InputPath, outputCci, keyStore, _romInfo?.ShortDescription, _romInfo?.Publisher, reporter.CreateAction(), ct), ct);
                     producedPath = await FinalizeOutputFormatAsync(outputCci, keyStore, progress, ct);
                     break;
             }

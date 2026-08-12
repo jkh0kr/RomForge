@@ -12,7 +12,7 @@ public static class WupPacker
     {
         Directory.CreateDirectory(outputFolder);
 
-        string scratchRoot = Path.Combine(Path.GetTempPath(), "romforge_pack_" + Guid.NewGuid().ToString("N"));
+        string scratchRoot = Path.Combine(outputFolder, "romforge_pack_" + Guid.NewGuid().ToString("N"));
         string prevTmpDir = Settings.TmpDir;
         Settings.TmpDir = Path.Combine(scratchRoot, "tmp");
 

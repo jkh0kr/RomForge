@@ -151,10 +151,6 @@ namespace RomForge.ViewModels.Switch
             if (dlg.ShowDialog() == true) CuePath = dlg.FileName;
         }
 
-        /// <summary>
-        /// 입력 경로가 CHD면 chdman으로 CUE/BIN을 추출해 그 CUE 경로를 반환한다.
-        /// 이미 CUE면 그대로 반환한다. 추출 결과는 임시 폴더에 캐시되어 재추출을 피한다.
-        /// </summary>
         private static async Task<string> ResolveCuePathAsync(string inputPath, CancellationToken ct = default)
         {
             if (string.IsNullOrEmpty(inputPath) || !File.Exists(inputPath))
@@ -210,11 +206,6 @@ namespace RomForge.ViewModels.Switch
                 WorkPath = dlg.FolderName;
         }
 
-        /// <summary>
-        /// CD 타입 CHD는 프레임(섹터+서브코드) 단위로 저장되며, 한 프레임은 2352(섹터 데이터) + 96(서브코드) = 2448바이트다.
-        /// 트랙1 섹터0은 항상 hunk 0의 맨 앞 2352바이트와 정확히 일치하므로(chdman 추출 로직과 동일),
-        /// 통째로 풀지 않고 hunk 0만 읽어서 헤더(0x90바이트 이내)를 즉시 확인할 수 있다.
-        /// </summary>
         private static byte[]? TryReadChdFirstSectorHeader(string chdPath)
         {
             try
