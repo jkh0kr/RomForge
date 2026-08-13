@@ -353,7 +353,7 @@ public static class NspPatchApplier
         if (ipsFiles.Count == 0)
             return 0;
 
-        var items = ipsFiles.Select(f => (BuildId: Path.GetFileNameWithoutExtension(f), ReadIps: (Func<byte[]>)(() => File.ReadAllBytes(f))));
+        var items = ipsFiles.Select(f => (Path.GetFileNameWithoutExtension(f).TrimEnd('0'), (Func<byte[]>)(() => File.ReadAllBytes(f))));
 
         return ApplyExefsPatchesCore(items, exefsDir, progress, log);
     }
@@ -365,7 +365,7 @@ public static class NspPatchApplier
         if (ipsKeys.Count == 0)
             return 0;
 
-        var items = ipsKeys.Select(k => (BuildId: Path.GetFileNameWithoutExtension(k), ReadIps: (Func<byte[]>)(() =>
+        var items = ipsKeys.Select(k => (Path.GetFileNameWithoutExtension(k).TrimEnd('0'), (Func<byte[]>)(() =>
         {
             var entry = archive.FindEntry(k)!;
             using var src = entry.Open();
@@ -407,19 +407,20 @@ public static class NspPatchApplier
             progress.Report((-1, $"exefs_patches 적용 중... ({Path.GetFileName(targetNso)})"));
 
             byte[] nso = File.ReadAllBytes(targetNso);
-            byte[] plain = NsoTool.IsCompressed(nso) ? NsoTool.DecompressToPlain(nso) : nso;
+            uint originalFlags = BitConverter.ToUInt32(nso, 0x0C);
+            bool wasCompressed = NsoTool.IsCompressed(nso);
+            byte[] plain = wasCompressed ? NsoTool.DecompressToPlain(nso) : nso;
             byte[] patched = UniversalPatcher.ApplyPatchAsync(plain, readIps()).GetAwaiter().GetResult();
-
+            //byte[] final = wasCompressed ? NsoTool.RecompressFromPlain(patched, originalFlags) : patched;
             NsoTool.UpdateHashes(patched);
             File.WriteAllBytes(targetNso, patched);
-            log($"  exefs_patches 적용 완료: {Path.GetFileName(targetNso)} ⬅️ {buildId}", LogLevel.Ok);
+
+            log($"  exefs_patches 적용 완료: {Path.GetFileName(targetNso)} ⬅️ {buildId} (재압축: {wasCompressed})", LogLevel.Ok);
             count++;
         }
 
         return count;
     }
-
-
 
     public static int MergeDirectory(string srcDir, string dstDir, Action<string, LogLevel>? log = null)
     {

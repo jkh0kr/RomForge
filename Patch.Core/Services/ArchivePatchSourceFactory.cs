@@ -23,10 +23,11 @@ public static class ArchivePatchSourceFactory
         return idx < 0 ? (path, "") : (path[..idx], path[(idx + ScopeSeparator.Length)..]);
     }
 
-    public static string CombineScope(string archivePath, string scope) =>
-        string.IsNullOrEmpty(scope) ? archivePath : $"{archivePath}{ScopeSeparator}{scope}";
+    public static string CombineScope(string archivePath, string scope) => string.IsNullOrEmpty(scope) ? archivePath : $"{archivePath}{ScopeSeparator}{scope}";
 
-    public static IArchivePatchSource Open(string path)
+    public static IArchivePatchSource Open(string path) => new NestedArchivePatchSource(OpenRaw(path));
+
+    internal static IArchivePatchSource OpenRaw(string path)
     {
         var (archivePath, scope) = SplitScope(path);
         string ext = Path.GetExtension(archivePath);

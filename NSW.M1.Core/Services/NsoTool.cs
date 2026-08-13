@@ -1,7 +1,7 @@
 ﻿using LibHac.Util;
 using System.Security.Cryptography;
 
-namespace Patch.Core.Services;
+namespace NSW.M1.Core.Services;
 
 public static class NsoTool
 {
@@ -19,7 +19,7 @@ public static class NsoTool
     public static bool IsNso(byte[] data) =>
         data.Length >= 4 && data[0] == 'N' && data[1] == 'S' && data[2] == 'O' && data[3] == '0';
 
-    public static string GetBuildIdHex(byte[] nso) => Convert.ToHexString(nso.AsSpan(0x40, 32));
+    public static string GetBuildIdHex(byte[] nso) => Convert.ToHexString(nso.AsSpan(0x40, 32)).TrimEnd('0');
 
     public static bool IsCompressed(byte[] nso)
     {
@@ -72,6 +72,54 @@ public static class NsoTool
         }
 
         BitConverter.GetBytes(newFlags).CopyTo(outNso, 0x0C);
+        return outNso;
+    }
+
+    public static byte[] RecompressFromPlain(byte[] plain, uint originalFlags)
+    {
+        var segData = new byte[3][];
+        var segCompressed = new byte[3][];
+
+        for (int i = 0; i < 3; i++)
+        {
+            var s = Segs[i];
+            int fileOff = BitConverter.ToInt32(plain, s.FileOffField);
+            int size = BitConverter.ToInt32(plain, s.SizeField);
+
+            byte[] raw = new byte[size];
+            Array.Copy(plain, fileOff, raw, 0, size);
+            segData[i] = raw;
+
+            bool wasCompressed = (originalFlags & (1u << s.CompBit)) != 0;
+            segCompressed[i] = wasCompressed ? Lz4.Compress(raw) : raw;
+        }
+
+        byte[] outNso = new byte[HeaderSize + segCompressed.Sum(s => s.Length)];
+        Array.Copy(plain, 0, outNso, 0, HeaderSize);
+
+        uint newFlags = originalFlags;
+        int cursor = HeaderSize;
+
+        for (int i = 0; i < 3; i++)
+        {
+            var s = Segs[i];
+            Array.Copy(segCompressed[i], 0, outNso, cursor, segCompressed[i].Length);
+
+            BitConverter.GetBytes(cursor).CopyTo(outNso, s.FileOffField);
+            BitConverter.GetBytes(segData[i].Length).CopyTo(outNso, s.SizeField);
+            BitConverter.GetBytes(segCompressed[i].Length).CopyTo(outNso, s.FileSizeField);
+
+            if ((originalFlags & (1u << s.HashBit)) != 0)
+                SHA256.HashData(segData[i]).CopyTo(outNso, s.HashOffset);
+
+            cursor += segCompressed[i].Length;
+        }
+
+        BitConverter.GetBytes(newFlags).CopyTo(outNso, 0x0C);
+
+        if (outNso.Length != cursor)
+            Array.Resize(ref outNso, cursor);
+
         return outNso;
     }
 
