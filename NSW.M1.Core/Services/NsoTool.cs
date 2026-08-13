@@ -11,9 +11,9 @@ public static class NsoTool
 
     private static readonly SegInfo[] Segs =
     [
-        new(0x10, 0x14, 0x18, 0x60, 0, 3, 0xA0), // Text
-        new(0x20, 0x24, 0x28, 0x64, 1, 4, 0xC0), // Ro
-        new(0x30, 0x34, 0x38, 0x68, 2, 5, 0xE0), // Data
+        new(0x10, 0x14, 0x18, 0x60, 0, 3, 0xA0),
+        new(0x20, 0x24, 0x28, 0x64, 1, 4, 0xC0),
+        new(0x30, 0x34, 0x38, 0x68, 2, 5, 0xE0),
     ];
 
     public static bool IsNso(byte[] data) =>
@@ -73,5 +73,37 @@ public static class NsoTool
 
         BitConverter.GetBytes(newFlags).CopyTo(outNso, 0x0C);
         return outNso;
+    }
+
+    public static void UpdateHashes(byte[] nsoData)
+    {
+        int textFileOff = BitConverter.ToInt32(nsoData, 0x10);
+        int textSize = BitConverter.ToInt32(nsoData, 0x60);
+
+        int rodataOff = BitConverter.ToInt32(nsoData, 0x20);
+        int rodataSize = BitConverter.ToInt32(nsoData, 0x64);
+
+        int dataOff = BitConverter.ToInt32(nsoData, 0x30);
+        int dataSize = BitConverter.ToInt32(nsoData, 0x68);
+
+        using var sha256 = SHA256.Create();
+
+        if (textSize > 0)
+        {
+            byte[] textHash = sha256.ComputeHash(nsoData, textFileOff, textSize);
+            Buffer.BlockCopy(textHash, 0, nsoData, 0xA0, 32);
+        }
+
+        if (rodataSize > 0)
+        {
+            byte[] rodataHash = sha256.ComputeHash(nsoData, rodataOff, rodataSize);
+            Buffer.BlockCopy(rodataHash, 0, nsoData, 0xC0, 32);
+        }
+
+        if (dataSize > 0)
+        {
+            byte[] dataHash = sha256.ComputeHash(nsoData, dataOff, dataSize);
+            Buffer.BlockCopy(dataHash, 0, nsoData, 0xE0, 32);
+        }
     }
 }

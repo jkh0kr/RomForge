@@ -3,6 +3,7 @@ using NSW.M1.Core.Models;
 using Patch.Core;
 using Patch.Core.Formats;
 using Patch.Core.Services;
+using System.Security.Cryptography;
 using Path = System.IO.Path;
 
 namespace NSW.M1.Core.Services;
@@ -378,46 +379,47 @@ public static class NspPatchApplier
 
     private static int ApplyExefsPatchesCore(IEnumerable<(string BuildId, Func<byte[]> ReadIps)> ipsItems, string exefsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
     {
-        //var buildIdMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var buildIdMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        //foreach (var nsoPath in Directory.EnumerateFiles(exefsDir))
-        //{
-        //    if (Path.GetFileName(nsoPath).Equals("main.npdm", StringComparison.OrdinalIgnoreCase))
-        //        continue;
+        foreach (var nsoPath in Directory.EnumerateFiles(exefsDir))
+        {
+            if (Path.GetFileName(nsoPath).Equals("main.npdm", StringComparison.OrdinalIgnoreCase))
+                continue;
 
-        //    byte[] data = File.ReadAllBytes(nsoPath);
+            byte[] data = File.ReadAllBytes(nsoPath);
 
-        //    if (!NsoTool.IsNso(data))
-        //        continue;
+            if (!NsoTool.IsNso(data))
+                continue;
 
-        //    buildIdMap[NsoTool.GetBuildIdHex(data)] = nsoPath;
-        //}
+            buildIdMap[NsoTool.GetBuildIdHex(data)] = nsoPath;
+        }
 
-        //int count = 0;
+        int count = 0;
 
-        //foreach (var (buildId, readIps) in ipsItems)
-        //{
-        //    if (!buildIdMap.TryGetValue(buildId, out var targetNso))
-        //    {
-        //        log($"  ⚠️ exefs_patches 대상 NSO를 찾을 수 없음 (build id 불일치): {buildId}", LogLevel.Info);
-        //        continue;
-        //    }
+        foreach (var (buildId, readIps) in ipsItems)
+        {
+            if (!buildIdMap.TryGetValue(buildId, out var targetNso))
+            {
+                log($"  ⚠️ exefs_patches 대상 NSO를 찾을 수 없음 (build id 불일치): {buildId}", LogLevel.Info);
+                continue;
+            }
 
-        //    progress.Report((-1, $"exefs_patches 적용 중... ({Path.GetFileName(targetNso)})"));
+            progress.Report((-1, $"exefs_patches 적용 중... ({Path.GetFileName(targetNso)})"));
 
-        //    byte[] nso = File.ReadAllBytes(targetNso);
-        //    byte[] plain = NsoTool.IsCompressed(nso) ? NsoTool.DecompressToPlain(nso) : nso;
+            byte[] nso = File.ReadAllBytes(targetNso);
+            byte[] plain = NsoTool.IsCompressed(nso) ? NsoTool.DecompressToPlain(nso) : nso;
+            byte[] patched = UniversalPatcher.ApplyPatchAsync(plain, readIps()).GetAwaiter().GetResult();
 
-        //    byte[] patched = UniversalPatcher.ApplyPatchAsync(plain, readIps()).GetAwaiter().GetResult();
+            NsoTool.UpdateHashes(patched);
+            File.WriteAllBytes(targetNso, patched);
+            log($"  exefs_patches 적용 완료: {Path.GetFileName(targetNso)} ⬅️ {buildId}", LogLevel.Ok);
+            count++;
+        }
 
-        //    File.WriteAllBytes(targetNso, patched);
-        //    log($"  exefs_patches 적용 완료: {Path.GetFileName(targetNso)} ⬅️ {buildId}", LogLevel.Ok);
-        //    count++;
-        //}
-
-        //return count;
-        return 0;
+        return count;
     }
+
+
 
     public static int MergeDirectory(string srcDir, string dstDir, Action<string, LogLevel>? log = null)
     {

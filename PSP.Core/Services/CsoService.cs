@@ -24,7 +24,6 @@ public class CsoService
         {
             var bin = new BufferedStream(input, IoBufferSize);
             var bout = new BufferedStream(output, IoBufferSize);
-
             var magic = new byte[4];
 
             bin.ReadExactly(magic);
@@ -61,7 +60,6 @@ public class CsoService
             var blockBuf = new byte[header.BlockSize * 2];
             var reporter = progress is null ? null : new ProgressReporter("압축 해제 중...", string.Empty, blockCount, progress);
             var report = reporter?.CreateAction();
-
             using var deflateDecompressor = new DeflateDecompressor();
             long expectedPos = -1;
 
@@ -153,7 +151,6 @@ public class CsoService
             int blockCount = (int)Math.Ceiling((double)totalSize / blockSize);
             byte indexShift = ComputeIndexShift(totalSize + (blockCount + 1) * 4L, blockCount);
             uint align = 1u << indexShift;
-
             var headerBytes = new byte[HeaderSize - 4];
 
             BinaryPrimitives.WriteUInt32LittleEndian(headerBytes.AsSpan()[0..], HeaderSize);
@@ -175,7 +172,6 @@ public class CsoService
             var compBuf = new byte[blockSize * 2];
             var reporter = progress is null ? null : new ProgressReporter("압축 중...", string.Empty, blockCount, progress);
             var report = reporter?.CreateAction();
-
             using var compressor = isLz4 ? null : new DeflateCompressor(1);
 
             for (int i = 0; i < blockCount; i++)
@@ -243,7 +239,6 @@ public class CsoService
         {
             var bin = new BufferedStream(input, IoBufferSize);
             var bout = new BufferedStream(output, IoBufferSize);
-
             var magic = new byte[4];
 
             bin.ReadExactly(magic);
@@ -306,10 +301,8 @@ public class CsoService
             var compBuf = new byte[header.BlockSize * 2];
             var reporter = progress is null ? null : new ProgressReporter("변환 중...", string.Empty, blockCount, progress);
             var report = reporter?.CreateAction();
-
             bool srcIsOldDeflate = header.Version != 2 && !isZso;
             bool dstIsOldDeflate = !targetIsLz4;
-
             using var deflateDecompressor = srcIsOldDeflate ? new DeflateDecompressor() : null;
             using var deflateCompressor = dstIsOldDeflate ? new DeflateCompressor(1) : null;
 
@@ -366,6 +359,7 @@ public class CsoService
                 {
                     uint srcAlign = 1u << header.IndexShift;
                     int maxTrim = (int)Math.Min(srcAlign > 0 ? srcAlign - 1 : 0, (uint)blockLen);
+
                     OperationStatus status = OperationStatus.InvalidData;
                     IMemoryOwner<byte>? owned = null;
 
@@ -474,7 +468,6 @@ public class CsoService
     public static async Task CompressFromChdAsync(string chdPath, Stream output, byte[]? magic = null, byte version = 1, bool isLz4 = false, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
         var info = ChdInfoReader.ReadChdInfo(chdPath);
-
         using var wrapper = new LibChdrWrapper();
         var err = wrapper.Open(chdPath);
 
