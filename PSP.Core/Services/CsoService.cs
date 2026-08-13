@@ -50,6 +50,7 @@ public class CsoService
             int blockCount = (int)Math.Ceiling((double)header.UncompressedSize / header.BlockSize);
             var indexTable = new uint[blockCount + 1];
             var indexBytes = new byte[(blockCount + 1) * 4];
+            uint decodeAlign = 1u << header.IndexShift;
 
             bin.ReadExactly(indexBytes);
 
@@ -83,16 +84,45 @@ public class CsoService
                 expectedPos = offset + blockLen;
 
                 if (uncompressed)
-                    bout.Write(compressed.AsSpan(0, blockLen));
+                {
+                    int rawSize = (int)Math.Min(header.BlockSize, header.UncompressedSize - (ulong)i * header.BlockSize);
+
+                    bout.Write(compressed.AsSpan(0, rawSize));
+                }
                 else if (header.Version == 2 || isZso)
                 {
-                    int decoded = LZ4Codec.Decode(compressed, 0, blockLen, blockBuf, 0, (int)header.BlockSize);
+                    int decoded = -1;
+                    int maxTrim = (int)Math.Min(decodeAlign > 0 ? decodeAlign - 1 : 0, (uint)blockLen);
+
+                    for (int trim = 0; trim <= maxTrim; trim++)
+                    {
+                        decoded = LZ4Codec.Decode(compressed, 0, blockLen - trim, blockBuf, 0, (int)header.BlockSize);
+
+                        if (decoded >= 0)
+                            break;
+                    }
+
+                    if (decoded < 0)
+                        throw new InvalidDataException(
+                            $"블록 {i}/{blockCount} LZ4 디코드 실패: blockLen={blockLen}, " +
+                            $"offset={offset}, nextOffset={nextOffset}, IndexShift={header.IndexShift}, " +
+                            $"UncompressedSize={header.UncompressedSize}, BlockSize={header.BlockSize}");
 
                     bout.Write(blockBuf.AsSpan(0, decoded));
                 }
                 else
                 {
-                    var status = deflateDecompressor.Decompress(compressed.AsSpan(0, blockLen), (int)header.BlockSize, out var owned);
+                    OperationStatus status = OperationStatus.InvalidData;
+                    IMemoryOwner<byte>? owned = null;
+                    int maxTrim = (int)Math.Min(decodeAlign > 0 ? decodeAlign - 1 : 0, (uint)blockLen);
+
+                    for (int trim = 0; trim <= maxTrim; trim++)
+                    {
+                        status = deflateDecompressor.Decompress(compressed.AsSpan(0, blockLen - trim), (int)header.BlockSize, out owned);
+
+                        if (status == OperationStatus.Done && owned is not null)
+                            break;
+                    }
 
                     if (status != OperationStatus.Done || owned is null)
                         throw new InvalidDataException($"블록 {i} 압축 해제 실패");
@@ -121,6 +151,9 @@ public class CsoService
             const uint blockSize = 2048;
             long totalSize = input.Length;
             int blockCount = (int)Math.Ceiling((double)totalSize / blockSize);
+            byte indexShift = ComputeIndexShift(totalSize + (blockCount + 1) * 4L, blockCount);
+            uint align = 1u << indexShift;
+
             var headerBytes = new byte[HeaderSize - 4];
 
             BinaryPrimitives.WriteUInt32LittleEndian(headerBytes.AsSpan()[0..], HeaderSize);
@@ -128,7 +161,7 @@ public class CsoService
             BinaryPrimitives.WriteUInt32LittleEndian(headerBytes.AsSpan()[12..], blockSize);
 
             headerBytes[16] = version;
-            headerBytes[17] = 0;
+            headerBytes[17] = indexShift;
 
             bout.Write(headerBytes);
 
@@ -136,6 +169,7 @@ public class CsoService
             var indexTable = new uint[blockCount + 1];
 
             bout.Write(new byte[(blockCount + 1) * 4]);
+            AlignPad(bout, align);
 
             var inputBuf = new byte[blockSize];
             var compBuf = new byte[blockSize * 2];
@@ -150,8 +184,12 @@ public class CsoService
 
                 int read = bin.ReadAtLeast(inputBuf, (int)Math.Min(blockSize, totalSize - (long)i * blockSize), throwOnEndOfStream: false);
                 long blockOffset = bout.Position;
+                long shiftedOffset = blockOffset >> indexShift;
 
-                indexTable[i] = (uint)blockOffset;
+                if (shiftedOffset > 0x7FFFFFFFL)
+                    throw new InvalidOperationException($"IndexShift 계산 오류: 블록 {i} 오프셋({blockOffset})이 31비트 범위를 초과함");
+
+                indexTable[i] = (uint)shiftedOffset;
 
                 int compLen;
                 bool useUncompressed;
@@ -175,10 +213,20 @@ public class CsoService
                 else
                     bout.Write(compBuf.AsSpan(0, compLen));
 
+                AlignPad(bout, align);
+
                 report?.Invoke(i + 1, blockCount);
             }
 
-            indexTable[blockCount] = (uint)bout.Position;
+            {
+                long finalShifted = bout.Position >> indexShift;
+
+                if (finalShifted > 0x7FFFFFFFL)
+                    throw new InvalidOperationException($"IndexShift 계산 오류: 최종 오프셋({bout.Position})이 31비트 범위를 초과함");
+
+                indexTable[blockCount] = (uint)finalShifted;
+            }
+
             bout.Seek(indexOffset, SeekOrigin.Begin);
 
             var indexBytes = new byte[(blockCount + 1) * 4];
@@ -230,6 +278,9 @@ public class CsoService
             targetMagic ??= CsoHeader.MagicCSO;
             targetIsLz4 = targetIsLz4 || targetVersion == 2;
 
+            byte dstIndexShift = ComputeIndexShift((long)header.UncompressedSize + (blockCount + 1) * 4L, blockCount);
+            uint dstAlign = 1u << dstIndexShift;
+
             bout.Write(targetMagic);
 
             var dstHeaderBytes = new byte[HeaderSize - 4];
@@ -239,7 +290,7 @@ public class CsoService
             BinaryPrimitives.WriteUInt32LittleEndian(dstHeaderBytes.AsSpan()[12..], header.BlockSize);
 
             dstHeaderBytes[16] = targetVersion;
-            dstHeaderBytes[17] = 0;
+            dstHeaderBytes[17] = dstIndexShift;
 
             bout.Write(dstHeaderBytes);
 
@@ -247,6 +298,8 @@ public class CsoService
             var dstIndex = new uint[blockCount + 1];
 
             bout.Write(new byte[(blockCount + 1) * 4]);
+
+            AlignPad(bout, dstAlign);
 
             var compressed = new byte[header.BlockSize * 2];
             var rawBuf = new byte[header.BlockSize];
@@ -284,14 +337,45 @@ public class CsoService
 
                 if (srcUncompressed)
                 {
-                    compressed.AsSpan(0, blockLen).CopyTo(rawBuf);
-                    rawLen = blockLen;
+                    int rawSize = (int)Math.Min(header.BlockSize, header.UncompressedSize - (ulong)i * header.BlockSize);
+
+                    compressed.AsSpan(0, rawSize).CopyTo(rawBuf);
+                    rawLen = rawSize;
                 }
                 else if (header.Version == 2 || isZso)
-                    rawLen = LZ4Codec.Decode(compressed, 0, blockLen, rawBuf, 0, (int)header.BlockSize);
+                {
+                    uint srcAlign = 1u << header.IndexShift;
+                    int maxTrim = (int)Math.Min(srcAlign > 0 ? srcAlign - 1 : 0, (uint)blockLen);
+
+                    rawLen = -1;
+
+                    for (int trim = 0; trim <= maxTrim; trim++)
+                    {
+                        rawLen = LZ4Codec.Decode(compressed, 0, blockLen - trim, rawBuf, 0, (int)header.BlockSize);
+
+                        if (rawLen >= 0)
+                            break;
+                    }
+
+                    if (rawLen < 0)
+                        throw new InvalidDataException(
+                            $"블록 {i}/{blockCount} LZ4 디코드 실패: blockLen={blockLen}, " +
+                            $"offset={offset}, nextOffset={nextOffset}, IndexShift={header.IndexShift}");
+                }
                 else
                 {
-                    var status = deflateDecompressor!.Decompress(compressed.AsSpan(0, blockLen), (int)header.BlockSize, out var owned);
+                    uint srcAlign = 1u << header.IndexShift;
+                    int maxTrim = (int)Math.Min(srcAlign > 0 ? srcAlign - 1 : 0, (uint)blockLen);
+                    OperationStatus status = OperationStatus.InvalidData;
+                    IMemoryOwner<byte>? owned = null;
+
+                    for (int trim = 0; trim <= maxTrim; trim++)
+                    {
+                        status = deflateDecompressor!.Decompress(compressed.AsSpan(0, blockLen - trim), (int)header.BlockSize, out owned);
+
+                        if (status == OperationStatus.Done && owned is not null)
+                            break;
+                    }
 
                     if (status != OperationStatus.Done || owned is null)
                         throw new InvalidDataException($"블록 {i} 압축 해제 실패");
@@ -304,8 +388,12 @@ public class CsoService
                 }
 
                 long dstBlockOffset = bout.Position;
+                long dstShiftedOffset = dstBlockOffset >> dstIndexShift;
 
-                dstIndex[i] = (uint)dstBlockOffset;
+                if (dstShiftedOffset > 0x7FFFFFFFL)
+                    throw new InvalidOperationException($"IndexShift 계산 오류: 블록 {i} 오프셋({dstBlockOffset})이 31비트 범위를 초과함");
+
+                dstIndex[i] = (uint)dstShiftedOffset;
 
                 int compLen;
                 bool dstUncompressed;
@@ -329,10 +417,20 @@ public class CsoService
                 else
                     bout.Write(compBuf.AsSpan(0, compLen));
 
+                AlignPad(bout, dstAlign);
+
                 report?.Invoke(i + 1, blockCount);
             }
 
-            dstIndex[blockCount] = (uint)bout.Position;
+            {
+                long finalShifted = bout.Position >> dstIndexShift;
+
+                if (finalShifted > 0x7FFFFFFFL)
+                    throw new InvalidOperationException($"IndexShift 계산 오류: 최종 오프셋({bout.Position})이 31비트 범위를 초과함");
+
+                dstIndex[blockCount] = (uint)finalShifted;
+            }
+
             bout.Seek(dstIndexOffset, SeekOrigin.Begin);
 
             var dstIndexBytes = new byte[(blockCount + 1) * 4];
@@ -343,6 +441,35 @@ public class CsoService
             bout.Write(dstIndexBytes);
             bout.Flush();
         }, ct);
+
+    private static byte ComputeIndexShift(long baseSize, int blockCount)
+    {
+        byte shift = 0;
+
+        while (shift < 31)
+        {
+            long align = 1L << shift;
+            long worstCaseSize = baseSize + (long)blockCount * (align - 1) + 4096;
+
+            if (worstCaseSize < (0x80000000L << shift))
+                break;
+
+            shift++;
+        }
+
+        return shift;
+    }
+
+    private static void AlignPad(Stream stream, uint align)
+    {
+        if (align <= 1)
+            return;
+
+        long rem = stream.Position % align;
+
+        if (rem != 0)
+            stream.Write(new byte[align - rem]);
+    }
 
     public static async Task CompressFromChdAsync(string chdPath, Stream output, byte[]? magic = null, byte version = 1, bool isLz4 = false, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
