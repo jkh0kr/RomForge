@@ -45,7 +45,11 @@ public sealed class SevenZipArchivePatchSource : IArchivePatchSource
         try
         {
             if (Directory.Exists(_tempDir))
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
                 Directory.Delete(_tempDir, recursive: true);
+            }
         }
         catch { }
     }

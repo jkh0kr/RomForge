@@ -411,9 +411,9 @@ public static class NspPatchApplier
             bool wasCompressed = NsoTool.IsCompressed(nso);
             byte[] plain = wasCompressed ? NsoTool.DecompressToPlain(nso) : nso;
             byte[] patched = UniversalPatcher.ApplyPatchAsync(plain, readIps()).GetAwaiter().GetResult();
-            //byte[] final = wasCompressed ? NsoTool.RecompressFromPlain(patched, originalFlags) : patched;
-            NsoTool.UpdateHashes(patched);
-            File.WriteAllBytes(targetNso, patched);
+            byte[] final = wasCompressed ? NsoTool.RecompressFromPlain(patched, originalFlags) : patched;
+            
+            File.WriteAllBytes(targetNso, final);
 
             log($"  exefs_patches 적용 완료: {Path.GetFileName(targetNso)} ⬅️ {buildId} (재압축: {wasCompressed})", LogLevel.Ok);
             count++;

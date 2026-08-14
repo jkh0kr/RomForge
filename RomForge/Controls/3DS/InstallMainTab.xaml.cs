@@ -49,37 +49,46 @@ public partial class InstallMainTab : UserControl
 
     private async Task InitializeDrivesAsync()
     {
-        if (ViewModel == null) 
+        if (ViewModel == null)
             return;
 
         _suppressSelectionChanged = true;
-        SdDriveComboBox.Items.Clear();
 
-        var infos = await Task.Run(() => DriveInfos.GetDriveInfos());
-
-        foreach (var info in infos)
-            SdDriveComboBox.Items.Add(info);
-
-        if (SdDriveComboBox.Items.Count == 0)
+        try
         {
-            ViewModel.SdPath = string.Empty;
-            MovablePathBox.Text = string.Empty;
-            SdDriveComboBox.IsEnabled = false;
+            var infos = await Task.Run(() => DriveInfos.GetDriveInfos());
+
+            SdDriveComboBox.Items.Clear();
+
+            if (infos == null || infos.Count == 0)
+            {
+                ViewModel.SdPath = string.Empty;
+                MovablePathBox.Text = string.Empty;
+                SdDriveComboBox.IsEnabled = false;
+                return;
+            }
+
+            SdDriveComboBox.IsEnabled = true;
+
+            foreach (var info in infos)
+            {
+                SdDriveComboBox.Items.Add(info);
+            }
+
+            int lastIndex = SdDriveComboBox.Items.Count - 1;
+            SdDriveComboBox.SelectedIndex = lastIndex;
+
+            if (SdDriveComboBox.Items[lastIndex] is DriveInfos lastDrive)
+            {
+                ViewModel.SdPath = lastDrive.DriveLetter!;
+                await ViewModel.CheckAndSetMovablePathAsync(ViewModel.SdPath!);
+                MovablePathBox.Text = ViewModel.MovablePath;
+            }
+        }
+        finally
+        {
             _suppressSelectionChanged = false;
-            return;
         }
-
-        SdDriveComboBox.IsEnabled = true;
-
-        if (SdDriveComboBox.Items[^1] is DriveInfos lastDrive)
-        {
-            ViewModel.SdPath = lastDrive.DriveLetter!;
-            await ViewModel.CheckAndSetMovablePathAsync(ViewModel.SdPath!);
-            MovablePathBox.Text = ViewModel.MovablePath;
-        }
-
-        _suppressSelectionChanged = false;
-        SdDriveComboBox.SelectedIndex = SdDriveComboBox.Items.Count - 1;
     }
 
     private async void SdDriveComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

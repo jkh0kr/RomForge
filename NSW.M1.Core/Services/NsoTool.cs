@@ -1,4 +1,5 @@
-﻿using LibHac.Util;
+﻿using K4os.Compression.LZ4;
+using LibHac.Util;
 using System.Security.Cryptography;
 
 namespace NSW.M1.Core.Services;
@@ -91,13 +92,28 @@ public static class NsoTool
             segData[i] = raw;
 
             bool wasCompressed = (originalFlags & (1u << s.CompBit)) != 0;
-            segCompressed[i] = wasCompressed ? Lz4.Compress(raw) : raw;
+
+            if (!wasCompressed)
+            {
+                segCompressed[i] = raw;
+                continue;
+            }
+
+            int maxLen = LZ4Codec.MaximumOutputSize(raw.Length);
+            byte[] buffer = new byte[maxLen];
+            int encodedLen = LZ4Codec.Encode(raw, 0, raw.Length, buffer, 0, maxLen, LZ4Level.L09_HC);
+
+            if (encodedLen <= 0)
+                throw new InvalidOperationException($"세그먼트 {i} LZ4 압축 실패 (encodedLen={encodedLen})");
+
+            byte[] compressed = new byte[encodedLen];
+            Array.Copy(buffer, compressed, encodedLen);
+            segCompressed[i] = compressed;
         }
 
         byte[] outNso = new byte[HeaderSize + segCompressed.Sum(s => s.Length)];
         Array.Copy(plain, 0, outNso, 0, HeaderSize);
 
-        uint newFlags = originalFlags;
         int cursor = HeaderSize;
 
         for (int i = 0; i < 3; i++)
@@ -115,43 +131,11 @@ public static class NsoTool
             cursor += segCompressed[i].Length;
         }
 
-        BitConverter.GetBytes(newFlags).CopyTo(outNso, 0x0C);
+        BitConverter.GetBytes(originalFlags).CopyTo(outNso, 0x0C);
 
         if (outNso.Length != cursor)
             Array.Resize(ref outNso, cursor);
 
         return outNso;
-    }
-
-    public static void UpdateHashes(byte[] nsoData)
-    {
-        int textFileOff = BitConverter.ToInt32(nsoData, 0x10);
-        int textSize = BitConverter.ToInt32(nsoData, 0x60);
-
-        int rodataOff = BitConverter.ToInt32(nsoData, 0x20);
-        int rodataSize = BitConverter.ToInt32(nsoData, 0x64);
-
-        int dataOff = BitConverter.ToInt32(nsoData, 0x30);
-        int dataSize = BitConverter.ToInt32(nsoData, 0x68);
-
-        using var sha256 = SHA256.Create();
-
-        if (textSize > 0)
-        {
-            byte[] textHash = sha256.ComputeHash(nsoData, textFileOff, textSize);
-            Buffer.BlockCopy(textHash, 0, nsoData, 0xA0, 32);
-        }
-
-        if (rodataSize > 0)
-        {
-            byte[] rodataHash = sha256.ComputeHash(nsoData, rodataOff, rodataSize);
-            Buffer.BlockCopy(rodataHash, 0, nsoData, 0xC0, 32);
-        }
-
-        if (dataSize > 0)
-        {
-            byte[] dataHash = sha256.ComputeHash(nsoData, dataOff, dataSize);
-            Buffer.BlockCopy(dataHash, 0, nsoData, 0xE0, 32);
-        }
     }
 }

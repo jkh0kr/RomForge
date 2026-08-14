@@ -14,6 +14,8 @@ public sealed class NestedArchivePatchSource : IArchivePatchSource
 
     public NestedArchivePatchSource(IArchivePatchSource root, int maxDepth = 4)
     {
+        _ownedSources.Add(root);
+
         Expand(root, "", maxDepth, isRoot: true);
         EntryPaths = [.. _byFlatPath.Keys];
     }
