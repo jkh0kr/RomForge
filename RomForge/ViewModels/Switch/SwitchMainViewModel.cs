@@ -1,4 +1,7 @@
-﻿namespace RomForge.ViewModels.Switch;
+﻿﻿using NSW.Core;
+using Res = NSW.Core.Properties.Resources;
+
+namespace RomForge.ViewModels.Switch;
 
 public class SwitchMainViewModel : MultiToolTabViewModel
 {
@@ -8,9 +11,15 @@ public class SwitchMainViewModel : MultiToolTabViewModel
 
     public ConverterMainViewModel ConverterVM { get; } = new();
 
-    public ConvertSaturnMainViewModel ConvertSaturnVM { get; } = new ();
+    public ConvertSaturnMainViewModel ConvertSaturnVM { get; } = new();
 
     public KeygenMainViewModel KeygenVM { get; } = new();
+
+    public bool KeysAvailable => KeySetProvider.Instance.KeySet != null;
+
+    public static string KeysMissingMessage => Res.Main_Err_NoKeys;
+
+    public bool CanUseTools => IsIdle && KeysAvailable;
 
     public SwitchMainViewModel()
     {
@@ -21,5 +30,21 @@ public class SwitchMainViewModel : MultiToolTabViewModel
         Tools.Add(KeygenVM);
 
         InitializeMultiTools();
+
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(IsIdle))
+                OnPropertyChanged(nameof(CanUseTools));
+        };
+
+        RefreshKeysStatus();
+    }
+
+    public void RefreshKeysStatus()
+    {
+        KeySetProvider.Instance.TryLoadKeys();
+
+        OnPropertyChanged(nameof(KeysAvailable));
+        OnPropertyChanged(nameof(CanUseTools));
     }
 }

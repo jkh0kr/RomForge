@@ -49,6 +49,9 @@ public class MainViewModel : ToolTabViewModel
             _selectedTabIndex = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ActiveLogEntries));
+
+            if(Tools[_selectedTabIndex] == SwitchMainVM)
+                SwitchMainVM?.RefreshKeysStatus();
         }
     }
 

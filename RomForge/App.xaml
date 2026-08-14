@@ -16,6 +16,7 @@
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
             <converters:InverseBoolConverter x:Key="InverseBool"/>
+            <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>            
             <converters:LogLevelToColorConverter x:Key="LogColor"/>
             <converters:LevelToColorConverter x:Key="LevelToColorConverter"/>
             <converters:CompressLevelTextConverter x:Key="CompressLevelTextConverter"/>            
