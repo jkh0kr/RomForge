@@ -227,7 +227,7 @@ public class RepackMainViewModel : ToolTabViewModel
                     await Task.Run(() => _service.UnpackAsync(InputPath, unpackedPath, keyStore, reporter.CreateAction(), ct), ct);
                     break;
                 case BuildMode.RebuildOnly:
-                    producedPath = await Task.Run(() => _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, _romInfo?.Publisher, keyStore, OutputFormat, reporter.CreateAction(), ct), ct);
+                    producedPath = await Task.Run(() => _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, RomInfo?.ShortDescriptionChanged == true ? RomInfo.ShortDescription : null, RomInfo?.PublisherChanged == true ? RomInfo.Publisher : null, keyStore, OutputFormat, reporter.CreateAction(), ct), ct);
                     if (OutputFormat != RepackOutputFormat.Cia)
                         producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
                     break;
@@ -236,7 +236,7 @@ public class RepackMainViewModel : ToolTabViewModel
                     string fileName = string.IsNullOrEmpty(safeName) ? inputFileName : safeName;
                     string outputCci = Utils.GetUniqueFilePath(Path.Combine(OutputPath, fileName + "_Repack.cci"));
 
-                    producedPath = await Task.Run(() => _service.RepackDirectAsync(InputPath, outputCci, keyStore, _romInfo?.ShortDescription, _romInfo?.Publisher, OutputFormat, reporter.CreateAction(), ct), ct);
+                    producedPath = await Task.Run(() => _service.RepackDirectAsync(InputPath, outputCci, keyStore, RomInfo?.ShortDescriptionChanged == true ? RomInfo.ShortDescription : null, RomInfo?.PublisherChanged == true ? RomInfo.Publisher : null, OutputFormat, reporter.CreateAction(), ct), ct);
                     if (OutputFormat != RepackOutputFormat.Cia)
                         producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
                     break;

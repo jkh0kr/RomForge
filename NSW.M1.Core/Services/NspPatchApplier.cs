@@ -346,16 +346,70 @@ public static class NspPatchApplier
         }
     }
 
-    public static int ApplyFolderExefsPatches(string patchPath, string exefsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    private static int ApplyFolderExefsPatches(string patchPath, string exefsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
     {
-        var ipsFiles = Directory.EnumerateFiles(patchPath, "*.ips", SearchOption.AllDirectories).ToList();
-
-        if (ipsFiles.Count == 0)
+        if (string.IsNullOrEmpty(exefsDir) || !Directory.Exists(exefsDir) || !Directory.Exists(patchPath))
             return 0;
 
-        var items = ipsFiles.Select(f => (Path.GetFileNameWithoutExtension(f).TrimEnd('0'), (Func<byte[]>)(() => File.ReadAllBytes(f))));
+        var openedArchives = new List<IArchivePatchSource>();
+        var items = new List<(string BuildId, Func<byte[]> ReadIps)>();
 
-        return ApplyExefsPatchesCore(items, exefsDir, progress, log);
+        try
+        {
+            foreach (var f in Directory.EnumerateFiles(patchPath, "*.ips", SearchOption.AllDirectories))
+            {
+                string path = f;
+                items.Add((Path.GetFileNameWithoutExtension(path).TrimEnd('0'), () => File.ReadAllBytes(path)));
+            }
+
+            var archivePaths = Directory.EnumerateFiles(patchPath, "*.zip", SearchOption.AllDirectories)
+                .Concat(Directory.EnumerateFiles(patchPath, "*.7z", SearchOption.AllDirectories));
+
+            foreach (var archivePath in archivePaths)
+            {
+                IArchivePatchSource archive;
+
+                try
+                {
+                    archive = ArchivePatchSourceFactory.Open(archivePath);
+                }
+                catch (Exception ex)
+                {
+                    log($"  ⚠️ 압축파일을 열 수 없음(암호 걸림/손상 등): {Path.GetFileName(archivePath)} — {ex.Message}", LogLevel.Info);
+                    continue;
+                }
+
+                openedArchives.Add(archive);
+                var capturedArchive = archive;
+
+                foreach (var key in archive.EntryPaths.Where(k => k.EndsWith(".ips", StringComparison.OrdinalIgnoreCase)))
+                {
+                    string localKey = key;
+
+                    items.Add((Path.GetFileNameWithoutExtension(localKey).TrimEnd('0'), () =>
+                    {
+                        var entry = capturedArchive.FindEntry(localKey)!;
+                        using var src = entry.Open();
+                        using var ms = new MemoryStream();
+                        src.CopyTo(ms);
+                        return ms.ToArray();
+                    }
+                    ));
+                }
+            }
+
+            if (items.Count == 0)
+                return 0;
+
+            log($"  exefs_patches용 .ips 발견: {items.Count}개", LogLevel.Info);
+
+            return ApplyExefsPatchesCore(items, exefsDir, progress, log);
+        }
+        finally
+        {
+            foreach (var a in openedArchives)
+                a.Dispose();
+        }
     }
 
     private static int ApplyArchiveExefsPatches(IArchivePatchSource archive, string exefsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)

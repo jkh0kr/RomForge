@@ -11,7 +11,9 @@ public class TitleViewModel : ViewModelBase
     private BitmapSource? _icon;
     private string _filePath = string.Empty;
     private string _shortDescription = string.Empty;
-    private string _publisher = string.Empty;    
+    private string _publisher = string.Empty;
+    private string _originalShortDescription = string.Empty;
+    private string _originalPublisher = string.Empty;
     private string _productCode = string.Empty;
     private string _region = string.Empty;
     private LocaleRegion _localeRegionCode = LocaleRegion.None;
@@ -34,7 +36,7 @@ public class TitleViewModel : ViewModelBase
 
     public string ShortDescription
     {
-        get => string.IsNullOrEmpty(_shortDescription) ? Title.TitleId : _shortDescription;
+        get => _shortDescription;
         set { _shortDescription = value; OnPropertyChanged(); }
     }
 
@@ -42,6 +44,16 @@ public class TitleViewModel : ViewModelBase
     {
         get => _publisher;
         set { _publisher = value; OnPropertyChanged(); }
+    }
+
+    public bool ShortDescriptionChanged => !string.Equals(_shortDescription, _originalShortDescription, StringComparison.Ordinal);
+
+    public bool PublisherChanged => !string.Equals(_publisher, _originalPublisher, StringComparison.Ordinal);
+
+    public void CommitOriginalValues()
+    {
+        _originalShortDescription = _shortDescription;
+        _originalPublisher = _publisher;
     }
 
     public string FilePath
@@ -103,9 +115,9 @@ public class TitleViewModel : ViewModelBase
     public double Progress
     {
         get => _progress;
-        set 
-        { 
-            _progress = value; 
+        set
+        {
+            _progress = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ProgressText));
         }
@@ -133,7 +145,7 @@ public class TitleViewModel : ViewModelBase
 
     private static string GetRegionFromProductCode(string productCode)
     {
-        if (string.IsNullOrEmpty(productCode) || productCode.Length < 7) 
+        if (string.IsNullOrEmpty(productCode) || productCode.Length < 7)
             return string.Empty;
 
         char region = productCode[productCode.IndexOf('-', 4) + 4];

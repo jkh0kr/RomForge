@@ -37,6 +37,8 @@ public static class RomInfoParser
                 vm.Icon = bitmap;
             }
 
+            vm.CommitOriginalValues();
+
             return vm;
         }
         catch
@@ -92,6 +94,8 @@ public static class RomInfoParser
                 bitmap.Freeze();
                 vm.Icon = bitmap;
             }
+
+            vm.CommitOriginalValues();
 
             return vm;
         }
