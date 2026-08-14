@@ -6,6 +6,7 @@ using _3DS.Core.Services;
 using Common;
 using NSW.Utils;
 using Patch.Core.Services;
+using RomForge.Core.Models._3DS;
 using System.IO;
 
 namespace RomForge.Core.Services._3DS;
@@ -56,7 +57,6 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
                 var unpack = await NcchUnpacker.UnpackAsync(ncchStream, ncchHeader, ct);
                 string partDir = Path.Combine(unpackedPath, $"partition{idx}");
                 long lastPartitionCurrent = 0;
-
                 Action<long, long>? partitionReporter = null;
 
                 if (reporter != null && totalBytes > 0)
@@ -84,7 +84,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             reporter(totalBytes, totalBytes);
     }
 
-    public async Task<string> RepackAsync(string unpackedPath, string outputPath, string? gameName, string? publisher = null, Action<long, long>? reporter = null, CancellationToken ct = default)
+    public async Task<string> RepackAsync(string unpackedPath, string outputPath, string? gameName, string? publisher = null, KeyStore? keyStore = null, RepackOutputFormat format = RepackOutputFormat.Cci, Action<long, long>? reporter = null, CancellationToken ct = default)
     {
         log("리팩 시작...", LogLevel.Highlight);
 
@@ -95,6 +95,8 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         var contentsList = new List<Contents>();
         int exefsPatchedCount = 0;
         PatchFolderFileSource? romfsPatchSource = null;
+        byte[]? exHeaderPart0 = null;
+        byte[]? exefsBlockPart0 = null;
 
         using var patchCtx = PatchSourceContext.Open(getPatchPath(), log);
         bool patchDirSpecified = patchCtx.HasSource;
@@ -168,6 +170,12 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             if (idx == 0 && exefsBlock.Length > 0 && (!string.IsNullOrEmpty(gameName) || !string.IsNullOrEmpty(publisher)))
                 ApplySmdhToMemory(exefsBlock, gameName, publisher, log);
 
+            if (idx == 0)
+            {
+                exHeaderPart0 = exHeader;
+                exefsBlockPart0 = exefsBlock;
+            }
+
             string romfsDir = Path.Combine(partDir, "romfs");
             RomFsUnpackResult? romfsResult = null;
             IRomFsFileSource? romfsSource = null;
@@ -205,9 +213,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
         var repackedSource = await RepackedNcsdSource.CreateAsync(repackedNcchs, contentsList, log, ct);
 
-        await using var outputStream = File.Open(outputCci, FileMode.Create, FileAccess.ReadWrite);
-
-        await NcsdBuilder.BuildAsync(repackedSource, outputStream, reporter, ct);
+        string outputFilePath = await BuildOutputAsync(repackedSource, outputCci, keyStore, format, exHeaderPart0, exefsBlockPart0, reporter, ct);
 
         if (patchDirSpecified && exefsPatchedCount == 0 && (romfsPatchSource == null || romfsPatchSource.AppliedCount == 0))
             log("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
@@ -220,21 +226,21 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
                 log($"romfs 패치 적용 완료: {romfsPatchSource.AppliedCount}개 파일", LogLevel.Ok);
         }
 
-        log($"출력: {outputCci}", LogLevel.Ok);
+        log($"출력: {outputFilePath}", LogLevel.Ok);
 
-        return outputCci;
+        return outputFilePath;
     }
 
-    public async Task RepackDirectAsync(string inputPath, string outputCci, KeyStore keyStore, string? gameName = null, string? publisher = null, Action<long, long>? reporter = null, CancellationToken ct = default)
+    public async Task<string> RepackDirectAsync(string inputPath, string outputCci, KeyStore keyStore, string? gameName = null, string? publisher = null, RepackOutputFormat format = RepackOutputFormat.Cci, Action<long, long>? reporter = null, CancellationToken ct = default)
     {
         log("스트리밍 기반 리팩 시작...", LogLevel.Highlight);
 
         await using var source = await OpenSourceAsync(inputPath, keyStore, ct);
-
         var repackedNcchs = new Dictionary<int, (NcchUnpackResult, byte[], Stream, RomFsUnpackResult?, IRomFsFileSource?)>();
         int exefsPatchedCount = 0;
         PatchFolderFileSource? romfsPatchSource = null;
-
+        byte[]? exHeaderPart0 = null;
+        byte[]? exefsBlockPart0 = null;
         using var patchCtx = PatchSourceContext.Open(getPatchPath(), log);
         bool patchDirSpecified = patchCtx.HasSource;
 
@@ -269,6 +275,12 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             if (idx == 0 && exefsBlock.Length > 0 && (!string.IsNullOrEmpty(gameName) || !string.IsNullOrEmpty(publisher)))
                 ApplySmdhToMemory(exefsBlock, gameName, publisher, log);
 
+            if (idx == 0)
+            {
+                exHeaderPart0 = unpack.ExHeader;
+                exefsBlockPart0 = exefsBlock;
+            }
+
             IRomFsFileSource? patchSource = null;
 
             if (idx == 0)
@@ -282,9 +294,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
         var repackedSource = await RepackedNcsdSource.CreateAsync(repackedNcchs, source.Contents, log, ct);
 
-        await using var outputStream = File.Open(outputCci, FileMode.Create, FileAccess.ReadWrite);
-
-        await NcsdBuilder.BuildAsync(repackedSource, outputStream, reporter, ct);
+        string outputFilePath = await BuildOutputAsync(repackedSource, outputCci, keyStore, format, exHeaderPart0, exefsBlockPart0, reporter, ct);
 
         if (patchDirSpecified && exefsPatchedCount == 0 && (romfsPatchSource == null || romfsPatchSource.AppliedCount == 0))
             log("패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
@@ -297,27 +307,110 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
                 log($"romfs 패치 적용 완료: {romfsPatchSource.AppliedCount}개 파일", LogLevel.Ok);
         }
 
-        log($"출력: {outputCci}", LogLevel.Ok);
+        log($"출력: {outputFilePath}", LogLevel.Ok);
+
+        return outputFilePath;
+    }
+
+    private async Task<string> BuildOutputAsync(RepackedNcsdSource repackedSource, string outputCci, KeyStore? keyStore, RepackOutputFormat format, byte[]? exHeaderPart0, byte[]? exefsBlockPart0, Action<long, long>? reporter, CancellationToken ct)
+    {
+        if (format == RepackOutputFormat.Cia)
+        {
+            if (keyStore == null)
+                throw new InvalidOperationException("CIA를 생성하려면 키가 필요합니다.");
+
+            string outputCia = Utils.GetUniqueFilePath(Path.ChangeExtension(outputCci, ".cia"));
+            await using var ciaStream = File.Open(outputCia, FileMode.Create, FileAccess.ReadWrite);
+            byte[]? smdhPart0 = ExtractIcon(exefsBlockPart0);
+
+            await CiaBuilder.BuildAsync(repackedSource, keyStore, ciaStream, exHeaderPart0, smdhPart0, reporter, log, ct);
+
+            return outputCia;
+        }
+
+        await using var cciStream = File.Open(outputCci, FileMode.Create, FileAccess.ReadWrite);
+
+        await NcsdBuilder.BuildAsync(repackedSource, cciStream, reporter, ct);
+
+        return outputCci;
+    }
+
+    private static byte[]? ExtractIcon(byte[]? exefsBlock)
+    {
+        if (exefsBlock == null)
+            return null;
+
+        const uint smdhMagic = 0x48444D53;
+        const int iconSize = 0x36C0;
+
+        for (int i = 0; i <= exefsBlock.Length - 4; i++)
+        {
+            if (BitConverter.ToUInt32(exefsBlock, i) != smdhMagic)
+                continue;
+
+            if (i + iconSize > exefsBlock.Length)
+                return null;
+
+            byte[] iconData = new byte[iconSize];
+            Array.Copy(exefsBlock, i, iconData, 0, iconSize);
+
+            return iconData;
+        }
+
+        return null;
     }
 
     private static void ApplySmdhToMemory(byte[] exefsBlock, string? gameName, string? publisher, Action<string, LogLevel> log)
     {
         const uint smdhMagic = 0x48444D53;
+        const int headerSize = 0x200;
+        const int maxEntries = 8;
+        const int iconSize = 0x36C0;
+
         for (int i = 0; i <= exefsBlock.Length - 4; i++)
         {
-            if (BitConverter.ToUInt32(exefsBlock, i) == smdhMagic)
-            {
-                byte[] iconData = new byte[0x36C0];
-                Array.Copy(exefsBlock, i, iconData, 0, 0x36C0);
+            if (BitConverter.ToUInt32(exefsBlock, i) != smdhMagic)
+                continue;
 
-                byte[]? overridden = SmdhWriter.ApplyOverride(iconData, gameName, publisher);
-                if (overridden != null)
+            byte[] iconData = new byte[iconSize];
+
+            Array.Copy(exefsBlock, i, iconData, 0, iconSize);
+
+            byte[]? overridden = SmdhWriter.ApplyOverride(iconData, gameName, publisher);
+
+            if (overridden == null)
+                continue;
+
+            Array.Copy(overridden, 0, exefsBlock, i, iconSize);
+
+            uint dataOffset = (uint)(i - headerSize);
+            int entryIndex = -1;
+
+            for (int e = 0; e < maxEntries; e++)
+            {
+                int entryBase = e * 0x10;
+                uint entryOffset = BitConverter.ToUInt32(exefsBlock, entryBase + 8);
+                uint entrySize = BitConverter.ToUInt32(exefsBlock, entryBase + 12);
+
+                if (entryOffset == dataOffset && entrySize == iconSize)
                 {
-                    Array.Copy(overridden, 0, exefsBlock, i, 0x36C0);
-                    log("게임명/배급사 정보를 변경했습니다.", LogLevel.Ok);
-                    return;
+                    entryIndex = e;
+                    break;
                 }
             }
+
+            if (entryIndex < 0)
+            {
+                log("⚠️ exefs 헤더에서 icon 엔트리를 찾지 못해 해시를 갱신하지 못했습니다.", LogLevel.Error);
+                return;
+            }
+
+            int hashBase = headerSize - 0x100 + (maxEntries - 1 - entryIndex) * 0x20;
+            byte[] newHash = System.Security.Cryptography.SHA256.HashData(overridden);
+            Array.Copy(newHash, 0, exefsBlock, hashBase, newHash.Length);
+
+            log("게임명/배급사 정보를 변경했습니다.", LogLevel.Ok);
+            return;
         }
     }
 
@@ -525,7 +618,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         return ext switch
         {
             ".cia" => await new CiaReader(keyStore).OpenAsync(inputPath, (msg, level) => log(msg, level), ct),
-            ".cci" or ".zcci" or ".3ds"=> await CciSource.OpenAsync(inputPath, keyStore, (msg, level) => log(msg, level), ct),
+            ".cci" or ".zcci" or ".3ds" => await CciSource.OpenAsync(inputPath, keyStore, (msg, level) => log(msg, level), ct),
             _ => throw new NotSupportedException($"지원하지 않는 파일 형식: {ext}")
         };
     }

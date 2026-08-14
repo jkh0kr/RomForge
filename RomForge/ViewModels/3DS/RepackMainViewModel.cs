@@ -227,16 +227,18 @@ public class RepackMainViewModel : ToolTabViewModel
                     await Task.Run(() => _service.UnpackAsync(InputPath, unpackedPath, keyStore, reporter.CreateAction(), ct), ct);
                     break;
                 case BuildMode.RebuildOnly:
-                    producedPath = await Task.Run(() => _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, _romInfo?.Publisher, reporter.CreateAction(), ct), ct);
-                    producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
+                    producedPath = await Task.Run(() => _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, _romInfo?.Publisher, keyStore, OutputFormat, reporter.CreateAction(), ct), ct);
+                    if (OutputFormat != RepackOutputFormat.Cia)
+                        producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
                     break;
                 case BuildMode.FullProcess:
                     string safeName = NspNameBuilder.SafeFileName(_romInfo?.ShortDescription ?? string.Empty);
                     string fileName = string.IsNullOrEmpty(safeName) ? inputFileName : safeName;
                     string outputCci = Utils.GetUniqueFilePath(Path.Combine(OutputPath, fileName + "_Repack.cci"));
 
-                    await Task.Run(() => _service.RepackDirectAsync(InputPath, outputCci, keyStore, _romInfo?.ShortDescription, _romInfo?.Publisher, reporter.CreateAction(), ct), ct);
-                    producedPath = await FinalizeOutputFormatAsync(outputCci, keyStore, progress, ct);
+                    producedPath = await Task.Run(() => _service.RepackDirectAsync(InputPath, outputCci, keyStore, _romInfo?.ShortDescription, _romInfo?.Publisher, OutputFormat, reporter.CreateAction(), ct), ct);
+                    if (OutputFormat != RepackOutputFormat.Cia)
+                        producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
                     break;
             }
 

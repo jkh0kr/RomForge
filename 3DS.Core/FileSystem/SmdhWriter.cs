@@ -35,15 +35,25 @@ public static class SmdhWriter
 
             if (!string.IsNullOrEmpty(shortDescription))
             {
-                WriteUtf16(result, offset + 0x000, ShortDescMaxBytes, shortDescription);
-                WriteUtf16(result, offset + 0x080, LongDescMaxBytes, shortDescription);
-                changed = true;
+                string current = ReadUtf16(result, offset + 0x000, ShortDescMaxBytes);
+
+                if (!string.Equals(current, shortDescription, StringComparison.Ordinal))
+                {
+                    WriteUtf16(result, offset + 0x000, ShortDescMaxBytes, shortDescription);
+                    WriteUtf16(result, offset + 0x080, LongDescMaxBytes, shortDescription);
+                    changed = true;
+                }
             }
 
             if (!string.IsNullOrEmpty(publisher))
             {
-                WriteUtf16(result, offset + 0x180, PublisherMaxBytes, publisher);
-                changed = true;
+                string currentPublisher = ReadUtf16(result, offset + 0x180, PublisherMaxBytes);
+
+                if (!string.Equals(currentPublisher, publisher, StringComparison.Ordinal))
+                {
+                    WriteUtf16(result, offset + 0x180, PublisherMaxBytes, publisher);
+                    changed = true;
+                }
             }
         }
 
@@ -61,6 +71,22 @@ public static class SmdhWriter
         }
 
         return false;
+    }
+
+    private static string ReadUtf16(byte[] data, int offset, int maxBytes)
+    {
+        int limit = Math.Min(offset + maxBytes, data.Length);
+        int end = offset;
+
+        for (int i = offset; i + 1 < limit; i += 2)
+        {
+            if (data[i] == 0 && data[i + 1] == 0)
+                break;
+
+            end = i + 2;
+        }
+
+        return Encoding.Unicode.GetString(data, offset, end - offset);
     }
 
     private static void WriteUtf16(byte[] data, int offset, int maxBytes, string text)
