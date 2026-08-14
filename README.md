@@ -3,6 +3,7 @@
 롬 패치 / 압축 툴
 
 ## 사용자 매뉴얼
+
 https://sinjunyoung.github.io/RomForge/
 
 ## License
@@ -13,11 +14,12 @@ This project is licensed under the GNU General Public License v2.0 or later (GPL
 
 This project uses the following open-source software:
 
-| Component                      | License          |
-| ------------------------------ | ---------------- |
-| CHDMan                         | GPL-2.0-or-later |
-| DolphinTool                    | GPL-2.0-or-later |
-| xdelta3                        | GPL-2.0          |
-| LibHac                         | MIT              |
+| Component   | License           |
+| ----------- | ----------------- |
+| CHDMan      | GPL-2.0-or-later  |
+| DolphinTool | GPL-2.0-or-later  |
+| xdelta3     | GPL-2.0           |
+| 7-Zip       | LGPL-2.1-or-later |
+| LibHac      | MIT               |
 
 The copyright and license notices for third-party components remain the property of their respective copyright holders.
