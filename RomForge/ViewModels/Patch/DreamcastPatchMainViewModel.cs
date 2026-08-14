@@ -185,7 +185,7 @@ public class DreamcastPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                     ProgressSpeed = p.Speed;
                 });
 
-                var chdResult = await converter.ConvertFileAsync(newGdiPath, chdProgress, ct);
+                var chdResult = await converter.ConvertFileAsync(newGdiPath, null, chdProgress, ct);
 
                 if (!chdResult.Success)
                     throw new Exception($"CHD 변환 실패: {chdResult.Message}");

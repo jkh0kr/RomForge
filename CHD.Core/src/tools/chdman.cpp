@@ -981,7 +981,7 @@ static void progress(bool forceit, Format &&fmt, Params &&...args)
 
 #ifdef CHDMAN_DLL
     if (g_cancel_requested)
-        return;
+        throw std::runtime_error("Cancelled");
     std::string msg = string_format(std::forward<Format>(fmt), std::forward<Params>(args)...);
     if (g_progress_cb)
     {

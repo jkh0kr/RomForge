@@ -29,7 +29,7 @@ public class DolphinService
     public event EventHandler<(string Message, LogLevel Level)>? LogMessage;
     public event EventHandler<ProgressEventArgs>? ProgressChanged;
 
-    public Task ConvertFileAsync(string inputPath, string format, string outputExtension, int compressionLevel = 18, CancellationToken ct = default)
+    public Task ConvertFileAsync(string inputPath, string format, string outputExtension, int compressionLevel = 18, string? outputDir = null, CancellationToken ct = default)
     {
         format = format.ToLowerInvariant();
 
@@ -45,11 +45,11 @@ public class DolphinService
 
             if (workType == "미지원")
             {
-                LogMessage?.Invoke(this, ( $"지원하지 않는 포맷은 건너뜁니다: {Path.GetFileName(inputPath)}", LogLevel.Error ));
+                LogMessage?.Invoke(this, ($"지원하지 않는 포맷은 건너뜁니다: {Path.GetFileName(inputPath)}", LogLevel.Error));
                 return;
             }
 
-            var dir = Path.GetDirectoryName(inputPath)!;
+            var dir = outputDir ?? Path.GetDirectoryName(inputPath)!;
             var name = Path.GetFileNameWithoutExtension(inputPath);
             string outputPath = Path.Combine(dir, $"{name}.{outputExtension}");
             outputPath = Utils.GetUniqueFilePath(outputPath);

@@ -25,7 +25,7 @@ public class FileConverter : IDisposable
 
     }
 
-    public async Task<ConversionResult> ConvertFileAsync(string filePath, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
+    public async Task<ConversionResult> ConvertFileAsync(string filePath, string? outputDir = null, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -43,7 +43,7 @@ public class FileConverter : IDisposable
 
         return source.Format switch
         {
-            InputFormat.Chd => await ConvertFromChdAsync(source, progress, ct),
+            InputFormat.Chd => await ConvertFromChdAsync(source, outputDir, progress, ct),
             InputFormat.Iso => await ConvertIsoChdAsync(source, progress, ct),
             InputFormat.BinCue => await ConvertToChdAsync(source, progress, ct),
             InputFormat.Gdi => await ConvertToChdAsync(source, progress, ct),
@@ -52,10 +52,10 @@ public class FileConverter : IDisposable
         };
     }
 
-    private async Task<ConversionResult> ConvertFromChdAsync(ConversionSource source, IProgress<ProgressInfo>? progress, CancellationToken cancellationToken)
+    private async Task<ConversionResult> ConvertFromChdAsync(ConversionSource source, string? outputDir, IProgress<ProgressInfo>? progress, CancellationToken cancellationToken)
     {
         var chdPath = source.PrimaryFile;
-        var dir = Path.GetDirectoryName(chdPath)!;
+        var dir = outputDir ?? Path.GetDirectoryName(chdPath)!;
         var name = Path.GetFileNameWithoutExtension(chdPath);
 
         Log($"{Path.GetFileName(chdPath)} 변환 시작", LogLevel.Highlight);

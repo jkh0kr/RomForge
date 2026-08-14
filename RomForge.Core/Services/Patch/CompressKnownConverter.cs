@@ -31,7 +31,7 @@ public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<Prog
                         FileConverter converter = new(AppConfig.Instance.Chdman.Compression);
                         converter.LogMessage += (_, e) => log(e.Message, e.Level);
 
-                        var chdResult = await converter.ConvertFileAsync(tempCuePath, progress, ct);
+                        var chdResult = await converter.ConvertFileAsync(tempCuePath, null, progress, ct);
 
                         if (!chdResult.Success)
                             throw new Exception($"CHD 변환 실패: {chdResult.Message}");
@@ -57,7 +57,7 @@ public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<Prog
                     FileConverter converter = new(AppConfig.Instance.Chdman.Compression);
                     converter.LogMessage += (_, e) => log(e.Message, e.Level);
 
-                    var chdResult = await converter.ConvertFileAsync(outputCuePath!, progress, ct);
+                    var chdResult = await converter.ConvertFileAsync(outputCuePath!, null, progress, ct);
 
                     if (!chdResult.Success)
                         throw new Exception($"CHD 변환 실패: {chdResult.Message}");
@@ -80,7 +80,7 @@ public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<Prog
                     FileConverter converter = new(AppConfig.Instance.Chdman.Compression);
                     converter.LogMessage += (_, e) => log(e.Message, e.Level);
 
-                    var chdResult = await converter.ConvertFileAsync(outputGdiPath!, progress, ct);
+                    var chdResult = await converter.ConvertFileAsync(outputGdiPath!, null, progress, ct);
 
                     if (!chdResult.Success)
                         throw new Exception($"CHD 변환 실패: {chdResult.Message}");
@@ -103,7 +103,7 @@ public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<Prog
                     FileConverter converter = new(AppConfig.Instance.Chdman.Compression);
                     converter.LogMessage += (_, e) => log(e.Message, e.Level);
 
-                    var chdResult = await converter.ConvertFileAsync(outputPath, progress, ct);
+                    var chdResult = await converter.ConvertFileAsync(outputPath, null, progress, ct);
 
                     if (!chdResult.Success)
                         throw new Exception($"CHD 변환 실패: {chdResult.Message}");
@@ -142,7 +142,7 @@ public class CompressKnownConverter(Action<string, LogLevel> log, IProgress<Prog
                     dolphin.LogMessage += (_, e) => log(e.Message, e.Level);
                     dolphin.ProgressChanged += (_, e) => progress.Report(new ProgressInfo { Label = "포맷 변환 중...", Percent = e.Progress });
 
-                    await dolphin.ConvertFileAsync(outputPath, detected.Format.ToString(), detected.OutputExtension, dolphinCompressLevel, ct);
+                    await dolphin.ConvertFileAsync(outputPath, detected.Format.ToString(), detected.OutputExtension, dolphinCompressLevel, null, ct);
                     File.Delete(outputPath);
 
                     break;

@@ -181,7 +181,7 @@ public class CompressMainViewModel : ToolTabViewModel
 
                                     chdFromCcd.LogMessage += (_, e) => AppendLog(e.Message, e.Level);
 
-                                    var chdFromCcdResult = await chdFromCcd.ConvertFileAsync(tempCuePath, progressHandler, _cts.Token);
+                                    var chdFromCcdResult = await chdFromCcd.ConvertFileAsync(tempCuePath, null, progressHandler, _cts.Token);
 
                                     if (!chdFromCcdResult.Success)
                                         throw new InvalidOperationException(chdFromCcdResult.Message);
@@ -205,7 +205,7 @@ public class CompressMainViewModel : ToolTabViewModel
 
                                 chdConverter.LogMessage += (_, e) => AppendLog(e.Message, e.Level);
 
-                                var chdResult = await chdConverter.ConvertFileAsync(item.FilePath, progressHandler, _cts.Token);
+                                var chdResult = await chdConverter.ConvertFileAsync(item.FilePath, null, progressHandler, _cts.Token);
 
                                 if (!chdResult.Success)
                                     throw new InvalidOperationException(chdResult.Message);
@@ -223,7 +223,7 @@ public class CompressMainViewModel : ToolTabViewModel
                                 dolphin.LogMessage += (_, e) => AppendLog(e.Message, e.Level);
                                 dolphin.ProgressChanged += (s, e) => Application.Current.Dispatcher.Invoke(() => item.Progress = e.Progress);
 
-                                await dolphin.ConvertFileAsync(item.FilePath, detected.Format.ToString(), detected.OutputExtension, AppConfig.Instance.Dolphin.CompressLevel, _cts.Token);
+                                await dolphin.ConvertFileAsync(item.FilePath, detected.Format.ToString(), detected.OutputExtension, AppConfig.Instance.Dolphin.CompressLevel, null, _cts.Token);
                             }
                             break;
                         case RomFormat.Unknown:
