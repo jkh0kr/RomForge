@@ -19,7 +19,7 @@ This project uses the following open-source software:
 | CHDMan      | GPL-2.0-or-later  |
 | DolphinTool | GPL-2.0-or-later  |
 | xdelta3     | GPL-2.0           |
-| LibHac      | MIT               |
 | 7-Zip       | LGPL-2.1-or-later |
+| LibHac      | MIT               |
 
 The copyright and license notices for third-party components remain the property of their respective copyright holders.
