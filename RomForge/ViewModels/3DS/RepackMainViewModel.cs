@@ -216,6 +216,14 @@ public class RepackMainViewModel : ToolTabViewModel
         var reporter = new ProgressReporter(inputFileName, string.Empty, 0, progress);
         bool isCompleted = false;
         string? producedPath = null;
+        var tempOutputs = new List<string>();
+        var tempOutputsLock = new object();
+
+        void TrackOutput(string path)
+        {
+            lock (tempOutputsLock)
+                tempOutputs.Add(path);
+        }
 
         try
         {
@@ -227,18 +235,30 @@ public class RepackMainViewModel : ToolTabViewModel
                     await Task.Run(() => _service.UnpackAsync(InputPath, unpackedPath, keyStore, reporter.CreateAction(), ct), ct);
                     break;
                 case BuildMode.RebuildOnly:
-                    producedPath = await Task.Run(() => _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, RomInfo?.ShortDescriptionChanged == true ? RomInfo.ShortDescription : null, RomInfo?.PublisherChanged == true ? RomInfo.Publisher : null, keyStore, OutputFormat, reporter.CreateAction(), ct), ct);
+                    producedPath = await Task.Run(() => _service.RepackAsync(unpackedPath, OutputPath, _romInfo?.ShortDescription, RomInfo?.ShortDescriptionChanged == true ? RomInfo.ShortDescription : null, RomInfo?.PublisherChanged == true ? RomInfo.Publisher : null, keyStore, OutputFormat, reporter.CreateAction(), TrackOutput, ct), ct);
+
                     if (OutputFormat != RepackOutputFormat.Cia)
+                    {
+                        if (OutputFormat == RepackOutputFormat.Zcci)
+                            TrackOutput(Path.ChangeExtension(producedPath, ".zcci"));
+
                         producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
+                    }
                     break;
                 case BuildMode.FullProcess:
                     string safeName = NspNameBuilder.SafeFileName(_romInfo?.ShortDescription ?? string.Empty);
                     string fileName = string.IsNullOrEmpty(safeName) ? inputFileName : safeName;
                     string outputCci = Utils.GetUniqueFilePath(Path.Combine(OutputPath, fileName + "_Repack.cci"));
 
-                    producedPath = await Task.Run(() => _service.RepackDirectAsync(InputPath, outputCci, keyStore, RomInfo?.ShortDescriptionChanged == true ? RomInfo.ShortDescription : null, RomInfo?.PublisherChanged == true ? RomInfo.Publisher : null, OutputFormat, reporter.CreateAction(), ct), ct);
+                    producedPath = await Task.Run(() => _service.RepackDirectAsync(InputPath, outputCci, keyStore, RomInfo?.ShortDescriptionChanged == true ? RomInfo.ShortDescription : null, RomInfo?.PublisherChanged == true ? RomInfo.Publisher : null, OutputFormat, reporter.CreateAction(), TrackOutput, ct), ct);
+
                     if (OutputFormat != RepackOutputFormat.Cia)
+                    {
+                        if (OutputFormat == RepackOutputFormat.Zcci)
+                            TrackOutput(Path.ChangeExtension(producedPath, ".zcci"));
+
                         producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
+                    }
                     break;
             }
 
@@ -260,8 +280,16 @@ public class RepackMainViewModel : ToolTabViewModel
         {
             if (!isCompleted)
             {
-                if (mode != BuildMode.UnpackOnly && producedPath != null && File.Exists(producedPath))
-                    try { File.Delete(producedPath); } catch { }
+                if (mode != BuildMode.UnpackOnly)
+                {
+                    var toDelete = tempOutputs.Concat(producedPath != null ? [producedPath] : []).Distinct();
+
+                    foreach (string path in toDelete)
+                    {
+                        if (File.Exists(path))
+                            try { File.Delete(path); } catch { }
+                    }
+                }
 
                 if (mode == BuildMode.UnpackOnly && Directory.Exists(unpackedPath))
                     try { Directory.Delete(unpackedPath, true); } catch { }

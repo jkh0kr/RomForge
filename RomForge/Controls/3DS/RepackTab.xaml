@@ -159,9 +159,9 @@
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="10,0,5,10">
             <TextBlock Text="출력 구분:" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <RadioButton Content="CCI (에뮬용)" GroupName="OutputFormat" IsChecked="{Binding IsCciFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,15,0" IsEnabled="{Binding IsIdle}"/>
-            <RadioButton Content="ZCCI (압축)" GroupName="OutputFormat" IsChecked="{Binding IsZcciFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,15,0" IsEnabled="{Binding IsIdle}"/>
-            <RadioButton Content="CIA (실기설치용)" GroupName="OutputFormat" IsChecked="{Binding IsCiaFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" IsEnabled="{Binding IsIdle}"/>
+            <RadioButton Content="CCI ( 에뮬레이터 )" GroupName="OutputFormat" IsChecked="{Binding IsCciFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,15,0" IsEnabled="{Binding IsIdle}"/>
+            <RadioButton Content="ZCCI ( 압축 )" GroupName="OutputFormat" IsChecked="{Binding IsZcciFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,15,0" IsEnabled="{Binding IsIdle}"/>
+            <RadioButton Content="CIA ( 실기 )" GroupName="OutputFormat" IsChecked="{Binding IsCiaFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" IsEnabled="{Binding IsIdle}"/>
         </StackPanel>
 
         <Border Grid.Row="5" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Margin="5,0,5,5" Padding="8,0">
