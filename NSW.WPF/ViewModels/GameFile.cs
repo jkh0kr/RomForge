@@ -10,6 +10,7 @@ public class GameFile(string filePath) : FileItemBase(filePath, "대기중")
     private string? _version;
     private ImageSource? _icon;
     private string? _patchPath;
+    private string? _patchPassword;
     private string _fileType = string.Empty;
 
     public string FileType
@@ -64,6 +65,12 @@ public class GameFile(string filePath) : FileItemBase(filePath, "대기중")
             OnPropertyChanged(nameof(PatchDisplay));
             OnPropertyChanged(nameof(PatchIconSource));
         }
+    }
+
+    public string? PatchPassword
+    {
+        get => _patchPassword;
+        set => SetProperty(ref _patchPassword, value);
     }
 
     public string PatchDisplay => string.IsNullOrEmpty(PatchPath) ? "(없음)" : PatchPath;

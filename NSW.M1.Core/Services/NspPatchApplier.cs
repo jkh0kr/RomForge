@@ -3,7 +3,6 @@ using NSW.M1.Core.Models;
 using Patch.Core;
 using Patch.Core.Formats;
 using Patch.Core.Services;
-using System.Security.Cryptography;
 using Path = System.IO.Path;
 
 namespace NSW.M1.Core.Services;
@@ -12,7 +11,7 @@ public static class NspPatchApplier
 {
     private static readonly string[] PatchMarkerExtensions = [".xdelta", ".xdelta3", ".ips"];
 
-    public static void ApplyPatch(string patchPath, UnpackResult unpackResult, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    public static void ApplyPatch(string patchPath, UnpackResult unpackResult, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, string? patchPassword = null)
     {
         string exefsDir = unpackResult.ExefsDirs.GetValueOrDefault((byte)0, string.Empty);
         string romfsDir = unpackResult.RomfsDirs.GetValueOrDefault((byte)0, string.Empty);
@@ -20,7 +19,7 @@ public static class NspPatchApplier
 
         if (ArchivePatchSourceFactory.IsArchivePath(patchPath))
         {
-            using var archive = ArchivePatchSourceFactory.Open(patchPath);
+            using var archive = ArchivePatchSourceFactory.Open(patchPath, patchPassword);
 
             matchedCount += ApplyArchiveSubDir(archive, "exefs", exefsDir, progress, log, "한글패치 ExeFS");
             matchedCount += ApplyArchiveSubDir(archive, "romfs", romfsDir, progress, log, "한글패치 RomFS");
@@ -98,13 +97,13 @@ public static class NspPatchApplier
             log("  패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
     }
 
-    public static void ApplyDlcPatch(string patchPath, string titleIdStr, string romfsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    public static void ApplyDlcPatch(string patchPath, string titleIdStr, string romfsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, string? patchPassword = null)
     {
         int matchedCount = 0;
 
         if (ArchivePatchSourceFactory.IsArchivePath(patchPath))
         {
-            using var archive = ArchivePatchSourceFactory.Open(patchPath);
+            using var archive = ArchivePatchSourceFactory.Open(patchPath, patchPassword);
 
             matchedCount += ApplyArchiveSubDir(archive, "romfs", romfsDir, progress, log, $"DLC 패치 RomFS ({titleIdStr})");
             matchedCount += ApplyArchiveXdeltaDlc(archive, romfsDir, titleIdStr, progress, log);
@@ -466,7 +465,7 @@ public static class NspPatchApplier
             byte[] plain = wasCompressed ? NsoTool.DecompressToPlain(nso) : nso;
             byte[] patched = UniversalPatcher.ApplyPatchAsync(plain, readIps()).GetAwaiter().GetResult();
             byte[] final = wasCompressed ? NsoTool.RecompressFromPlain(patched, originalFlags) : patched;
-            
+
             File.WriteAllBytes(targetNso, final);
 
             log($"  exefs_patches 적용 완료: {Path.GetFileName(targetNso)} ⬅️ {buildId} (재압축: {wasCompressed})", LogLevel.Ok);

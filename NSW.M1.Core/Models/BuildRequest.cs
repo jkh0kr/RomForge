@@ -2,7 +2,7 @@
 using Patch.Core.Services;
 using static LibHac.Ns.ApplicationControlProperty;
 
-namespace NSW.M1.Core.Services;
+namespace NSW.M1.Core.Models;
 
 public sealed record BuildRequest(string BaseFilePath, string UpdateFilePath, IReadOnlyList<string> DlcFilePaths, string PatchDir, string OutputDir)
 {
@@ -10,7 +10,11 @@ public sealed record BuildRequest(string BaseFilePath, string UpdateFilePath, IR
 
     public bool HasPatch => !string.IsNullOrEmpty(PatchDir) && (Directory.Exists(PatchDir) || ArchivePatchSourceFactory.IsArchivePath(PatchDir));
 
+    public string? PatchPassword { get; init; }
+
     public IReadOnlyDictionary<string, string> DlcPatchDirs { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    public IReadOnlyDictionary<string, string> DlcPatchPasswords { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     public GameMetadata? UserMetadata { get; set; }
 

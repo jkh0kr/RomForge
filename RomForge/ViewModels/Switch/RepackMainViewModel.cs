@@ -15,6 +15,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using NSW.M1.Core.Models;
 
 namespace RomForge.ViewModels.Switch
 {
@@ -241,15 +242,23 @@ namespace RomForge.ViewModels.Switch
             var updateEntry = gameFiles.FirstOrDefault(f => f.FileType.Contains('U'));
             var dlcEntries = gameFiles.Where(f => f.FileType.Contains('D')).ToList();
 
-            string mainPatch = (baseEntry.PatchPath ?? updateEntry?.PatchPath ?? string.Empty).Trim();
+            var mainPatchSource = !string.IsNullOrEmpty(baseEntry.PatchPath) ? baseEntry : updateEntry;
+            string mainPatch = (mainPatchSource?.PatchPath ?? string.Empty).Trim();
+            string? mainPatchPassword = mainPatchSource?.PatchPassword;
 
             var dlcPatchDirs = dlcEntries
                 .Where(f => !string.IsNullOrEmpty(f.PatchPath) && !string.IsNullOrEmpty(f.TitleID))
                 .ToDictionary(f => f.TitleID!, f => f.PatchPath!.Trim(), StringComparer.OrdinalIgnoreCase);
 
+            var dlcPatchPasswords = dlcEntries
+                .Where(f => !string.IsNullOrEmpty(f.PatchPath) && !string.IsNullOrEmpty(f.TitleID) && !string.IsNullOrEmpty(f.PatchPassword))
+                .ToDictionary(f => f.TitleID!, f => f.PatchPassword!, StringComparer.OrdinalIgnoreCase);
+
             req = new BuildRequest(baseEntry.FilePath, updateEntry?.FilePath ?? string.Empty, [.. dlcEntries.Select(f => f.FilePath)], mainPatch, OutputPath)
             {
-                DlcPatchDirs = dlcPatchDirs
+                DlcPatchDirs = dlcPatchDirs,
+                PatchPassword = mainPatchPassword,
+                DlcPatchPasswords = dlcPatchPasswords
             };
 
             return true;

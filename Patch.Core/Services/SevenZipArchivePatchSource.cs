@@ -11,14 +11,20 @@ public sealed class SevenZipArchivePatchSource : IArchivePatchSource
 
     public bool SupportsCheapRepeatedOpen => true;
 
-    public SevenZipArchivePatchSource(string path)
+    public SevenZipArchivePatchSource(string path, string? password = null)
     {
         NativeSevenZip.EnsureInitialized();
+
+        using (var probe = string.IsNullOrEmpty(password) ? new SevenZipExtractor(path) : new SevenZipExtractor(path, password))
+        {
+            if (!probe.Check())
+                throw new ArchivePasswordRequiredException(path);
+        }
 
         _tempDir = Path.Combine(Path.GetDirectoryName(path)!, "romforge_7z_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempDir);
 
-        using (var extractor = new SevenZipExtractor(path))
+        using (var extractor = string.IsNullOrEmpty(password) ? new SevenZipExtractor(path) : new SevenZipExtractor(path, password))
         {
             extractor.ExtractArchive(_tempDir);
         }

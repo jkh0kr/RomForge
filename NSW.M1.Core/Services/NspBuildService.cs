@@ -8,6 +8,7 @@ using NSW.HacPack.Enums;
 using NSW.HacPack.Services;
 using NSW.M1.Core.Models;
 using NSW.Utils;
+using Patch.Core.Services;
 using System.Diagnostics;
 using Path = System.IO.Path;
 
@@ -216,7 +217,10 @@ public static class NspBuildService
         progress.Report((0, "Program NCA 생성 중..."));
 
         if (req.HasPatch)
-            NspPatchApplier.ApplyPatch(req.PatchDir, unpackResult, progress, log);
+        {
+            bool isArchive = ArchivePatchSourceFactory.IsArchivePath(req.PatchDir);
+            NspPatchApplier.ApplyPatch(req.PatchDir, unpackResult, progress, log, req.PatchPassword);
+        }
 
         settings.NcaType = LibHac.FsSystem.NcaHeader.ContentType.Program;
         settings.ProgramNcaPath = NcaGenerator.GenerateProgramNca(settings, progress, ct) ?? string.Empty;

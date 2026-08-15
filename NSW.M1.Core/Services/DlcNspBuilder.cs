@@ -1,6 +1,7 @@
 ﻿using Common;
 using NSW.HacPack.Enums;
 using NSW.HacPack.Services;
+using NSW.M1.Core.Models;
 using System.Diagnostics;
 using Path = System.IO.Path;
 
@@ -33,7 +34,10 @@ public static class DlcNspBuilder
             string romfsPath = Path.Combine(dlcDir, "romfs");
 
             if (req.DlcPatchDirs.TryGetValue(titleIdStr, out var dlcPatchDir) && !string.IsNullOrEmpty(dlcPatchDir))
-                NspPatchApplier.ApplyDlcPatch(dlcPatchDir, titleIdStr, romfsPath, progress, log);
+            {
+                req.DlcPatchPasswords.TryGetValue(titleIdStr, out var dlcPatchPassword);
+                NspPatchApplier.ApplyDlcPatch(dlcPatchDir, titleIdStr, romfsPath, progress, log, dlcPatchPassword);
+            }
 
             bool hasRomfs = Directory.Exists(romfsPath) && Directory.EnumerateFileSystemEntries(romfsPath).Any();
 

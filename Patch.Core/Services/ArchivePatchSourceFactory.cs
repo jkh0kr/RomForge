@@ -25,17 +25,17 @@ public static class ArchivePatchSourceFactory
 
     public static string CombineScope(string archivePath, string scope) => string.IsNullOrEmpty(scope) ? archivePath : $"{archivePath}{ScopeSeparator}{scope}";
 
-    public static IArchivePatchSource Open(string path) => new NestedArchivePatchSource(OpenRaw(path));
+    public static IArchivePatchSource Open(string path, string? password = null) => new NestedArchivePatchSource(OpenRaw(path, password));
 
-    internal static IArchivePatchSource OpenRaw(string path)
+    internal static IArchivePatchSource OpenRaw(string path, string? password = null)
     {
         var (archivePath, scope) = SplitScope(path);
         string ext = Path.GetExtension(archivePath);
 
         IArchivePatchSource baseArchive = string.Equals(ext, ".7z", StringComparison.OrdinalIgnoreCase)
-            ? new SevenZipArchivePatchSource(archivePath)
+            ? new SevenZipArchivePatchSource(archivePath, password)
             : string.Equals(ext, ".zip", StringComparison.OrdinalIgnoreCase)
-                ? new ZipArchivePatchSource(archivePath)
+                ? new ZipArchivePatchSource(archivePath, password)
                 : throw new NotSupportedException($"지원하지 않는 압축 형식입니다: {ext}");
 
         return scope.Length == 0 ? baseArchive : new ScopedArchivePatchSource(baseArchive, scope);

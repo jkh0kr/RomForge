@@ -3,6 +3,7 @@ using Common.WPF.ViewModels;
 using LibHac.Ns;
 using NSW.Core;
 using NSW.Core.Enums;
+using NSW.M1.Core.Models;
 using NSW.M1.Core.Services;
 using NSW.WPF.Services;
 using RomForge.Core.Models;

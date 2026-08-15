@@ -5,6 +5,7 @@ using NSW.Core.Models;
 using NSW.WPF.Services;
 using NSW.WPF.ViewModels;
 using Patch.Core.Services;
+using RomForge.Views;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
@@ -35,18 +36,18 @@ public partial class SwitchTitleListControl : UserControl
     {
         var targets = GameFiles.Where(f => f.IsKeyMissing).ToList();
 
-        if (targets.Count == 0) 
-        { 
+        if (targets.Count == 0)
+        {
             onCompleted();
             return;
         }
 
         var keySet = KeySetProvider.Instance.KeySet;
 
-        if (keySet == null) 
-        { 
-            onCompleted(); 
-            return; 
+        if (keySet == null)
+        {
+            onCompleted();
+            return;
         }
 
         int remaining = targets.Count;
@@ -95,7 +96,7 @@ public partial class SwitchTitleListControl : UserControl
 
     private void BtnBulkPatch_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { ContextMenu: not null } fe) 
+        if (sender is not FrameworkElement { ContextMenu: not null } fe)
             return;
 
         fe.ContextMenu.PlacementTarget = fe;
@@ -138,7 +139,7 @@ public partial class SwitchTitleListControl : UserControl
                 continue;
             }
 
-            string[] exts = [".zip", ".7z"]; 
+            string[] exts = [".zip", ".7z"];
             string? archiveCandidate = exts
                 .Select(ext => Path.Combine(dlg.SelectedPath, file.TitleID! + ext))
                 .FirstOrDefault(File.Exists);
@@ -170,10 +171,17 @@ public partial class SwitchTitleListControl : UserControl
             return;
 
         int matched = 0;
+        string? password;
 
         try
         {
-            using var archive = ArchivePatchSourceFactory.Open(dlg.FileName);
+            var opened = PasswordPromptWindow.OpenWithPasswordPrompt(dlg.FileName, Window.GetWindow(this));
+
+            if (opened == null)
+                return;
+
+            using var archive = opened.Value.Archive;
+            password = opened.Value.Password;
 
             foreach (var file in targets)
             {
@@ -183,6 +191,7 @@ public partial class SwitchTitleListControl : UserControl
                     continue;
 
                 file.PatchPath = ArchivePatchSourceFactory.CombineScope(dlg.FileName, prefix);
+                file.PatchPassword = password;
                 matched++;
             }
         }
@@ -234,11 +243,11 @@ public partial class SwitchTitleListControl : UserControl
         };
 
         System.Diagnostics.Process.Start(psi);
-    }    
+    }
 
     private void LvFiles_KeyUp(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Delete) 
+        if (e.Key == Key.Delete)
             BtnRemoveFile_Click(sender, new RoutedEventArgs());
     }
 
@@ -250,7 +259,7 @@ public partial class SwitchTitleListControl : UserControl
 
     private async void LvFiles_Drop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths) 
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths)
             return;
 
         await AddFilesAsync(ExpandPaths(paths));
@@ -334,7 +343,11 @@ public partial class SwitchTitleListControl : UserControl
             var existingBase = GameFiles.FirstOrDefault(f => f.FileType.Contains('B'));
             if (existingBase != null)
             {
-                vm.PatchPath ??= existingBase.PatchPath;
+                if (vm.PatchPath == null)
+                {
+                    vm.PatchPath = existingBase.PatchPath;
+                    vm.PatchPassword = existingBase.PatchPassword;
+                }
                 GameFiles.Remove(existingBase);
             }
         }
@@ -344,7 +357,11 @@ public partial class SwitchTitleListControl : UserControl
             var existingUpdate = GameFiles.FirstOrDefault(f => f.FileType.Contains('U'));
             if (existingUpdate != null)
             {
-                vm.PatchPath ??= existingUpdate.PatchPath;
+                if (vm.PatchPath == null)
+                {
+                    vm.PatchPath = existingUpdate.PatchPath;
+                    vm.PatchPassword = existingUpdate.PatchPassword;
+                }
                 GameFiles.Remove(existingUpdate);
             }
         }
@@ -359,7 +376,7 @@ public partial class SwitchTitleListControl : UserControl
         foreach (var path in paths)
         {
             if (Directory.Exists(path))
-                foreach (var f in Directory.EnumerateFiles(path, "*.*", opts)) 
+                foreach (var f in Directory.EnumerateFiles(path, "*.*", opts))
                     yield return f;
             else if (File.Exists(path))
                 yield return path;
@@ -385,7 +402,10 @@ public partial class SwitchTitleListControl : UserControl
     private void MenuItem_RemovePatch_Click(object sender, RoutedEventArgs e)
     {
         if (lvFiles.SelectedItem is GameFile file)
+        {
             file.PatchPath = null;
+            file.PatchPassword = null;
+        }
     }
 
     private void PatchDropTarget_Click(object sender, MouseButtonEventArgs e)
@@ -399,7 +419,7 @@ public partial class SwitchTitleListControl : UserControl
 
     private void PatchMenu_SelectFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: GameFile file }) 
+        if (sender is not FrameworkElement { DataContext: GameFile file })
             return;
 
         var dlg = new System.Windows.Forms.FolderBrowserDialog
@@ -414,7 +434,7 @@ public partial class SwitchTitleListControl : UserControl
 
     private void PatchMenu_SelectArchive_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: GameFile file }) 
+        if (sender is not FrameworkElement { DataContext: GameFile file })
             return;
 
         var dlg = new OpenFileDialog
@@ -423,8 +443,11 @@ public partial class SwitchTitleListControl : UserControl
             Filter = "압축파일 (*.zip;*.7z)|*.zip;*.7z"
         };
 
-        if (dlg.ShowDialog() == true)
-            file.PatchPath = dlg.FileName;
+        if (dlg.ShowDialog() != true)
+            return;
+
+        if (!TryAssignArchivePatch(file, dlg.FileName))
+            return;
     }
 
     private void PatchDropTarget_DragEnter(object sender, DragEventArgs e)
@@ -448,8 +471,36 @@ public partial class SwitchTitleListControl : UserControl
 
         string path = paths[0];
 
-        if (IsValidPatchPath(path))
+        if (!IsValidPatchPath(path))
+            return;
+
+        if (ArchivePatchSourceFactory.IsArchivePath(path))
+            TryAssignArchivePatch(file, path);
+        else
             file.PatchPath = path;
+    }
+
+    private bool TryAssignArchivePatch(GameFile file, string archivePath)
+    {
+        try
+        {
+            var opened = PasswordPromptWindow.OpenWithPasswordPrompt(archivePath, Window.GetWindow(this));
+
+            if (opened == null)
+                return false;
+
+            opened.Value.Archive.Dispose();
+
+            file.PatchPath = archivePath;
+            file.PatchPassword = opened.Value.Password;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"압축파일을 여는 중 오류가 발생했습니다: {ex.Message}", "한글패치 지정", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
     }
 
     private static bool IsValidPatchDrop(IDataObject data)
