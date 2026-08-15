@@ -186,7 +186,18 @@
                             <DataTemplate>
                                 <DockPanel LastChildFill="True" VerticalAlignment="Center">
                                     <Button Margin="0,0,8,0" DockPanel.Dock="Right" Click="BtnCopyHash_Click" ToolTip="해시값 복사" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Visibility="{Binding IsHashAvailable, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                        <Image Source="/Assets/Images/Copy.png" Width="24" Height="24"/>
+                                        <Image Width="24" Height="24">
+                                            <Image.Style>
+                                                <Style TargetType="Image">
+                                                    <Setter Property="Source" Value="/Assets/Images/Copy.png"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsCopied}" Value="True">
+                                                            <Setter Property="Source" Value="/Assets/Images/Check.png"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Image.Style>
+                                        </Image>
                                     </Button>
                                     <TextBlock Text="{Binding HashResult}" Padding="6,0" FontFamily="Consolas" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 </DockPanel>

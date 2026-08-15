@@ -6,6 +6,7 @@ namespace RomForge.Core.Models.Util;
 public class HashFileItem(string filePath) : FileItemBase(filePath)
 {
     private string _hashResult = string.Empty;
+    private bool _isCopied;
 
     public string RawHash { get; set; } = string.Empty;
 
@@ -17,6 +18,12 @@ public class HashFileItem(string filePath) : FileItemBase(filePath)
             if (SetProperty(ref _hashResult, value))
                 OnPropertyChanged(nameof(IsHashAvailable));
         }
+    }
+
+    public bool IsCopied
+    {
+        get => _isCopied;
+        set => SetProperty(ref _isCopied, value);
     }
 
     public bool IsHashAvailable => !string.IsNullOrEmpty(HashResult);

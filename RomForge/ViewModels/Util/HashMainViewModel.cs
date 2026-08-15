@@ -27,7 +27,9 @@ public class HashMainViewModel : ToolTabViewModel
         get => _useUpperCase;
         set
         {
-            if (_useUpperCase == value) return;
+            if (_useUpperCase == value) 
+                return;
+
             _useUpperCase = value;
             OnPropertyChanged();
 

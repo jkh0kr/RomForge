@@ -124,16 +124,21 @@ public partial class HashTab : UserControl
     {
         if (sender is FrameworkElement btn && btn.DataContext is HashFileItem item)
         {
-            if (string.IsNullOrEmpty(item.HashResult)) 
+            if (string.IsNullOrEmpty(item.HashResult))
                 return;
 
             CopyTextDirect(item.HashResult);
+
+            foreach (var fi in ViewModel.FileItems)
+                fi.IsCopied = false;
+
+            item.IsCopied = true;
         }
     }
 
     private void CopyTextDirect(string text)
     {
-        if (!OpenClipboard(IntPtr.Zero)) 
+        if (!OpenClipboard(IntPtr.Zero))
             return;
 
         try
@@ -152,7 +157,7 @@ public partial class HashTab : UserControl
     {
         var selected = lvFiles.SelectedItems.Cast<HashFileItem>().ToList();
 
-        if (selected.Count == 0) 
+        if (selected.Count == 0)
             return;
 
         string? dir = Path.GetDirectoryName(selected[0].FilePath);
