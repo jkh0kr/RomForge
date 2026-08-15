@@ -1,7 +1,9 @@
 ﻿using Patch.Core.Services;
+using RomForge.Core.UI.Helpers;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 
 namespace RomForge.Views;
 
@@ -24,6 +26,16 @@ public partial class PasswordPromptWindow : Window
         Loaded += (_, _) => pwBox.Focus();
     }
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        IntPtr hWnd = new WindowInteropHelper(this).Handle;
+        int value = 1;
+
+        _ = Win32API.DwmSetWindowAttribute(hWnd, 20, ref value, sizeof(int));
+    }
+
     private void PwBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
@@ -40,7 +52,7 @@ public partial class PasswordPromptWindow : Window
 
     private void Accept()
     {
-        Password = pwBox.Password;
+        Password = pwBox.Text;
         DialogResult = true;
         Close();
     }
