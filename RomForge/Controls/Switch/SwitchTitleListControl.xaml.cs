@@ -154,7 +154,7 @@ public partial class SwitchTitleListControl : UserControl
         ShowBulkPatchResult(targets.Count, matched);
     }
 
-    private void BulkPatchMenu_FromArchive_Click(object sender, RoutedEventArgs e)
+    private async void BulkPatchMenu_FromArchive_Click(object sender, RoutedEventArgs e)
     {
         var targets = GetBulkPatchTargets();
 
@@ -175,7 +175,7 @@ public partial class SwitchTitleListControl : UserControl
 
         try
         {
-            var opened = PasswordPromptWindow.OpenWithPasswordPrompt(dlg.FileName, Window.GetWindow(this));
+            var opened = await PasswordPromptWindow.OpenWithPasswordPromptAsync(dlg.FileName, Window.GetWindow(this));
 
             if (opened == null)
                 return;
@@ -432,7 +432,7 @@ public partial class SwitchTitleListControl : UserControl
             file.PatchPath = dlg.SelectedPath;
     }
 
-    private void PatchMenu_SelectArchive_Click(object sender, RoutedEventArgs e)
+    private async void PatchMenu_SelectArchive_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: GameFile file })
             return;
@@ -446,7 +446,7 @@ public partial class SwitchTitleListControl : UserControl
         if (dlg.ShowDialog() != true)
             return;
 
-        if (!TryAssignArchivePatch(file, dlg.FileName))
+        if (!await TryAssignArchivePatchAsync(file, dlg.FileName))
             return;
     }
 
@@ -461,7 +461,7 @@ public partial class SwitchTitleListControl : UserControl
         e.Handled = true;
     }
 
-    private void PatchDropTarget_Drop(object sender, DragEventArgs e)
+    private async void PatchDropTarget_Drop(object sender, DragEventArgs e)
     {
         if (sender is not FrameworkElement { Tag: GameFile file })
             return;
@@ -475,16 +475,16 @@ public partial class SwitchTitleListControl : UserControl
             return;
 
         if (ArchivePatchSourceFactory.IsArchivePath(path))
-            TryAssignArchivePatch(file, path);
+            await TryAssignArchivePatchAsync(file, path);
         else
             file.PatchPath = path;
     }
 
-    private bool TryAssignArchivePatch(GameFile file, string archivePath)
+    private async Task<bool> TryAssignArchivePatchAsync(GameFile file, string archivePath)
     {
         try
         {
-            var opened = PasswordPromptWindow.OpenWithPasswordPrompt(archivePath, Window.GetWindow(this));
+            var opened = await PasswordPromptWindow.OpenWithPasswordPromptAsync(archivePath, Window.GetWindow(this));
 
             if (opened == null)
                 return false;

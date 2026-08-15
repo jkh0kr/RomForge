@@ -57,7 +57,7 @@ public partial class PasswordPromptWindow : Window
         Close();
     }
 
-    public static (IArchivePatchSource Archive, string? Password)? OpenWithPasswordPrompt(string archivePath, Window? owner)
+    public static async Task<(IArchivePatchSource Archive, string? Password)?> OpenWithPasswordPromptAsync(string archivePath, Window? owner)
     {
         bool wrongPassword = false;
         string? password = null;
@@ -66,7 +66,9 @@ public partial class PasswordPromptWindow : Window
         {
             try
             {
-                var archive = ArchivePatchSourceFactory.Open(archivePath, password);
+                string? attemptedPassword = password;
+                var archive = await Task.Run(() => ArchivePatchSourceFactory.Open(archivePath, attemptedPassword));
+
                 return (archive, password);
             }
             catch (ArchivePasswordRequiredException)

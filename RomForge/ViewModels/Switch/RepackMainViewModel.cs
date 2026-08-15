@@ -178,6 +178,15 @@ namespace RomForge.ViewModels.Switch
                 catch (OperationCanceledException)
                 {
                     Log($"작업이 취소되었습니다.", LogLevel.Error);
+
+                    try
+                    {
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+
+                        new WorkDirs(req.OutputDir).Cleanup(keepUnpacked: mode == BuildMode.RebuildOnly);
+                    }
+                    catch { }
                 }
                 catch (UnpackMetadataNotFoundException bex)
                 {

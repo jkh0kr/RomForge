@@ -15,18 +15,18 @@ public sealed class SevenZipArchivePatchSource : IArchivePatchSource
     {
         NativeSevenZip.EnsureInitialized();
 
-        using (var probe = string.IsNullOrEmpty(password) ? new SevenZipExtractor(path) : new SevenZipExtractor(path, password))
-        {
-            if (!probe.Check())
-                throw new ArchivePasswordRequiredException(path);
-        }
-
         _tempDir = Path.Combine(Path.GetDirectoryName(path)!, "romforge_7z_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempDir);
 
-        using (var extractor = string.IsNullOrEmpty(password) ? new SevenZipExtractor(path) : new SevenZipExtractor(path, password))
+        try
         {
+            using var extractor = string.IsNullOrEmpty(password) ? new SevenZipExtractor(path) : new SevenZipExtractor(path, password);
             extractor.ExtractArchive(_tempDir);
+        }
+        catch (Exception)
+        {
+            SafeDeleteTempDir();
+            throw new ArchivePasswordRequiredException(path);
         }
 
         foreach (var filePath in Directory.GetFiles(_tempDir, "*", SearchOption.AllDirectories))
@@ -35,7 +35,23 @@ public sealed class SevenZipArchivePatchSource : IArchivePatchSource
             _diskPaths[relativePath] = filePath;
         }
 
+        if (_diskPaths.Count == 0)
+        {
+            SafeDeleteTempDir();
+            throw new InvalidOperationException("압축 파일에 항목이 없습니다.");
+        }
+
         EntryPaths = [.. _diskPaths.Keys];
+    }
+
+    private void SafeDeleteTempDir()
+    {
+        try
+        {
+            if (Directory.Exists(_tempDir))
+                Directory.Delete(_tempDir, recursive: true);
+        }
+        catch { }
     }
 
     public IArchivePatchEntry? FindEntry(string path)
@@ -66,9 +82,6 @@ public sealed class SevenZipArchivePatchSource : IArchivePatchSource
 
         public long Length => new FileInfo(diskPath).Length;
 
-        public Stream Open()
-        {
-            return new FileStream(diskPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-        }
+        public Stream Open() => new FileStream(diskPath, FileMode.Open, FileAccess.Read, FileShare.Read);
     }
 }

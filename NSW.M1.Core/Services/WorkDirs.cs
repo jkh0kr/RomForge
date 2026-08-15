@@ -12,20 +12,22 @@ public sealed class WorkDirs(string outputDir)
     {
         foreach (var dir in new[] { Unpacked, Temp, BuildNca })
         {
-            if (Directory.Exists(dir)) 
+            if (Directory.Exists(dir))
                 Directory.Delete(dir, true);
 
             Directory.CreateDirectory(dir);
         }
     }
 
-    public void Cleanup()
+    public void Cleanup(bool keepUnpacked = false)
     {
-        foreach (var dir in new[] { BuildNca, Temp, Unpacked })
+        string [] targets = keepUnpacked ? [BuildNca, Temp] : [ BuildNca, Temp, Unpacked ];
+
+        foreach (var dir in targets)
         {
             try
             {
-                if (Directory.Exists(dir)) 
+                if (Directory.Exists(dir))
                     Directory.Delete(dir, true);
             }
             catch (Exception ex)
