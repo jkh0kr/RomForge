@@ -1,6 +1,7 @@
 ﻿using Patch.Core.Formats.DCP.Models;
 using System.Text;
 
+
 namespace Patch.Core.Formats.DCP.Services;
 
 public class Iso9660Builder(byte[] originalPvd, Iso9660Entry root)
@@ -13,6 +14,12 @@ public class Iso9660Builder(byte[] originalPvd, Iso9660Entry root)
     private readonly Dictionary<Iso9660Entry, byte[]> _fileData = [];
     private uint _nextLba;
 
+    public uint PathTableSize { get; private set; }
+    public uint LPathTableLba { get; private set; }
+    public uint MPathTableLba { get; private set; }
+    private byte[] _lPathTableSectors = [];
+    private byte[] _mPathTableSectors = [];
+
     public void SetFileData(Iso9660Entry entry, byte[] data) => _fileData[entry] = data;
 
     private static int SectorsFor(long size) => (int)Math.Ceiling(size / (double)SectorSize);
@@ -23,10 +30,126 @@ public class Iso9660Builder(byte[] originalPvd, Iso9660Entry root)
 
         Root.ParentLba = 0;
 
+        var pathOrder = BuildPathTableOrder(Root);
+        var (lRawPlaceholder, _) = BuildPathTables(pathOrder, placeholderExtents: true);
+
+        PathTableSize = (uint)lRawPlaceholder.Length;
+        int pathTableSectors = SectorsFor(PathTableSize);
+
+        LPathTableLba = _nextLba;
+        _nextLba += (uint)pathTableSectors;
+        MPathTableLba = _nextLba;
+        _nextLba += (uint)pathTableSectors;
+
         AssignDirectorySectors(Root);
         LayoutContent(Root, isRoot: true);
 
+        var (lFinal, mFinal) = BuildPathTables(pathOrder, placeholderExtents: false);
+
+        _lPathTableSectors = PadToSector(lFinal);
+        _mPathTableSectors = PadToSector(mFinal);
+
         return (Root.LayoutLba, Root.LayoutSize, _nextLba - startLba);
+    }
+
+    public IEnumerable<(uint Lba, byte[] Data)> GetPathTableSectors()
+    {
+        yield return (LPathTableLba, _lPathTableSectors);
+        yield return (MPathTableLba, _mPathTableSectors);
+    }
+
+    private record PathTableOrderEntry(Iso9660Entry Dir, int Number, int ParentNumber);
+
+    private static List<PathTableOrderEntry> BuildPathTableOrder(Iso9660Entry root)
+    {
+        var result = new List<PathTableOrderEntry>();
+        var numberOf = new Dictionary<Iso9660Entry, int> { [root] = 1 };
+
+        result.Add(new PathTableOrderEntry(root, 1, 1));
+
+        var currentLevel = new List<Iso9660Entry> { root };
+        int nextNumber = 2;
+
+        while (currentLevel.Count > 0)
+        {
+            var nextLevel = new List<Iso9660Entry>();
+
+            foreach (var dir in currentLevel)
+            {
+                var children = dir.Children.Where(c => c.IsDirectory).OrderBy(c => c.Name, StringComparer.Ordinal).ToList();
+
+                foreach (var child in children)
+                {
+                    int childNumber = nextNumber++;
+
+                    numberOf[child] = childNumber;
+                    result.Add(new PathTableOrderEntry(child, childNumber, numberOf[dir]));
+                    nextLevel.Add(child);
+                }
+            }
+
+            currentLevel = nextLevel;
+        }
+
+        return result;
+    }
+
+    private static (byte[] LTable, byte[] MTable) BuildPathTables(List<PathTableOrderEntry> order, bool placeholderExtents)
+    {
+        using var lMs = new MemoryStream();
+        using var mMs = new MemoryStream();
+
+        foreach (var entry in order)
+        {
+            bool isRoot = entry.Number == 1;
+            byte[] nameBytes = isRoot ? [0x00] : Encoding.ASCII.GetBytes(entry.Dir.Name);
+            byte lenDi = (byte)nameBytes.Length;
+            uint extentLba = placeholderExtents ? 0u : entry.Dir.LayoutLba;
+            ushort parentNumber = (ushort)entry.ParentNumber;
+
+            WritePathTableRecord(lMs, lenDi, extentLba, parentNumber, nameBytes, bigEndian: false);
+            WritePathTableRecord(mMs, lenDi, extentLba, parentNumber, nameBytes, bigEndian: true);
+        }
+
+        return (lMs.ToArray(), mMs.ToArray());
+    }
+
+    private static void WritePathTableRecord(MemoryStream ms, byte lenDi, uint extentLba, ushort parentNumber, byte[] nameBytes, bool bigEndian)
+    {
+        ms.WriteByte(lenDi);
+        ms.WriteByte(0);
+
+        var lbaBytes = BitConverter.GetBytes(extentLba);
+
+        if (bigEndian)
+            Array.Reverse(lbaBytes);
+
+        ms.Write(lbaBytes, 0, 4);
+
+        var parentBytes = BitConverter.GetBytes(parentNumber);
+
+        if (bigEndian)
+            Array.Reverse(parentBytes);
+
+        ms.Write(parentBytes, 0, 2);
+        ms.Write(nameBytes, 0, nameBytes.Length);
+
+        if (nameBytes.Length % 2 != 0)
+            ms.WriteByte(0);
+    }
+
+    private static byte[] PadToSector(byte[] data)
+    {
+        int sectors = (int)Math.Ceiling(data.Length / (double)SectorSize);
+
+        if (data.Length == sectors * SectorSize)
+            return data;
+
+        var padded = new byte[sectors * SectorSize];
+
+        Buffer.BlockCopy(data, 0, padded, 0, data.Length);
+
+        return padded;
     }
 
     private static void AssignDirectorySectors(Iso9660Entry dir)
@@ -93,7 +216,7 @@ public class Iso9660Builder(byte[] originalPvd, Iso9660Entry root)
         int nameLen = isSelf ? 1 : Encoding.ASCII.GetByteCount(name + (isDir ? "" : ";1"));
         int len = 33 + nameLen;
 
-        if (len % 2 != 0) 
+        if (len % 2 != 0)
             len++;
 
         return len;
@@ -129,7 +252,7 @@ public class Iso9660Builder(byte[] originalPvd, Iso9660Entry root)
         var nameBytes = name is "." or ".." ? [(byte)(name == "." ? 0x00 : 0x01)] : Encoding.ASCII.GetBytes(name + (isDir ? "" : ";1"));
         int recordLen = 33 + nameBytes.Length;
 
-        if (recordLen % 2 != 0) 
+        if (recordLen % 2 != 0)
             recordLen++;
 
         buffer[pos + 0] = (byte)recordLen;
@@ -178,6 +301,17 @@ public class Iso9660Builder(byte[] originalPvd, Iso9660Entry root)
         WriteBothEndian32(pvd, 80, totalSectors);
         WriteBothEndian32(pvd, 156 + 2, Root.LayoutLba);
         WriteBothEndian32(pvd, 156 + 10, Root.LayoutSize);
+
+        WriteBothEndian32(pvd, 132, PathTableSize);
+
+        var lLba = BitConverter.GetBytes(LPathTableLba);
+        Buffer.BlockCopy(lLba, 0, pvd, 140, 4);
+        Array.Clear(pvd, 144, 4);
+
+        var mLba = BitConverter.GetBytes(MPathTableLba);
+        Array.Reverse(mLba);
+        Buffer.BlockCopy(mLba, 0, pvd, 148, 4);
+        Array.Clear(pvd, 152, 4);
 
         return pvd;
     }

@@ -159,7 +159,7 @@ public class DreamcastPatchMainViewModel : ToolTabViewModel, IPatchViewModel
                         ProgressLabel = msg;
                     }
                 });
-            }, ct);
+            }, msg => Log(msg, LogLevel.Info), ct);
 
             ProgressPct = 100;
             ProgressLabel = "패치 완료";

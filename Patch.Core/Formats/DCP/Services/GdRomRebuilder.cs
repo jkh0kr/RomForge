@@ -4,6 +4,8 @@ namespace Patch.Core.Formats.DCP.Services;
 
 public static class GdRomRebuilder
 {
+    private const uint GdEndLba = 549150;
+
     public static void RebuildFull(GdiFile originalGdi, Dictionary<string, byte[]> replacedFiles, string outputDir, Action<double, string>? onProgress = null, CancellationToken ct = default)
     {
         Directory.CreateDirectory(outputDir);
@@ -21,6 +23,7 @@ public static class GdRomRebuilder
         for (uint s = 0; s < 16; s++)
             ipBinSectors[s] = sourceFunc((uint)firstDataTrack.StartLba + s);
 
+        var bootFileName = System.Text.Encoding.ASCII.GetString(ipBinSectors[0], 0x60, 16).Trim('\0', ' ');
         var originalPvdLba = sourceReader.PvdAbsoluteLba;
         var pvdRaw = sourceFunc(originalPvdLba);
         var root = Iso9660DirectoryReader.ReadTree(sourceFunc, originalPvdLba);
@@ -33,7 +36,7 @@ public static class GdRomRebuilder
         {
             ct.ThrowIfCancellationRequested();
 
-            var data = replacedFiles.TryGetValue(entry.FullPath, out var patched) ? patched : Iso9660DirectoryReader.ReadFile(sourceFunc, entry);
+            var data = replacedFiles.TryGetValue(entry.FullPath.Replace('/', '\\'), out var patched) ? patched : Iso9660DirectoryReader.ReadFile(sourceFunc, entry);
 
             builder.SetFileData(entry, data);
 
@@ -44,8 +47,27 @@ public static class GdRomRebuilder
             onProgress?.Invoke(0.01 * fileDone / allFiles.Count, $"패치 적용 중 ({fileDone:N0}/{allFiles.Count:N0})");
         }
 
-        var (_, _, totalSectors) = builder.Relayout((uint)firstDataTrack.StartLba + 17);
+        var (_, _, layoutSectors) = builder.Relayout((uint)firstDataTrack.StartLba + 17);
+        var bootEntry = allFiles.FirstOrDefault(e => !e.IsDirectory
+            && !e.FullPath.Contains('/')
+            && string.Equals(e.Name, bootFileName, StringComparison.OrdinalIgnoreCase));
+
+        if (bootEntry is not null)
+        {
+            uint bootSectors = (uint)Math.Ceiling(bootEntry.LayoutSize / 2048.0);
+            bootEntry.LayoutLba = GdEndLba - 150 - bootSectors;
+        }
+
+        uint totalSectors = GdEndLba - (uint)firstDataTrack.StartLba;
+
+        if (totalSectors < layoutSectors)
+            totalSectors = layoutSectors;
+
         var contentSectors = new List<(uint Lba, byte[] Data)>();
+
+        foreach (var (lba, data) in builder.GetPathTableSectors())
+            contentSectors.Add((lba, data));
+
         int dirDone = 0;
         int dirTotal = CountDirs(root);
 
@@ -145,7 +167,7 @@ public static class GdRomRebuilder
                     double currentPercentage = 0.25 + 0.73 * ((double)totalBytesCopied / totalBytesToCopy);
                     double copiedMb = totalBytesCopied / 1024.0 / 1024.0;
                     double totalMb = totalBytesToCopy / 1024.0 / 1024.0;
-                                        
+
                     onProgress?.Invoke(currentPercentage, $"자원 트랙 복사 중: {name} ({copiedMb:N1}MB / {totalMb:N1}MB)");
                 }
             }

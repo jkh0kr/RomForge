@@ -1,10 +1,10 @@
-﻿using System.IO.Compression;
+﻿﻿using System.IO.Compression;
 
 namespace Patch.Core.Formats.DCP.Services;
 
 public static class DcpGdRomApplier
 {
-    public static async Task ApplyAsync(string gdiPath, string dcpPath, string outputDir, Action<double, string>? onProgress = null, CancellationToken ct = default)
+    public static async Task ApplyAsync(string gdiPath, string dcpPath, string outputDir, Action<double, string>? onProgress = null, Action<string>? onLog = null, CancellationToken ct = default)
     {
         onProgress?.Invoke(0.0, "GDI 메타데이터 및 원본 구조 파싱 중...");
 
@@ -42,18 +42,25 @@ public static class DcpGdRomApplier
         var xdeltaEntries = replacedFiles.Where(x => x.Key.EndsWith(".xdelta", StringComparison.OrdinalIgnoreCase)).ToList();
         int xdeltaDone = 0;
 
+        onLog?.Invoke($"xdelta 대상 파일 {xdeltaEntries.Count}개 감지됨");
+
         foreach (var kv in xdeltaEntries)
         {
             var targetPath = kv.Key[..^".xdelta".Length];
             var fileName = Path.GetFileName(targetPath);
 
             if (!byPath.TryGetValue(targetPath, out var originalEntry))
+            {
+                onLog?.Invoke($"[실패] DCP가 참조하는 원본 파일을 찾을 수 없음: {targetPath}");
                 throw new InvalidOperationException($"DCP가 참조하는 원본 파일을 찾을 수 없습니다: {targetPath}");
+            }
 
             onProgress?.Invoke(0.05 + 0.15 * xdeltaDone / xdeltaEntries.Count, $"xdelta 델타 패치 적용 중: {fileName}");
 
             var originalData = Iso9660DirectoryReader.ReadFile(sourceFunc, originalEntry);
             var patched = await Task.Run(() => Xdelta3.ApplyPatch(originalData, kv.Value, null, ct), ct);
+
+            onLog?.Invoke($"xdelta 적용 완료: {targetPath} ({originalData.Length:N0} → {patched.Length:N0} bytes)");
 
             replacedFiles[targetPath] = patched;
             replacedFiles.Remove(kv.Key);
