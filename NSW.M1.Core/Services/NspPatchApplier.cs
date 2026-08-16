@@ -11,6 +11,8 @@ public static class NspPatchApplier
 {
     private static readonly string[] PatchMarkerExtensions = [".xdelta", ".xdelta3", ".ips"];
 
+    private readonly record struct XdeltaCandidate(string TargetFileName, string? AbsoluteExactPath, PatchFileRef PatchRef, string DisplayName);
+
     public static void ApplyPatch(string patchPath, UnpackResult unpackResult, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, string? patchPassword = null)
     {
         string exefsDir = unpackResult.ExefsDirs.GetValueOrDefault((byte)0, string.Empty);
@@ -46,46 +48,7 @@ public static class NspPatchApplier
 
             if (Directory.Exists(patchPath))
             {
-                var xdeltaFiles = Directory.EnumerateFiles(patchPath, "*.xdelta", SearchOption.AllDirectories)
-                                           .OrderBy(f => f)
-                                           .ToList();
-
-                if (xdeltaFiles.Count > 0)
-                {
-                    progress.Report((-1, "xdelta 바이너리 패치 적용 중..."));
-                    log($"  발견된 xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
-
-                    string unpackedRoot = Path.GetDirectoryName(exefsDir)!;
-
-                    foreach (var xdeltaPath in xdeltaFiles)
-                    {
-                        string targetFileName = Path.GetFileNameWithoutExtension(xdeltaPath);
-                        string relativePath = Path.GetRelativePath(patchPath, xdeltaPath);
-                        string relativeTargetKey = Path.Combine(Path.GetDirectoryName(relativePath) ?? string.Empty, targetFileName);
-                        var targetFiles = new List<string>();
-                        string absoluteExactPath = Path.Combine(unpackedRoot, relativeTargetKey);
-
-                        if (File.Exists(absoluteExactPath))
-                            targetFiles.Add(absoluteExactPath);
-                        else
-                        {
-                            targetFiles.AddRange(FindTargetsByContains(exefsDir, targetFileName));
-                            targetFiles.AddRange(FindTargetsByContains(romfsDir, targetFileName));
-                        }
-
-                        if (targetFiles.Count > 0)
-                        {
-                            foreach (var targetPath in targetFiles.Distinct())
-                            {
-                                ApplyXdeltaToTarget(xdeltaPath, targetPath, unpackedRoot, progress, log);
-                                matchedCount++;
-                            }
-                        }
-                        else
-                            log($"  ⚠️ xdelta 대상 원본 파일을 찾을 수 없음: {targetFileName}", LogLevel.Info);
-                    }
-                }
-
+                matchedCount += ApplyFolderXdelta(patchPath, exefsDir, romfsDir, progress, log);
                 matchedCount += ApplyFolderExefsPatches(patchPath, exefsDir, progress, log);
             }
         }
@@ -119,40 +82,14 @@ public static class NspPatchApplier
                 matchedCount += MergeDirectory(patchRomfs, romfsDir, log);
             }
 
-            var xdeltaFiles = Directory.EnumerateFiles(patchPath, "*.xdelta", SearchOption.AllDirectories)
-                                       .OrderBy(f => f)
-                                       .ToList();
-
-            if (xdeltaFiles.Count > 0)
-            {
-                progress.Report((-1, $"DLC xdelta 패치 적용 중... ({titleIdStr})"));
-                log($"  발견된 DLC xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
-
-                foreach (var xdeltaPath in xdeltaFiles)
-                {
-                    string targetFileName = Path.GetFileNameWithoutExtension(xdeltaPath);
-                    var targetFiles = FindTargetsByContains(romfsDir, targetFileName).ToList();
-
-                    if (targetFiles.Count == 0)
-                    {
-                        log($"  ⚠️ DLC xdelta 대상 원본 파일을 찾을 수 없음: {targetFileName}", LogLevel.Info);
-                        continue;
-                    }
-
-                    foreach (var targetPath in targetFiles)
-                    {
-                        ApplyXdeltaToTarget(xdeltaPath, targetPath, romfsDir, progress, log, isDlc: true);
-                        matchedCount++;
-                    }
-                }
-            }
+            matchedCount += ApplyFolderXdeltaDlc(patchPath, romfsDir, titleIdStr, progress, log);
         }
 
         if (matchedCount == 0)
             log("  패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
     }
 
-    private static IEnumerable<string> FindTargetsByContains(string dir, string targetFileName)
+    private static IEnumerable<string> FindTargetsByContains(string? dir, string targetFileName)
     {
         if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
             yield break;
@@ -162,6 +99,92 @@ public static class NspPatchApplier
             if (targetFileName.Contains(Path.GetFileName(f), StringComparison.OrdinalIgnoreCase))
                 yield return f;
         }
+    }
+
+    private static int ApplyXdeltaCandidates(List<XdeltaCandidate> candidates, string? exefsDir, string romfsDir, string displayRoot, bool isDlc, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    {
+        int count = 0;
+        string label = isDlc ? "DLC xdelta" : "xdelta";
+
+        foreach (var candidate in candidates)
+        {
+            var targetFiles = new List<string>();
+
+            if (candidate.AbsoluteExactPath != null && File.Exists(candidate.AbsoluteExactPath))
+                targetFiles.Add(candidate.AbsoluteExactPath);
+            else
+            {
+                targetFiles.AddRange(FindTargetsByContains(exefsDir, candidate.TargetFileName));
+                targetFiles.AddRange(FindTargetsByContains(romfsDir, candidate.TargetFileName));
+            }
+
+            if (targetFiles.Count == 0)
+            {
+                log($"  ⚠️ {label} 대상 원본 파일을 찾을 수 없음: {candidate.TargetFileName}", LogLevel.Info);
+                continue;
+            }
+
+            using var tempPatch = candidate.PatchRef.MaterializeAsTempFile(".xdelta");
+
+            foreach (var targetPath in targetFiles.Distinct())
+            {
+                ApplyXdeltaToTarget(tempPatch.Path, targetPath, displayRoot, progress, log, isDlc: isDlc, displayName: candidate.DisplayName);
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static int ApplyFolderXdelta(string patchPath, string exefsDir, string romfsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    {
+        var xdeltaFiles = Directory.EnumerateFiles(patchPath, "*.xdelta", SearchOption.AllDirectories)
+                                   .OrderBy(f => f)
+                                   .ToList();
+
+        if (xdeltaFiles.Count == 0)
+            return 0;
+
+        progress.Report((-1, "xdelta 바이너리 패치 적용 중..."));
+        log($"  발견된 xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
+
+        string unpackedRoot = Path.GetDirectoryName(exefsDir)!;
+        var candidates = new List<XdeltaCandidate>();
+
+        foreach (var xdeltaPath in xdeltaFiles)
+        {
+            string targetFileName = Path.GetFileNameWithoutExtension(xdeltaPath);
+            string relativePath = Path.GetRelativePath(patchPath, xdeltaPath);
+            string relativeTargetKey = Path.Combine(Path.GetDirectoryName(relativePath) ?? string.Empty, targetFileName);
+            string absoluteExactPath = Path.Combine(unpackedRoot, relativeTargetKey);
+
+            candidates.Add(new XdeltaCandidate(targetFileName, absoluteExactPath, PatchFileRef.FromDisk(xdeltaPath), Path.GetFileName(xdeltaPath)));
+        }
+
+        return ApplyXdeltaCandidates(candidates, exefsDir, romfsDir, unpackedRoot, false, progress, log);
+    }
+
+    private static int ApplyFolderXdeltaDlc(string patchPath, string romfsDir, string titleIdStr, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
+    {
+        var xdeltaFiles = Directory.EnumerateFiles(patchPath, "*.xdelta", SearchOption.AllDirectories)
+                                   .OrderBy(f => f)
+                                   .ToList();
+
+        if (xdeltaFiles.Count == 0)
+            return 0;
+
+        progress.Report((-1, $"DLC xdelta 패치 적용 중... ({titleIdStr})"));
+        log($"  발견된 DLC xdelta 패치 수: {xdeltaFiles.Count}개", LogLevel.Info);
+
+        var candidates = xdeltaFiles
+            .Select(xdeltaPath => new XdeltaCandidate(
+                Path.GetFileNameWithoutExtension(xdeltaPath),
+                null,
+                PatchFileRef.FromDisk(xdeltaPath),
+                Path.GetFileName(xdeltaPath)))
+            .ToList();
+
+        return ApplyXdeltaCandidates(candidates, null, romfsDir, romfsDir, true, progress, log);
     }
 
     private static int ApplyArchiveSubDir(IArchivePatchSource archive, string folderName, string targetDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, string label)
@@ -211,6 +234,14 @@ public static class NspPatchApplier
         return count;
     }
 
+    private static (string EntryName, string TargetFileName) ParseArchiveXdeltaKey(string key)
+    {
+        string entryName = key.Contains('/') ? key[(key.LastIndexOf('/') + 1)..] : key;
+        string targetFileName = Path.GetFileNameWithoutExtension(entryName);
+
+        return (entryName, targetFileName);
+    }
+
     private static int ApplyArchiveXdelta(IArchivePatchSource archive, string exefsDir, string romfsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
     {
         var xdeltaKeys = archive.EntryPaths
@@ -225,50 +256,25 @@ public static class NspPatchApplier
         log($"  발견된 xdelta 패치 수: {xdeltaKeys.Count}개", LogLevel.Info);
 
         string unpackedRoot = Path.GetDirectoryName(exefsDir) is { Length: > 0 } d ? d : Path.GetDirectoryName(romfsDir) ?? string.Empty;
-        int count = 0;
+        var candidates = new List<XdeltaCandidate>();
 
         foreach (string key in xdeltaKeys)
         {
-            string entryName = key.Contains('/') ? key[(key.LastIndexOf('/') + 1)..] : key;
-            string targetFileName = Path.GetFileNameWithoutExtension(entryName);
+            var (entryName, targetFileName) = ParseArchiveXdeltaKey(key);
             int lastSlash = key.LastIndexOf('/');
             string relDir = lastSlash < 0 ? "" : key[..lastSlash];
             string relativeTargetKey = relDir.Length == 0 ? targetFileName : $"{relDir}/{targetFileName}";
             string absoluteExactPath = Path.Combine(unpackedRoot, relativeTargetKey.Replace('/', Path.DirectorySeparatorChar));
-
-            var targetFiles = new List<string>();
-
-            if (File.Exists(absoluteExactPath))
-                targetFiles.Add(absoluteExactPath);
-            else
-            {
-                targetFiles.AddRange(FindTargetsByContains(exefsDir, targetFileName));
-                targetFiles.AddRange(FindTargetsByContains(romfsDir, targetFileName));
-            }
-
-            if (targetFiles.Count == 0)
-            {
-                log($"  ⚠️ xdelta 대상 원본 파일을 찾을 수 없음: {targetFileName}", LogLevel.Info);
-                continue;
-            }
 
             var entry = archive.FindEntry(key);
 
             if (entry == null)
                 continue;
 
-            var patchRef = PatchFileRef.FromArchiveEntry(entry);
-
-            using var tempPatch = patchRef.MaterializeAsTempFile(".xdelta");
-
-            foreach (var targetPath in targetFiles.Distinct())
-            {
-                ApplyXdeltaToTarget(tempPatch.Path, targetPath, unpackedRoot, progress, log, displayName: entryName);
-                count++;
-            }
+            candidates.Add(new XdeltaCandidate(targetFileName, absoluteExactPath, PatchFileRef.FromArchiveEntry(entry), entryName));
         }
 
-        return count;
+        return ApplyXdeltaCandidates(candidates, exefsDir, romfsDir, unpackedRoot, false, progress, log);
     }
 
     private static int ApplyArchiveXdeltaDlc(IArchivePatchSource archive, string romfsDir, string titleIdStr, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
@@ -284,36 +290,20 @@ public static class NspPatchApplier
         progress.Report((-1, $"DLC xdelta 패치 적용 중... ({titleIdStr})"));
         log($"  발견된 DLC xdelta 패치 수: {xdeltaKeys.Count}개", LogLevel.Info);
 
-        int count = 0;
+        var candidates = new List<XdeltaCandidate>();
 
         foreach (string key in xdeltaKeys)
         {
-            string entryName = key.Contains('/') ? key[(key.LastIndexOf('/') + 1)..] : key;
-            string targetFileName = Path.GetFileNameWithoutExtension(entryName);
-            var targetFiles = FindTargetsByContains(romfsDir, targetFileName).ToList();
-
-            if (targetFiles.Count == 0)
-            {
-                log($"  ⚠️ DLC xdelta 대상 원본 파일을 찾을 수 없음: {targetFileName}", LogLevel.Info);
-                continue;
-            }
-
+            var (entryName, targetFileName) = ParseArchiveXdeltaKey(key);
             var entry = archive.FindEntry(key);
 
             if (entry == null)
                 continue;
 
-            var patchRef = PatchFileRef.FromArchiveEntry(entry);
-            using var tempPatch = patchRef.MaterializeAsTempFile(".xdelta");
-
-            foreach (var targetPath in targetFiles)
-            {
-                ApplyXdeltaToTarget(tempPatch.Path, targetPath, romfsDir, progress, log, isDlc: true, displayName: entryName);
-                count++;
-            }
+            candidates.Add(new XdeltaCandidate(targetFileName, null, PatchFileRef.FromArchiveEntry(entry), entryName));
         }
 
-        return count;
+        return ApplyXdeltaCandidates(candidates, null, romfsDir, romfsDir, true, progress, log);
     }
 
     private static void ApplyXdeltaToTarget(string xdeltaPath, string targetPath, string displayRoot, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, bool isDlc = false, string? displayName = null)
@@ -353,6 +343,22 @@ public static class NspPatchApplier
         }
     }
 
+    private static (string BuildId, Func<byte[]> ReadIps) MakeArchiveIpsItem(IArchivePatchSource archive, string key)
+    {
+        string buildId = Path.GetFileNameWithoutExtension(key).TrimEnd('0');
+
+        byte[] Read()
+        {
+            var entry = archive.FindEntry(key)!;
+            using var src = entry.Open();
+            using var ms = new MemoryStream();
+            src.CopyTo(ms);
+            return ms.ToArray();
+        }
+
+        return (buildId, Read);
+    }
+
     private static int ApplyFolderExefsPatches(string patchPath, string exefsDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
     {
         if (string.IsNullOrEmpty(exefsDir) || !Directory.Exists(exefsDir) || !Directory.Exists(patchPath))
@@ -387,21 +393,10 @@ public static class NspPatchApplier
                 }
 
                 openedArchives.Add(archive);
-                var capturedArchive = archive;
 
                 foreach (var key in archive.EntryPaths.Where(k => k.EndsWith(".ips", StringComparison.OrdinalIgnoreCase)))
                 {
-                    string localKey = key;
-
-                    items.Add((Path.GetFileNameWithoutExtension(localKey).TrimEnd('0'), () =>
-                    {
-                        var entry = capturedArchive.FindEntry(localKey)!;
-                        using var src = entry.Open();
-                        using var ms = new MemoryStream();
-                        src.CopyTo(ms);
-                        return ms.ToArray();
-                    }
-                    ));
+                    items.Add(MakeArchiveIpsItem(archive, key));
                 }
             }
 
@@ -426,14 +421,7 @@ public static class NspPatchApplier
         if (ipsKeys.Count == 0)
             return 0;
 
-        var items = ipsKeys.Select(k => (Path.GetFileNameWithoutExtension(k).TrimEnd('0'), (Func<byte[]>)(() =>
-        {
-            var entry = archive.FindEntry(k)!;
-            using var src = entry.Open();
-            using var ms = new MemoryStream();
-            src.CopyTo(ms);
-            return ms.ToArray();
-        })));
+        var items = ipsKeys.Select(k => MakeArchiveIpsItem(archive, k));
 
         return ApplyExefsPatchesCore(items, exefsDir, progress, log);
     }
