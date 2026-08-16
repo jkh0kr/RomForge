@@ -7,7 +7,7 @@ namespace RomForge.Core.Services.Patch;
 
 public class GdiTrackCopier(Action<string, LogLevel> log)
 {
-    public string? CopyGdiTracks(string sourcePath, string outputDir, string outputPath, List<string> copiedTrackPaths)
+    public string? CopyGdiTracks(string sourcePath, string outputDir, string outputPath, List<string> copiedTrackPaths, bool moveInsteadOfCopy = false)
     {
         string[] gdiCandidates = Directory.GetFiles(Path.GetDirectoryName(sourcePath)!, "*.gdi");
 
@@ -47,7 +47,11 @@ public class GdiTrackCopier(Action<string, LogLevel> log)
 
             if (File.Exists(sourceTrackPath))
             {
-                File.Copy(sourceTrackPath, targetTrackPath, true);
+                if (moveInsteadOfCopy)
+                    File.Move(sourceTrackPath, targetTrackPath, true);
+                else
+                    File.Copy(sourceTrackPath, targetTrackPath, true);
+
                 copiedTrackPaths.Add(targetTrackPath);
             }
             else

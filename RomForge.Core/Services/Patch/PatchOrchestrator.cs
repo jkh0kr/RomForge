@@ -1,5 +1,6 @@
 ﻿using Common;
 using Patch.Core;
+using Patch.Core.Formats.DCP.Services;
 using RomForge.Core.Models.Compression;
 using System.IO;
 
@@ -17,7 +18,7 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
     private readonly ZipCompressor _zipCompressor = new(log, progress);
     private readonly CompressKnownConverter _compressKnownConverter = new(log, progress, dolphinCompressLevel);
 
-    public async Task PatchAsync(string sourcePath, string patchPath, DetectResult detected, string outputDir, string outputPath, CancellationToken ct)
+    public async Task PatchAsync(string sourcePath, string patchPath, DetectResult detected, string outputDir, string outputPath, bool sourceIsTemporary, CancellationToken ct)
     {
         _outputCuePath = null;
         _outputCcdPath = null;
@@ -25,27 +26,71 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
         _copiedTrackPaths = [];
 
         bool isZipTarget = detected.Format is not (RomFormat.Bin or RomFormat.Iso or RomFormat.Gcm or RomFormat.Wii or RomFormat.Wbfs or RomFormat.Ccd or RomFormat.Cci or RomFormat.Cia or RomFormat.Gdi);
+        bool isDcpPatch = Path.GetExtension(patchPath).Equals(".dcp", StringComparison.OrdinalIgnoreCase);
+        bool skipCompress;
 
-        await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct);
+        if (isDcpPatch)
+        {
+            if (detected.Format != RomFormat.Gdi)
+                throw new InvalidOperationException("DCP 패치는 드림캐스트 GDI 원본(또는 GDI로 변환되는 CHD)에만 적용할 수 있습니다.");
 
-        progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
-        log($"패치 완료: {outputPath}", LogLevel.Ok);
+            string gdiPath = sourcePath;
 
-        bool skipCompress = false;
-        if (detected.Format == RomFormat.Bin)
-        {
-            _outputCuePath = await _binTrackCopier.CopyBinTracksAsync(sourcePath, outputDir, outputPath, _copiedTrackPaths);
-            skipCompress = _outputCuePath is null;
-        }
-        else if (detected.Format == RomFormat.Ccd)
-        {
-            _outputCcdPath = _ccdCompanionCopier.CopyCcd(sourcePath, outputDir, outputPath);
-            skipCompress = _outputCcdPath is null;
-        }
-        else if (detected.Format == RomFormat.Gdi)
-        {
-            _outputGdiPath = _gdiTrackCopier.CopyGdiTracks(sourcePath, outputDir, outputPath, _copiedTrackPaths);
+            if (!Path.GetExtension(gdiPath).Equals(".gdi", StringComparison.OrdinalIgnoreCase))
+            {
+                var sourceDir = Path.GetDirectoryName(sourcePath)!;
+
+                gdiPath = Directory.GetFiles(sourceDir, "*.gdi").FirstOrDefault()
+                    ?? throw new InvalidOperationException("DCP 패치 대상 .gdi 파일을 찾을 수 없습니다.");
+            }
+
+            await DcpGdRomApplier.ApplyAsync(gdiPath, patchPath, outputDir,
+                (p, msg) => progress.Report(new ProgressInfo { Percent = (int)(p * 100), Label = msg }),
+                msg => log(msg, LogLevel.Info), sourceIsTemporary, ct);
+
+            _outputGdiPath = Directory.GetFiles(outputDir, "*.gdi").FirstOrDefault();
             skipCompress = _outputGdiPath is null;
+
+            if (_outputGdiPath is not null)
+            {
+                var rebuiltGdi = GdiFile.Parse(_outputGdiPath);
+
+                foreach (var track in rebuiltGdi.Tracks)
+                {
+                    var trackPath = rebuiltGdi.GetTrackFullPath(track);
+
+                    if (File.Exists(trackPath))
+                        _copiedTrackPaths.Add(trackPath);
+                }
+            }
+
+            progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
+            log($"패치 완료: {_outputGdiPath}", LogLevel.Ok);
+        }
+        else
+        {
+            await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct);
+
+            progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
+            log($"패치 완료: {outputPath}", LogLevel.Ok);
+
+            skipCompress = false;
+
+            if (detected.Format == RomFormat.Bin)
+            {
+                _outputCuePath = await _binTrackCopier.CopyBinTracksAsync(sourcePath, outputDir, outputPath, _copiedTrackPaths, sourceIsTemporary);
+                skipCompress = _outputCuePath is null;
+            }
+            else if (detected.Format == RomFormat.Ccd)
+            {
+                _outputCcdPath = _ccdCompanionCopier.CopyCcd(sourcePath, outputDir, outputPath, sourceIsTemporary);
+                skipCompress = _outputCcdPath is null;
+            }
+            else if (detected.Format == RomFormat.Gdi)
+            {
+                _outputGdiPath = _gdiTrackCopier.CopyGdiTracks(sourcePath, outputDir, outputPath, _copiedTrackPaths, sourceIsTemporary);
+                skipCompress = _outputGdiPath is null;
+            }
         }
 
         if (!autoCompress || skipCompress)

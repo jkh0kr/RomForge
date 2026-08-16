@@ -5,7 +5,7 @@ namespace RomForge.Core.Services.Patch;
 
 public class CcdCompanionCopier(Action<string, LogLevel> log)
 {
-    public string? CopyCcd(string sourcePath, string outputDir, string outputPath)
+    public string? CopyCcd(string sourcePath, string outputDir, string outputPath, bool moveInsteadOfCopy = false)
     {
         string sourceCcdPath = Path.ChangeExtension(sourcePath, ".ccd");
 
@@ -20,7 +20,10 @@ public class CcdCompanionCopier(Action<string, LogLevel> log)
 
         try
         {
-            File.Copy(sourceCcdPath, outputCcdPath, true);
+            if (moveInsteadOfCopy)
+                File.Move(sourceCcdPath, outputCcdPath, true);
+            else
+                File.Copy(sourceCcdPath, outputCcdPath, true);
 
             return outputCcdPath;
         }

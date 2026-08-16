@@ -168,12 +168,15 @@ public class NormalPatchMainViewModel : ToolTabViewModel, IPatchViewModel
 
             actualSourcePath = resolvedSourcePath;
 
+            bool sourceIsTemporary = Path.GetFullPath(Path.GetDirectoryName(actualSourcePath)!)
+                .Equals(Path.GetFullPath(extractDir), StringComparison.OrdinalIgnoreCase);
+
             outputPath = Path.Combine(outputDir, Path.GetFileName(actualSourcePath));
             outputPath = Utils.GetUniqueFilePath(outputPath);
 
             Log($"패치 시작: {Path.GetFileName(actualSourcePath)}", LogLevel.Highlight);
 
-            await orchestrator.PatchAsync(actualSourcePath, PatchPath, detected, outputDir, outputPath, ct);
+            await orchestrator.PatchAsync(actualSourcePath, PatchPath, detected, outputDir, outputPath, sourceIsTemporary, ct);
 
             stopwatch.Stop();
 

@@ -4,7 +4,7 @@ namespace Patch.Core.Formats.DCP.Services;
 
 public static class GdRomRebuilder
 {
-    public static void RebuildFull(GdiFile originalGdi, Dictionary<string, byte[]> replacedFiles, string outputDir, Action<double, string>? onProgress = null, Action<string>? onLog = null, CancellationToken ct = default)
+    public static void RebuildFull(GdiFile originalGdi, Dictionary<string, byte[]> replacedFiles, string outputDir, Action<double, string>? onProgress = null, Action<string>? onLog = null, bool moveSourceTracks = false, CancellationToken ct = default)
     {
         Directory.CreateDirectory(outputDir);
 
@@ -143,6 +143,22 @@ public static class GdRomRebuilder
 
         foreach (var (src, dst, name, length) in trackFileInfoList)
         {
+            if (moveSourceTracks)
+            {
+                File.Move(src, dst, true);
+
+                totalBytesCopied += length;
+
+                if (totalBytesToCopy > 0)
+                {
+                    double pct = 0.25 + 0.73 * ((double)totalBytesCopied / totalBytesToCopy);
+
+                    onProgress?.Invoke(pct, $"자원 트랙 이동 중: {name}");
+                }
+
+                continue;
+            }
+
             using var sourceStream = new FileStream(src, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024);
             using var destStream = new FileStream(dst, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024);
             int bytesRead;

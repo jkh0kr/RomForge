@@ -7,7 +7,7 @@ namespace RomForge.Core.Services.Patch;
 
 public class BinTrackCopier(Action<string, LogLevel> log)
 {
-    public async Task<string?> CopyBinTracksAsync(string sourcePath, string outputDir, string outputPath, List<string> copiedTrackPaths)
+    public async Task<string?> CopyBinTracksAsync(string sourcePath, string outputDir, string outputPath, List<string> copiedTrackPaths, bool moveInsteadOfCopy = false)
     {
         string[] cueCandidates = Directory.GetFiles(Path.GetDirectoryName(sourcePath)!, "*.cue");
 
@@ -47,7 +47,11 @@ public class BinTrackCopier(Action<string, LogLevel> log)
 
             if (File.Exists(sourceBinPath))
             {
-                File.Copy(sourceBinPath, targetBinPath, true);
+                if (moveInsteadOfCopy)
+                    File.Move(sourceBinPath, targetBinPath, true);
+                else
+                    File.Copy(sourceBinPath, targetBinPath, true);
+
                 copiedTrackPaths.Add(targetBinPath);
             }
             else

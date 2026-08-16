@@ -4,7 +4,7 @@ namespace Patch.Core.Formats.DCP.Services;
 
 public static class DcpGdRomApplier
 {
-    public static async Task ApplyAsync(string gdiPath, string dcpPath, string outputDir, Action<double, string>? onProgress = null, Action<string>? onLog = null, CancellationToken ct = default)
+    public static async Task ApplyAsync(string gdiPath, string dcpPath, string outputDir, Action<double, string>? onProgress = null, Action<string>? onLog = null, bool moveSourceTracks = false, CancellationToken ct = default)
     {
         onProgress?.Invoke(0.0, "GDI 메타데이터 및 원본 구조 파싱 중...");
 
@@ -69,7 +69,7 @@ public static class DcpGdRomApplier
         }
 
         await Task.Run(() => GdRomRebuilder.RebuildFull(gdi, replacedFiles, outputDir,
-            (p, msg) => onProgress?.Invoke(0.20 + 0.80 * p, msg), onLog, ct),
+            (p, msg) => onProgress?.Invoke(0.20 + 0.80 * p, msg), onLog, moveSourceTracks, ct),
             ct);
 
         onProgress?.Invoke(1.0, "모든 패치 적용 작업 완료!");

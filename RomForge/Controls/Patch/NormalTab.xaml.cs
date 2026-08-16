@@ -17,7 +17,7 @@ public partial class NormalTab : UserControl
 
     private static class PatchExtensions
     {
-        public static readonly string[] AllowedExtensions = [".ips", ".bps", ".ups", ".ppf", ".aps", ".xdelta"];
+        public static readonly string[] AllowedExtensions = [".ips", ".bps", ".ups", ".ppf", ".aps", ".xdelta", ".dcp"];
         public static string FileFilter => $"패치 파일|{string.Join(";", AllowedExtensions.Select(ext => "*" + ext))}|모든 파일|*.*";
     }
 
@@ -25,10 +25,10 @@ public partial class NormalTab : UserControl
     {
         InitializeComponent();
 
-        Loaded += (_, _) => 
-        { 
-            if(ViewModel != null)
-                ViewModel.PatchVM.NormalVM.RequestSourceSelectionAsync = ShowSourceSelectionDialogAsync; 
+        Loaded += (_, _) =>
+        {
+            if (ViewModel != null)
+                ViewModel.PatchVM.NormalVM.RequestSourceSelectionAsync = ShowSourceSelectionDialogAsync;
         };
     }
 
@@ -72,7 +72,7 @@ public partial class NormalTab : UserControl
             itemStyle.Setters.Add(new Setter(FrameworkElement.MarginProperty, new Thickness(0, 0, 0, 2)));
 
             var itemTemplate = new ControlTemplate(typeof(ListBoxItem));
-            FrameworkElementFactory itemBorder = new (typeof(Border))
+            FrameworkElementFactory itemBorder = new(typeof(Border))
             {
                 Name = "ItemBorder"
             };
