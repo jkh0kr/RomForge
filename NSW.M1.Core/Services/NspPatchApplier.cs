@@ -69,11 +69,8 @@ public static class NspPatchApplier
                             targetFiles.Add(absoluteExactPath);
                         else
                         {
-                            if (!string.IsNullOrEmpty(exefsDir))
-                                targetFiles.AddRange(Directory.EnumerateFiles(exefsDir, targetFileName, SearchOption.AllDirectories));
-
-                            if (!string.IsNullOrEmpty(romfsDir))
-                                targetFiles.AddRange(Directory.EnumerateFiles(romfsDir, targetFileName, SearchOption.AllDirectories));
+                            targetFiles.AddRange(FindTargetsByContains(exefsDir, targetFileName));
+                            targetFiles.AddRange(FindTargetsByContains(romfsDir, targetFileName));
                         }
 
                         if (targetFiles.Count > 0)
@@ -134,7 +131,7 @@ public static class NspPatchApplier
                 foreach (var xdeltaPath in xdeltaFiles)
                 {
                     string targetFileName = Path.GetFileNameWithoutExtension(xdeltaPath);
-                    var targetFiles = Directory.EnumerateFiles(romfsDir, targetFileName, SearchOption.AllDirectories).ToList();
+                    var targetFiles = FindTargetsByContains(romfsDir, targetFileName).ToList();
 
                     if (targetFiles.Count == 0)
                     {
@@ -153,6 +150,18 @@ public static class NspPatchApplier
 
         if (matchedCount == 0)
             log("  패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
+    }
+
+    private static IEnumerable<string> FindTargetsByContains(string dir, string targetFileName)
+    {
+        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+            yield break;
+
+        foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+        {
+            if (targetFileName.Contains(Path.GetFileName(f), StringComparison.OrdinalIgnoreCase))
+                yield return f;
+        }
     }
 
     private static int ApplyArchiveSubDir(IArchivePatchSource archive, string folderName, string targetDir, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, string label)
@@ -233,11 +242,8 @@ public static class NspPatchApplier
                 targetFiles.Add(absoluteExactPath);
             else
             {
-                if (!string.IsNullOrEmpty(exefsDir) && Directory.Exists(exefsDir))
-                    targetFiles.AddRange(Directory.EnumerateFiles(exefsDir, targetFileName, SearchOption.AllDirectories));
-
-                if (!string.IsNullOrEmpty(romfsDir) && Directory.Exists(romfsDir))
-                    targetFiles.AddRange(Directory.EnumerateFiles(romfsDir, targetFileName, SearchOption.AllDirectories));
+                targetFiles.AddRange(FindTargetsByContains(exefsDir, targetFileName));
+                targetFiles.AddRange(FindTargetsByContains(romfsDir, targetFileName));
             }
 
             if (targetFiles.Count == 0)
@@ -284,7 +290,7 @@ public static class NspPatchApplier
         {
             string entryName = key.Contains('/') ? key[(key.LastIndexOf('/') + 1)..] : key;
             string targetFileName = Path.GetFileNameWithoutExtension(entryName);
-            var targetFiles = Directory.EnumerateFiles(romfsDir, targetFileName, SearchOption.AllDirectories).ToList();
+            var targetFiles = FindTargetsByContains(romfsDir, targetFileName).ToList();
 
             if (targetFiles.Count == 0)
             {
