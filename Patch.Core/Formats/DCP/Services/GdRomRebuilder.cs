@@ -4,9 +4,7 @@ namespace Patch.Core.Formats.DCP.Services;
 
 public static class GdRomRebuilder
 {
-    private const uint GdEndLba = 549150;
-
-    public static void RebuildFull(GdiFile originalGdi, Dictionary<string, byte[]> replacedFiles, string outputDir, Action<double, string>? onProgress = null, CancellationToken ct = default)
+    public static void RebuildFull(GdiFile originalGdi, Dictionary<string, byte[]> replacedFiles, string outputDir, Action<double, string>? onProgress = null, Action<string>? onLog = null, CancellationToken ct = default)
     {
         Directory.CreateDirectory(outputDir);
 
@@ -23,7 +21,6 @@ public static class GdRomRebuilder
         for (uint s = 0; s < 16; s++)
             ipBinSectors[s] = sourceFunc((uint)firstDataTrack.StartLba + s);
 
-        var bootFileName = System.Text.Encoding.ASCII.GetString(ipBinSectors[0], 0x60, 16).Trim('\0', ' ');
         var originalPvdLba = sourceReader.PvdAbsoluteLba;
         var pvdRaw = sourceFunc(originalPvdLba);
         var root = Iso9660DirectoryReader.ReadTree(sourceFunc, originalPvdLba);
@@ -31,12 +28,21 @@ public static class GdRomRebuilder
         var allFiles = Iso9660DirectoryReader.Flatten(root).ToList();
         var fileDataCache = new Dictionary<Iso9660Entry, byte[]>();
         int fileDone = 0;
+        int replacedCount = 0;
 
         foreach (var entry in allFiles)
         {
             ct.ThrowIfCancellationRequested();
 
-            var data = replacedFiles.TryGetValue(entry.FullPath.Replace('/', '\\'), out var patched) ? patched : Iso9660DirectoryReader.ReadFile(sourceFunc, entry);
+            var lookupKey = entry.FullPath.Replace('/', '\\');
+            var isReplaced = replacedFiles.TryGetValue(lookupKey, out var patched);
+            var data = isReplaced ? patched! : Iso9660DirectoryReader.ReadFile(sourceFunc, entry);
+
+            if (isReplaced)
+            {
+                replacedCount++;
+                onLog?.Invoke($"파일 교체: {entry.FullPath} (원본 {entry.Size:N0} → 교체 {data.Length:N0} bytes)");
+            }
 
             builder.SetFileData(entry, data);
 
@@ -47,22 +53,9 @@ public static class GdRomRebuilder
             onProgress?.Invoke(0.01 * fileDone / allFiles.Count, $"패치 적용 중 ({fileDone:N0}/{allFiles.Count:N0})");
         }
 
-        var (_, _, layoutSectors) = builder.Relayout((uint)firstDataTrack.StartLba + 17);
-        var bootEntry = allFiles.FirstOrDefault(e => !e.IsDirectory
-            && !e.FullPath.Contains('/')
-            && string.Equals(e.Name, bootFileName, StringComparison.OrdinalIgnoreCase));
+        onLog?.Invoke($"총 {replacedCount}개 파일 교체됨 (DCP 패키지 내 파일 {replacedFiles.Count}개 중)");
 
-        if (bootEntry is not null)
-        {
-            uint bootSectors = (uint)Math.Ceiling(bootEntry.LayoutSize / 2048.0);
-            bootEntry.LayoutLba = GdEndLba - 150 - bootSectors;
-        }
-
-        uint totalSectors = GdEndLba - (uint)firstDataTrack.StartLba;
-
-        if (totalSectors < layoutSectors)
-            totalSectors = layoutSectors;
-
+        var (_, _, totalSectors) = builder.Relayout((uint)firstDataTrack.StartLba + 17);
         var contentSectors = new List<(uint Lba, byte[] Data)>();
 
         foreach (var (lba, data) in builder.GetPathTableSectors())

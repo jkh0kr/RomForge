@@ -140,7 +140,11 @@ public sealed class WiiURepackService
     private static Stream ResolveEntryStream(string path, ITitleSource source, Dictionary<string, PatchFileRef> overwriteFiles, Dictionary<string, PatchFileRef> binaryPatches, Action<string, LogLevel>? log, CancellationToken ct)
     {
         if (overwriteFiles.TryGetValue(path, out var overwriteRef))
+        {
+            log?.Invoke($"  교체: {overwriteRef.DisplayName} → {path}", LogLevel.Ok);
+
             return overwriteRef.OpenRead();
+        }
 
         if (binaryPatches.TryGetValue(path, out var patchRef))
         {
@@ -171,7 +175,7 @@ public sealed class WiiURepackService
 
     private static void EnsureDirWritten(WuaWriter writer, string titleFolderName, string dirPath, HashSet<string> writtenDirs)
     {
-        if (dirPath.Length == 0 || !writtenDirs.Add(dirPath)) 
+        if (dirPath.Length == 0 || !writtenDirs.Add(dirPath))
             return;
 
         EnsureDirWritten(writer, titleFolderName, GetDirectoryPart(dirPath), writtenDirs);

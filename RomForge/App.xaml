@@ -16,13 +16,13 @@
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
             <converters:InverseBoolConverter x:Key="InverseBool"/>
-            <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>            
+            <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
             <converters:LogLevelToColorConverter x:Key="LogColor"/>
             <converters:LevelToColorConverter x:Key="LevelToColorConverter"/>
-            <converters:CompressLevelTextConverter x:Key="CompressLevelTextConverter"/>            
+            <converters:CompressLevelTextConverter x:Key="CompressLevelTextConverter"/>
             <converters:BoolToImageConverter x:Key="BoolToImageConverter"/>
             <converters:ProgressToStarConverter x:Key="ProgressToStarConverter"/>
-            <converters:ProgressToWidthConverter x:Key="ProgressToWidthConverter"/>            
+            <converters:ProgressToWidthConverter x:Key="ProgressToWidthConverter"/>
             <wpfconverters:PbpLanguageToFlagConverter x:Key="PbpLanguageToFlagConverter"/>
             <cmnconverters:LockIconConverter x:Key="LockIconConverter"/>
             <cmnconverters:RegionToImageConverter x:Key="RegionToImageConverter"/>
@@ -52,7 +52,7 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-        
+
             <Style TargetType="TabItem">
                 <Setter Property="Foreground" Value="#888888"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
@@ -199,7 +199,7 @@
                 <Setter Property="Foreground" Value="#007ACC"/>
                 <Setter Property="BorderThickness" Value="0"/>
             </Style>
-            
+
 
             <Style x:Key="DropZone" TargetType="Border">
                 <Setter Property="Background" Value="#252526"/>
@@ -218,7 +218,7 @@
                 <Setter Property="Height" Value="44"/>
                 <Setter Property="Padding" Value="12,0"/>
             </Style>
-            
+
 
             <Style x:Key="SliderStyle" TargetType="Slider">
                 <Setter Property="IsMoveToPointEnabled" Value="True"/>
@@ -288,8 +288,8 @@
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
-            </Style>   
-            
+            </Style>
+
 
             <Style TargetType="ContextMenu">
                 <Setter Property="OverridesDefaultStyle" Value="True"/>
@@ -361,14 +361,37 @@
             </Style>
 
 
-            <Style x:Key="LogBox" TargetType="RichTextBox">
+            <Style x:Key="LogBoxItemContainer" TargetType="ListBoxItem">
+                <Setter Property="Focusable" Value="False"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <ContentPresenter/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="LogBox" TargetType="ListBox">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="#A0A0A0"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="FontFamily" Value="Consolas"/>
                 <Setter Property="FontSize" Value="12"/>
-                <Setter Property="IsReadOnly" Value="True"/>
                 <Setter Property="Padding" Value="10"/>
+                <Setter Property="ItemContainerStyle" Value="{StaticResource LogBoxItemContainer}"/>
+                <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+                <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+                <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel"/>
+                <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+                <Setter Property="ItemTemplate">
+                    <Setter.Value>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Message}" Foreground="{Binding Level, Converter={StaticResource LogColor}}" TextWrapping="Wrap"/>
+                        </DataTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <Style TargetType="TextBox">
@@ -558,5 +581,5 @@
             </Style>
 
         </ResourceDictionary>
-    </Application.Resources>    
+    </Application.Resources>
 </Application>

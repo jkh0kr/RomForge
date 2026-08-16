@@ -191,6 +191,8 @@ public static class NspPatchApplier
 
             src.CopyTo(dst);
 
+            log($"  {label} 교체: {rel}", LogLevel.Ok);
+
             count++;
         }
 
@@ -490,6 +492,8 @@ public static class NspPatchApplier
             string dest = Path.Combine(dstDir, rel);
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             File.Copy(file, dest, overwrite: true);
+
+            log?.Invoke($"  교체: {rel}", LogLevel.Ok);
 
             count++;
         }

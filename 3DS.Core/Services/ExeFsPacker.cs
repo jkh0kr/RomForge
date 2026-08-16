@@ -1,7 +1,6 @@
 ﻿using _3DS.Core.Models;
 using Common;
 using Patch.Core;
-using Patch.Core.Formats;
 using Patch.Core.Services;
 using System.Security.Cryptography;
 using System.Text;
@@ -125,6 +124,8 @@ public static class ExeFsPacker
                 });
 
                 patchedCount++;
+
+                log?.Invoke($"  exefs 교체: {file.Name} ({file.Data.Length:N0} → {patchData.Length:N0} bytes)", LogLevel.Ok);
             }
             else if (ipsRef != null)
             {
@@ -156,6 +157,8 @@ public static class ExeFsPacker
                 });
 
                 patchedCount++;
+
+                log?.Invoke($"  exefs IPS 패치 적용: {file.Name} ({sourceData.Length:N0} → {patchedData.Length:N0} bytes)", LogLevel.Ok);
             }
             else
             {

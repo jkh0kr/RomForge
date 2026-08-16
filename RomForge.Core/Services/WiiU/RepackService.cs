@@ -241,6 +241,8 @@ public sealed class RepackService()
 
             if (overwriteFiles.TryGetValue(relPath, out var overwriteRef))
             {
+                log?.Invoke($"  교체: {overwriteRef.DisplayName} → {relPath}", LogLevel.Ok);
+
                 result.Add(new WupFileEntry(relPath, overwriteRef.OpenRead, overwriteRef.Length));
                 continue;
             }
