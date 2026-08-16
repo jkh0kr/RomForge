@@ -1,4 +1,5 @@
-﻿using Common;
+﻿using CHD.Core.Services;
+using Common;
 using Patch.Core;
 using Patch.Core.Formats.DCP.Services;
 using RomForge.Core.Models.Compression;
@@ -44,53 +45,103 @@ public class PatchOrchestrator(Action<string, LogLevel> log, IProgress<ProgressI
                     ?? throw new InvalidOperationException("DCP 패치 대상 .gdi 파일을 찾을 수 없습니다.");
             }
 
-            await DcpGdRomApplier.ApplyAsync(gdiPath, patchPath, outputDir,
-                (p, msg) => progress.Report(new ProgressInfo { Percent = (int)(p * 100), Label = msg }),
-                msg => log(msg, LogLevel.Info), sourceIsTemporary, ct);
+            string workDir = Path.GetDirectoryName(gdiPath)!;
+            string titleName = Path.GetFileNameWithoutExtension(gdiPath);
 
-            _outputGdiPath = Directory.GetFiles(outputDir, "*.gdi").FirstOrDefault();
-            skipCompress = _outputGdiPath is null;
-
-            if (_outputGdiPath is not null)
+            if (sourceIsTemporary)
             {
-                var rebuiltGdi = GdiFile.Parse(_outputGdiPath);
+                await DcpGdRomApplier.ApplyAsync(gdiPath, patchPath, workDir,
+                    (p, msg) => progress.Report(new ProgressInfo { Percent = (int)(p * 100), Label = msg }),
+                    msg => log(msg, LogLevel.Info), ct);
 
-                foreach (var track in rebuiltGdi.Tracks)
+                progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
+                log($"패치 완료: {gdiPath}", LogLevel.Ok);
+
+                Directory.CreateDirectory(outputDir);
+
+                if (autoCompress)
                 {
-                    var trackPath = rebuiltGdi.GetTrackFullPath(track);
+                    progress.Report(new ProgressInfo { Label = "CHD 변환 중...", Percent = 0 });
 
-                    if (File.Exists(trackPath))
-                        _copiedTrackPaths.Add(trackPath);
+                    FileConverter converter = new(AppConfig.Instance.Chdman.Compression);
+                    converter.LogMessage += (_, e) => log(e.Message, e.Level);
+
+                    var chdResult = await converter.ConvertFileAsync(gdiPath, null, progress, ct);
+
+                    if (!chdResult.Success)
+                        throw new Exception($"CHD 변환 실패: {chdResult.Message}");
+
+                    string finalChdPath = Utils.GetUniqueFilePath(Path.Combine(outputDir, titleName + ".chd"));
+
+                    File.Move(chdResult.OutputFile!, finalChdPath);
+
+                    log($"CHD 변환 완료: {finalChdPath}", LogLevel.Ok);
+                }
+                else
+                {
+                    string finalDir = Utils.GetUniqueFolderPath(Path.Combine(outputDir, titleName));
+
+                    Directory.Move(workDir, finalDir);
+
+                    log($"결과물 저장 완료: {finalDir}", LogLevel.Ok);
                 }
             }
+            else
+            {
+                string dcpOutputDir = Utils.GetUniqueFolderPath(Path.Combine(outputDir, titleName));
 
-            progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
-            log($"패치 완료: {_outputGdiPath}", LogLevel.Ok);
+                Directory.CreateDirectory(dcpOutputDir);
+
+                await DcpGdRomApplier.ApplyAsync(gdiPath, patchPath, dcpOutputDir,
+                    (p, msg) => progress.Report(new ProgressInfo { Percent = (int)(p * 100), Label = msg }),
+                    msg => log(msg, LogLevel.Info), ct);
+
+                _outputGdiPath = Path.Combine(dcpOutputDir, Path.GetFileName(gdiPath));
+
+                if (File.Exists(_outputGdiPath))
+                {
+                    var rebuiltGdi = GdiFile.Parse(_outputGdiPath);
+
+                    foreach (var track in rebuiltGdi.Tracks)
+                    {
+                        var trackPath = rebuiltGdi.GetTrackFullPath(track);
+
+                        if (File.Exists(trackPath))
+                            _copiedTrackPaths.Add(trackPath);
+                    }
+                }
+
+                progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
+                log($"패치 완료: {_outputGdiPath}", LogLevel.Ok);
+
+                if (autoCompress && File.Exists(_outputGdiPath))
+                    await _compressKnownConverter.ConvertAsync(detected, outputPath, null, _copiedTrackPaths, null, _outputGdiPath, outputDir, ct);
+            }
+
+            return;
         }
-        else
+
+        await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct);
+
+        progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
+        log($"패치 완료: {outputPath}", LogLevel.Ok);
+
+        skipCompress = false;
+
+        if (detected.Format == RomFormat.Bin)
         {
-            await UniversalPatcher.ApplyPatchAsync(sourcePath, patchPath, outputPath, progress, ct);
-
-            progress.Report(new ProgressInfo { Label = "패치 완료", Percent = 100 });
-            log($"패치 완료: {outputPath}", LogLevel.Ok);
-
-            skipCompress = false;
-
-            if (detected.Format == RomFormat.Bin)
-            {
-                _outputCuePath = await _binTrackCopier.CopyBinTracksAsync(sourcePath, outputDir, outputPath, _copiedTrackPaths, sourceIsTemporary);
-                skipCompress = _outputCuePath is null;
-            }
-            else if (detected.Format == RomFormat.Ccd)
-            {
-                _outputCcdPath = _ccdCompanionCopier.CopyCcd(sourcePath, outputDir, outputPath, sourceIsTemporary);
-                skipCompress = _outputCcdPath is null;
-            }
-            else if (detected.Format == RomFormat.Gdi)
-            {
-                _outputGdiPath = _gdiTrackCopier.CopyGdiTracks(sourcePath, outputDir, outputPath, _copiedTrackPaths, sourceIsTemporary);
-                skipCompress = _outputGdiPath is null;
-            }
+            _outputCuePath = await _binTrackCopier.CopyBinTracksAsync(sourcePath, outputDir, outputPath, _copiedTrackPaths, sourceIsTemporary);
+            skipCompress = _outputCuePath is null;
+        }
+        else if (detected.Format == RomFormat.Ccd)
+        {
+            _outputCcdPath = _ccdCompanionCopier.CopyCcd(sourcePath, outputPath, sourceIsTemporary);
+            skipCompress = _outputCcdPath is null;
+        }
+        else if (detected.Format == RomFormat.Gdi)
+        {
+            _outputGdiPath = _gdiTrackCopier.CopyGdiTracks(sourcePath, outputDir, outputPath, _copiedTrackPaths, sourceIsTemporary);
+            skipCompress = _outputGdiPath is null;
         }
 
         if (!autoCompress || skipCompress)

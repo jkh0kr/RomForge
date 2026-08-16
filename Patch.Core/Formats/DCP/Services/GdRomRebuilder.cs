@@ -4,13 +4,13 @@ namespace Patch.Core.Formats.DCP.Services;
 
 public static class GdRomRebuilder
 {
-    public static void RebuildFull(GdiFile originalGdi, Dictionary<string, byte[]> replacedFiles, string outputDir, Action<double, string>? onProgress = null, Action<string>? onLog = null, bool moveSourceTracks = false, CancellationToken ct = default)
+    public static void RebuildFull(GdiFile originalGdi, Dictionary<string, byte[]> replacedFiles, string outputDir, Action<double, string>? onProgress = null, Action<string>? onLog = null, CancellationToken ct = default)
     {
         Directory.CreateDirectory(outputDir);
 
         onProgress?.Invoke(0.0, "기존 GD-ROM 미디어 해석 준비 중...");
 
-        using var sourceReader = new GdRomCompositeSectorReader(originalGdi);
+        var sourceReader = new GdRomCompositeSectorReader(originalGdi);
         var sourceFunc = sourceReader.AsFunc();
         var firstDataTrack = originalGdi.Tracks
             .Where(t => t.Type == TrackType.Data && t.StartLba >= 45000)
@@ -30,27 +30,34 @@ public static class GdRomRebuilder
         int fileDone = 0;
         int replacedCount = 0;
 
-        foreach (var entry in allFiles)
+        try
         {
-            ct.ThrowIfCancellationRequested();
-
-            var lookupKey = entry.FullPath.Replace('/', '\\');
-            var isReplaced = replacedFiles.TryGetValue(lookupKey, out var patched);
-            var data = isReplaced ? patched! : Iso9660DirectoryReader.ReadFile(sourceFunc, entry);
-
-            if (isReplaced)
+            foreach (var entry in allFiles)
             {
-                replacedCount++;
-                onLog?.Invoke($"파일 교체: {entry.FullPath} (원본 {entry.Size:N0} → 교체 {data.Length:N0} bytes)");
+                ct.ThrowIfCancellationRequested();
+
+                var lookupKey = entry.FullPath.Replace('/', '\\');
+                var isReplaced = replacedFiles.TryGetValue(lookupKey, out var patched);
+                var data = isReplaced ? patched! : Iso9660DirectoryReader.ReadFile(sourceFunc, entry);
+
+                if (isReplaced)
+                {
+                    replacedCount++;
+                    onLog?.Invoke($"파일 교체: {entry.FullPath} (원본 {entry.Size:N0} → 교체 {data.Length:N0} bytes)");
+                }
+
+                builder.SetFileData(entry, data);
+
+                fileDataCache[entry] = data;
+
+                fileDone++;
+
+                onProgress?.Invoke(0.01 * fileDone / allFiles.Count, $"패치 적용 중 ({fileDone:N0}/{allFiles.Count:N0})");
             }
-
-            builder.SetFileData(entry, data);
-
-            fileDataCache[entry] = data;
-
-            fileDone++;
-
-            onProgress?.Invoke(0.01 * fileDone / allFiles.Count, $"패치 적용 중 ({fileDone:N0}/{allFiles.Count:N0})");
+        }
+        finally
+        {
+            sourceReader.Dispose();
         }
 
         onLog?.Invoke($"총 {replacedCount}개 파일 교체됨 (DCP 패키지 내 파일 {replacedFiles.Count}개 중)");
@@ -143,19 +150,9 @@ public static class GdRomRebuilder
 
         foreach (var (src, dst, name, length) in trackFileInfoList)
         {
-            if (moveSourceTracks)
+            if (string.Equals(Path.GetFullPath(src), Path.GetFullPath(dst), StringComparison.OrdinalIgnoreCase))
             {
-                File.Move(src, dst, true);
-
                 totalBytesCopied += length;
-
-                if (totalBytesToCopy > 0)
-                {
-                    double pct = 0.25 + 0.73 * ((double)totalBytesCopied / totalBytesToCopy);
-
-                    onProgress?.Invoke(pct, $"자원 트랙 이동 중: {name}");
-                }
-
                 continue;
             }
 

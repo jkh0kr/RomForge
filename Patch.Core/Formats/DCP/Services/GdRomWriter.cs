@@ -4,76 +4,82 @@ public static class GdRomWriter
 {
     public static void WriteDataTrack(string outputPath, uint trackStartLba, IReadOnlyCollection<(uint Lba, byte[] Sector2048)> sectors, Action<double, string>? onProgress = null, CancellationToken ct = default)
     {
-        if (sectors.Count == 0) 
+        if (sectors.Count == 0)
             return;
 
         onProgress?.Invoke(0.0, "데이터 트랙 섹터 정렬 중...");
 
         var sortedSectors = sectors.OrderBy(s => s.Lba).ToList();
-        using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 256 * 1024);
         uint maxLba = sortedSectors[^1].Lba;
         int totalRequiredSectors = (int)(maxLba - trackStartLba + 1);
-        var fullSectorArray = new (uint Lba, byte[] UserData)[totalRequiredSectors];
-        var emptyUserData = new byte[2048];
-        int sortedIdx = 0;
+        string tempPath = outputPath + ".tmp";
 
-        for (int i = 0; i < totalRequiredSectors; i++)
+        try
         {
-            uint currentLba = trackStartLba + (uint)i;
+            onProgress?.Invoke(0.0, "데이터 트랙 원시 섹터 생성 및 디스크 쓰기 중...");
 
-            if (sortedIdx < sortedSectors.Count && sortedSectors[sortedIdx].Lba == currentLba)
+            int sectorSize = 2352;
+            int writeBufferSize = 2000;
+            byte[] writeBuffer = new byte[sectorSize * writeBufferSize];
+            int bufferedCount = 0;
+
+            using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 256 * 1024))
             {
-                fullSectorArray[i] = sortedSectors[sortedIdx];
-                sortedIdx++;
+                int sortedIdx = 0;
+                var emptyUserData = new byte[2048];
+
+                for (int i = 0; i < totalRequiredSectors; i++)
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    uint currentLba = trackStartLba + (uint)i;
+                    byte[] userData;
+
+                    if (sortedIdx < sortedSectors.Count && sortedSectors[sortedIdx].Lba == currentLba)
+                    {
+                        userData = sortedSectors[sortedIdx].Sector2048;
+                        sortedIdx++;
+                    }
+                    else
+                        userData = emptyUserData;
+
+                    byte[] rawSector = BuildRawSector(currentLba, userData);
+
+                    Buffer.BlockCopy(rawSector, 0, writeBuffer, bufferedCount * sectorSize, sectorSize);
+                    bufferedCount++;
+
+                    if (bufferedCount >= writeBufferSize)
+                    {
+                        fs.Write(writeBuffer, 0, bufferedCount * sectorSize);
+                        bufferedCount = 0;
+                    }
+
+                    if (i % 500 == 0)
+                    {
+                        onProgress?.Invoke((double)i / totalRequiredSectors, "데이터 트랙 원시 섹터 생성 및 쓰기 중...");
+                    }
+                }
+
+                if (bufferedCount > 0)
+                {
+                    fs.Write(writeBuffer, 0, bufferedCount * sectorSize);
+                }
             }
-            else
-                fullSectorArray[i] = (currentLba, emptyUserData);
+
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
+
+            File.Move(tempPath, outputPath);
+
+            onProgress?.Invoke(1.0, "데이터 트랙 작성 완료.");
         }
-
-        byte[][] rawSectors = new byte[totalRequiredSectors][];
-        int completedCount = 0;
-        int totalSectors = sortedSectors.Count;
-
-        onProgress?.Invoke(0.0, "데이터 트랙 원시 섹터 병렬 연산 중 (EDC 계산)...");
-
-        Parallel.For(0, totalRequiredSectors, new ParallelOptions { CancellationToken = ct }, i =>
+        finally
         {
-            var (Lba, UserData) = fullSectorArray[i];
-
-            rawSectors[i] = BuildRawSector(Lba, UserData);
-
-            if (UserData != emptyUserData)
+            if (File.Exists(tempPath))
             {
-                int current = Interlocked.Increment(ref completedCount);
-
-                if (totalSectors > 0 && current % 500 == 0)
-                    onProgress?.Invoke((double)current / totalSectors, "데이터 트랙 원시 섹터 병렬 연산 중 (EDC 계산)...");
-            }
-        });
-
-        onProgress?.Invoke(1.0, "데이터 트랙 파일 디스크 쓰기 중...");
-
-        int sectorSize = 2352;
-        int writeBufferSize = 2000;
-        byte[] writeBuffer = new byte[sectorSize * writeBufferSize];
-        int bufferedCount = 0;
-
-        for (int i = 0; i < totalRequiredSectors; i++)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            Buffer.BlockCopy(rawSectors[i], 0, writeBuffer, bufferedCount * sectorSize, sectorSize);
-            bufferedCount++;
-
-            if (bufferedCount >= writeBufferSize)
-            {
-                fs.Write(writeBuffer, 0, bufferedCount * sectorSize);
-                bufferedCount = 0;
+                try { File.Delete(tempPath); } catch { }
             }
         }
-
-        if (bufferedCount > 0)
-            fs.Write(writeBuffer, 0, bufferedCount * sectorSize);
     }
 
     public static byte[] BuildRawSector(uint absoluteLba, byte[] userData2048)
