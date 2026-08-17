@@ -12,17 +12,10 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 파일 리스트 -->
-        <ListView x:Name="InstallListView"
-                  Grid.Row="0" Grid.ColumnSpan="2"
-                  SelectionMode="Extended"
-                  AllowDrop="True"
+        <ListView x:Name="InstallListView" Grid.Row="0" Margin="5,5,5,0" Grid.ColumnSpan="2" SelectionMode="Extended" AllowDrop="True" HorizontalContentAlignment="Stretch" IsEnabled="{Binding Install.IsNotInstalling}" Visibility="{Binding Install.ListVisibility}" 
                   Drop="InstallList_Drop"
                   DragOver="InstallList_DragOver"
-                  KeyUp="InstallList_KeyUp"
-                  HorizontalContentAlignment="Stretch"
-                  IsEnabled="{Binding Install.IsNotInstalling}"
-                  Visibility="{Binding Install.ListVisibility}" 
+                  KeyUp="InstallList_KeyUp"                  
                   ContextMenuOpening="LvFiles_ContextMenuOpening">
             <ListView.ContextMenu>
                 <ContextMenu>
@@ -199,10 +192,7 @@
             </ListView.View>
         </ListView>
 
-        <!-- 버튼 바 -->
-        <Border Grid.Row="1" Grid.ColumnSpan="2"
-                Background="#252526" Padding="8,6"
-                BorderBrush="#2A2A3A" BorderThickness="0,1,0,0">
+        <Border Grid.Row="1" Margin="5,5,5,5" Grid.ColumnSpan="2" Background="#252526" Padding="8,6" BorderBrush="#2A2A3A" BorderThickness="0,1,0,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button x:Name="InstallButton" Style="{StaticResource PrimaryButton}" Click="Install_Click" IsEnabled="{Binding CanInstall}" Margin="0,0,6,0">

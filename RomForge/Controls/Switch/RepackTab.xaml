@@ -24,7 +24,7 @@
                             <TextBlock Text="파일" VerticalAlignment="Center"/>
                         </StackPanel>
                     </TabItem.Header>
-                    <local:SwitchTitleListControl x:Name="titleList" IsEnabled="{Binding IsIdle}"/>
+                    <local:SwitchTitleListControl x:Name="titleList" IsEnabled="{Binding IsIdle}" Margin="5,0,5,0" />
                 </TabItem>
                 <TabItem IsEnabled="{Binding IsIdle}">
                     <TabItem.Header>
@@ -38,7 +38,7 @@
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <core:LanguageTabControl x:Name="langTab" Grid.Row="0" IsEnabled="{Binding IsIdle}"/>
+                        <core:LanguageTabControl x:Name="langTab" Grid.Row="0" IsEnabled="{Binding IsIdle}" Margin="5,0,5,0"/>
                     </Grid>
                 </TabItem>
             </TabControl>

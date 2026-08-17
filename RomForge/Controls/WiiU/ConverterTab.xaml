@@ -21,15 +21,8 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <ListView x:Name="lvFiles" Grid.Row="0"
-                      ItemsSource="{Binding FileItems}"
-                      IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}"
-                      SelectionMode="Extended"
-                      KeyUp="LvFiles_KeyUp"
-                      AllowDrop="True"
-                      Drop="LvFiles_Drop"
-                      DragOver="LvFiles_DragOver"
-                      ContextMenuOpening="LvFiles_ContextMenuOpening">
+            <ListView x:Name="lvFiles" Grid.Row="0" Margin="5,0,5,0" ItemsSource="{Binding FileItems}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" SelectionMode="Extended" AllowDrop="True" 
+                      KeyUp="LvFiles_KeyUp" Drop="LvFiles_Drop" DragOver="LvFiles_DragOver" ContextMenuOpening="LvFiles_ContextMenuOpening">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
                         <Style.Triggers>
@@ -155,10 +148,7 @@
                 </ListView.View>
             </ListView>
 
-            <Border Grid.Row="0" IsHitTestVisible="False"
-                    Visibility="{Binding HintVisibility}"
-                    BorderBrush="#333337" BorderThickness="1" Margin="15,55,15,15"
-                    CornerRadius="6">
+            <Border Grid.Row="0" IsHitTestVisible="False" Visibility="{Binding HintVisibility}" BorderBrush="#333337" BorderThickness="1" Margin="15,55,15,15" CornerRadius="6">
                 <Border.Background>
                     <SolidColorBrush Color="#181818" Opacity="0.95"/>
                 </Border.Background>
@@ -218,8 +208,7 @@
             </Border>
         </Grid>
 
-        <!-- 출력 폴더 -->
-        <StackPanel Grid.Row="1" Margin="5,10,5,10">
+        <StackPanel Grid.Row="1" Margin="5,5,5,5">
             <Grid Height="36">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -231,13 +220,13 @@
                         <TextBlock Text="출력 폴더를 선택하세요" Visibility="{Binding OutputHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" IsHitTestVisible="False" Margin="10,0,0,0"/>
                     </Grid>
                 </Border>
-                <Button Grid.Column="1" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseOutputCommand}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Margin="5,0,0,0">
+                <Button Grid.Column="1" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseOutputCommand}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}">
                     <Image Source="/Assets/Images/AddFolder.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                 </Button>
             </Grid>
         </StackPanel>
 
-        <Border Grid.Row="2" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
+        <Border Grid.Row="2" Margin="5,0,5,5" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource RunButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Command="{Binding RunCommand}" Margin="0,0,6,0">

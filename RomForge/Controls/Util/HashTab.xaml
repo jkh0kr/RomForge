@@ -15,7 +15,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="#252526" Padding="15,10" BorderBrush="#2D2D30" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Margin="5,0,5,5" Background="#252526" Padding="15,10" BorderBrush="#2D2D30" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}" RadioButton.Checked="RadioButton_Checked">
                 <Image Source="/Assets/Images/Neural.png" Width="16" Height="16" Margin="0,0,5,0"/>
                 <TextBlock Text="알고리즘 :" Foreground="#BBBBBB" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,15,0"/>
@@ -63,12 +63,8 @@
             </StackPanel>
         </Border>
 
-        <ListView x:Name="lvFiles" Grid.Row="1"
-                  ItemsSource="{Binding FileItems}"
-                  IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}"
-                  SelectionMode="Extended"
+        <ListView x:Name="lvFiles" Grid.Row="1" Margin="5,0,5,5" ItemsSource="{Binding FileItems}" IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}" SelectionMode="Extended" AllowDrop="True"
                   KeyUp="LvFiles_KeyUp"
-                  AllowDrop="True"
                   Drop="LvFiles_Drop"
                   DragOver="LvFiles_DragOver"
                   ContextMenuOpening="LvFiles_ContextMenuOpening">
@@ -235,7 +231,7 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Row="2" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0" CornerRadius="5">
+        <Border Grid.Row="2" Margin="5,0,5,5" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0" CornerRadius="5">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

@@ -12,16 +12,13 @@
                 </StackPanel>
             </TabItem.Header>
             <Grid>
-                <Border Style="{StaticResource OptionBorder}" Height="Auto" Padding="12,6">
+                <Border Margin="5,0,5,5" Style="{StaticResource OptionBorder}" Height="Auto" Padding="12,6">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Image Source="/Assets/Images/Neural.png" Width="20" Margin="0,0,8,0"/>
                             <TextBlock Text="압축 알고리즘 (ISO: PSP, PS2)" Foreground="#A0A0A0" FontSize="11" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <ComboBox Margin="0,6,0,0" VerticalAlignment="Center"
-                          ItemsSource="{Binding ChdmanCompressionOptions}"
-                          SelectedItem="{Binding ChdmanCompression}"
-                          DisplayMemberPath="Display"/>
+                        <ComboBox Margin="0,6,0,0" VerticalAlignment="Center" ItemsSource="{Binding ChdmanCompressionOptions}" SelectedItem="{Binding ChdmanCompression}" DisplayMemberPath="Display"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -42,7 +39,7 @@
                     <RowDefinition Height="5"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <Border Grid.Row="0" Style="{StaticResource OptionBorder}" Height="Auto" Padding="12,6">
+                <Border Margin="5,0,5,0" Grid.Row="0" Style="{StaticResource OptionBorder}" Height="Auto" Padding="12,6">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="압축 레벨" Foreground="#A0A0A0" FontSize="11" Margin="0,0,20,0"/>
@@ -61,17 +58,12 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Image Grid.Column="0" Source="/Assets/Images/Level.png" Width="24" Margin="0,0,5,0"/>
-                            <Slider Grid.Column="1" x:Name="sliderSwitch" Style="{StaticResource SliderStyle}"
-                                    Minimum="2" Maximum="18" Value="{Binding SwitchCompressLevel}"
-                                    SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="2"
-                                       Text="{Binding ElementName=sliderSwitch, Path=Value, Converter={StaticResource CompressLevelTextConverter}}"
-                                       Foreground="{Binding ElementName=sliderSwitch, Path=Value, Converter={StaticResource LevelToColorConverter}}"
-                                       FontWeight="Bold" VerticalAlignment="Center" Width="30" TextAlignment="Center" Margin="5,0,0,0" MinWidth="45"/>
+                            <Slider Grid.Column="1" x:Name="sliderSwitch" Style="{StaticResource SliderStyle}" Minimum="2" Maximum="18" Value="{Binding SwitchCompressLevel}" SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="{Binding ElementName=sliderSwitch, Path=Value, Converter={StaticResource CompressLevelTextConverter}}" Foreground="{Binding ElementName=sliderSwitch, Path=Value, Converter={StaticResource LevelToColorConverter}}" FontWeight="Bold" VerticalAlignment="Center" Width="30" TextAlignment="Center" Margin="5,0,0,0" MinWidth="45"/>
                         </Grid>
                     </StackPanel>
                 </Border>
-                <Border Grid.Row="2" Style="{StaticResource OptionBorder}">
+                <Border Margin="5,0,5,0" Grid.Row="2" Style="{StaticResource OptionBorder}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -88,8 +80,7 @@
                         </StackPanel>
                     </Grid>
                 </Border>
-                <ToggleButton Grid.Row="4" Style="{StaticResource ToggleStyle}"
-                              IsChecked="{Binding SwitchIsValidationEnabled}">
+                <ToggleButton Margin="5,0,5,5" Grid.Row="4" Style="{StaticResource ToggleStyle}" IsChecked="{Binding SwitchIsValidationEnabled}">
                     <StackPanel Orientation="Horizontal">
                         <Image Width="18" Margin="0,0,10,0" Source="{Binding SwitchIsValidationEnabled, Converter={StaticResource BoolToImageConverter}}"/>
                         <TextBlock Text="압축 무결성 검증 : 압축 후 원본과 해시 비교 검증" VerticalAlignment="Center" FontSize="12"/>
@@ -106,7 +97,7 @@
                 </StackPanel>
             </TabItem.Header>
             <Grid>
-                <Border Style="{StaticResource OptionBorder}" Height="Auto" Padding="12,6">
+                <Border  Margin="5,0,5,5" Style="{StaticResource OptionBorder}" Height="Auto" Padding="12,6">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="압축 레벨" Foreground="#A0A0A0" FontSize="11" Margin="0,0,20,0"/>
@@ -123,13 +114,8 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Image Grid.Column="0" Source="/Assets/Images/Level.png" Width="24" Margin="0,0,10,0"/>
-                            <Slider Grid.Column="1" x:Name="sliderAzahar" Style="{StaticResource SliderStyle}"
-                                    Minimum="3" Maximum="18" Value="{Binding AzaharCompressLevel}"
-                                    SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="2"
-                                       Text="{Binding ElementName=sliderAzahar, Path=Value}"
-                                       Foreground="{Binding ElementName=sliderAzahar, Path=Value, Converter={StaticResource LevelToColorConverter}}"
-                                       FontWeight="Bold" VerticalAlignment="Center" Width="30" TextAlignment="Center" Margin="10,0,0,0"/>
+                            <Slider Grid.Column="1" x:Name="sliderAzahar" Style="{StaticResource SliderStyle}" Minimum="3" Maximum="18" Value="{Binding AzaharCompressLevel}" SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="{Binding ElementName=sliderAzahar, Path=Value}" Foreground="{Binding ElementName=sliderAzahar, Path=Value, Converter={StaticResource LevelToColorConverter}}" FontWeight="Bold" VerticalAlignment="Center" Width="30" TextAlignment="Center" Margin="10,0,0,0"/>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -144,7 +130,7 @@
                 </StackPanel>
             </TabItem.Header>
             <Grid>
-                <Border Style="{StaticResource OptionBorder}" Height="Auto" Padding="12,6">
+                <Border Margin="5,0,5,5" Style="{StaticResource OptionBorder}" Height="Auto" Padding="12,6">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="압축 레벨" Foreground="#A0A0A0" FontSize="11" Margin="0,0,20,0"/>
@@ -161,18 +147,13 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Image Grid.Column="0" Source="/Assets/Images/Level.png" Width="24" Margin="0,0,10,0"/>
-                            <Slider Grid.Column="1" x:Name="sliderDolphin" Style="{StaticResource SliderStyle}"
-                                    Minimum="3" Maximum="18" Value="{Binding DolphinCompressLevel}"
-                                    SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="2"
-                                       Text="{Binding ElementName=sliderDolphin, Path=Value}"
-                                       Foreground="{Binding ElementName=sliderDolphin, Path=Value, Converter={StaticResource LevelToColorConverter}}"
-                                       FontWeight="Bold" VerticalAlignment="Center" Width="30" TextAlignment="Center" Margin="10,0,0,0"/>
+                            <Slider Grid.Column="1" x:Name="sliderDolphin" Style="{StaticResource SliderStyle}" Minimum="3" Maximum="18" Value="{Binding DolphinCompressLevel}" SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="{Binding ElementName=sliderDolphin, Path=Value}" Foreground="{Binding ElementName=sliderDolphin, Path=Value, Converter={StaticResource LevelToColorConverter}}" FontWeight="Bold" VerticalAlignment="Center" Width="30" TextAlignment="Center" Margin="10,0,0,0"/>
                         </Grid>
                     </StackPanel>
                 </Border>
             </Grid>
         </TabItem>
-
+        
     </TabControl>
 </UserControl>

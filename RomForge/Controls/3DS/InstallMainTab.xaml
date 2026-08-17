@@ -86,7 +86,7 @@
             </TabItem>
         </TabControl>
 
-        <Border Grid.Row="2" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Margin="0,0,0,2" Padding="8,0">
+        <Border Grid.Row="2" Margin="5,0,5,5" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Padding="8,0">
             <Grid Height="28">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

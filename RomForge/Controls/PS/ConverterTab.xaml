@@ -20,12 +20,8 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <ListView x:Name="lvFiles" Grid.Row="0"
-                      ItemsSource="{Binding FileItems}"
-                      IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}"
-                      SelectionMode="Extended"
-                      KeyUp="LvFiles_KeyUp"
-                      AllowDrop="True"
+            <ListView x:Name="lvFiles" Grid.Row="0" Margin="5,0,5,5" ItemsSource="{Binding FileItems}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" SelectionMode="Extended" AllowDrop="True"
+                      KeyUp="LvFiles_KeyUp"                      
                       Drop="LvFiles_Drop"
                       DragOver="LvFiles_DragOver"
                       GridViewColumnHeader.Click="GridViewColumnHeader_Click"
@@ -96,9 +92,7 @@
                             </GridViewColumn.Header>
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding FileName}" Foreground="#E8E8F0" FontSize="13"
-                                               TextTrimming="CharacterEllipsis" MaxWidth="280"
-                                               ToolTip="{Binding FilePath}" Margin="8,5"/>
+                                    <TextBlock Text="{Binding FileName}" Foreground="#E8E8F0" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="280" ToolTip="{Binding FilePath}" Margin="8,5"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -132,11 +126,7 @@
                             </GridViewColumn.Header>
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding AvailableFormats}"
-                                              SelectedItem="{Binding SelectedTargetFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              Width="65" Height="26"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center">
+                                    <ComboBox ItemsSource="{Binding AvailableFormats}" SelectedItem="{Binding SelectedTargetFormat, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="65" Height="26" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <ComboBox.ItemContainerStyle>
                                             <Style TargetType="ComboBoxItem">
                                                 <Setter Property="Foreground" Value="White"/>
@@ -188,10 +178,7 @@
                 </ListView.View>
             </ListView>
 
-            <Border Grid.Row="0" IsHitTestVisible="False"
-                    Visibility="{Binding HintVisibility}"
-                    BorderBrush="#333337" BorderThickness="1" Margin="15,55,15,15"
-                    CornerRadius="6">
+            <Border Grid.Row="0" IsHitTestVisible="False" Visibility="{Binding HintVisibility}" BorderBrush="#333337" BorderThickness="1" Margin="15,55,15,15" CornerRadius="6">
                 <Border.Background>
                     <SolidColorBrush Color="#181818" Opacity="0.95"/>
                 </Border.Background>
@@ -240,12 +227,10 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="1" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
+        <Border Grid.Row="1" Margin="5,0,5,5" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource RunButton}"
-                            IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}"
-                            Command="{Binding RunCommand}" Margin="0,0,6,0">
+                    <Button Style="{StaticResource RunButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Command="{Binding RunCommand}" Margin="0,0,6,0">
                         <Button.Content>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -254,9 +239,7 @@
                         </Button.Content>
                     </Button>
 
-                    <Button Style="{StaticResource CancelButton}"
-                            IsEnabled="{Binding IsConverting}"
-                            Command="{Binding CancelCommand}">
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting}" Command="{Binding CancelCommand}">
                         <Button.Content>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Image Source="/Assets/Images/Cancel.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -267,9 +250,7 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal">
-                    <Button Style="{StaticResource CancelButton}"
-                            IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}"
-                            Click="BtnAddFiles_Click" Margin="0,0,6,0">
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnAddFiles_Click" Margin="0,0,6,0">
                         <Button.Content>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Image Source="/Assets/Images/AddFile.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -278,9 +259,7 @@
                         </Button.Content>
                     </Button>
 
-                    <Button Style="{StaticResource CancelButton}"
-                            IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}"
-                            Click="BtnAddFolder_Click" Margin="0,0,6,0">
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnAddFolder_Click" Margin="0,0,6,0">
                         <Button.Content>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Image Source="/Assets/Images/AddFolder.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -289,9 +268,7 @@
                         </Button.Content>
                     </Button>
 
-                    <Button Style="{StaticResource CancelButton}"
-                            IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}"
-                            Click="BtnRemove_Click" Margin="0,0,6,0">
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnRemove_Click" Margin="0,0,6,0">
                         <Button.Content>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Image Source="/Assets/Images/Delete.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -300,9 +277,7 @@
                         </Button.Content>
                     </Button>
 
-                    <Button Style="{StaticResource CancelButton}"
-                            IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}"
-                            Click="BtnClear_Click" Margin="0,0,6,0">
+                    <Button Style="{StaticResource CancelButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Click="BtnClear_Click" Margin="0,0,6,0">
                         <Button.Content>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Image Source="/Assets/Images/Clear.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>

@@ -13,12 +13,8 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <ListView x:Name="lvFiles" Grid.Row="0"
-                  ItemsSource="{Binding CompressVM.FileItems}"
-                  IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}"
-                  SelectionMode="Extended"
-                  KeyUp="LvFiles_KeyUp"
-                  AllowDrop="True"
+        <ListView x:Name="lvFiles" Grid.Row="0" Margin="5,0,5,0" ItemsSource="{Binding CompressVM.FileItems}" IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}" SelectionMode="Extended" AllowDrop="True"
+                  KeyUp="LvFiles_KeyUp"                  
                   Drop="LvFiles_Drop"
                   DragOver="LvFiles_DragOver"
                   GridViewColumnHeader.Click="GridViewColumnHeader_Click"
@@ -220,7 +216,7 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Row="1" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0" CornerRadius="5">
+        <Border Grid.Row="1" Margin="5,0,5,5" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0" CornerRadius="5">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Style="{StaticResource RunButton}" IsEnabled="{Binding CompressVM.IsLocked, Converter={StaticResource InverseBool}}" Command="{Binding CompressVM.RunCommand}" Margin="0,0,6,0">

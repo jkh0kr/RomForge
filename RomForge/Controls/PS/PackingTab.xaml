@@ -5,14 +5,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:RomForge.Controls.PS"
              mc:Ignorable="d" d:DesignWidth="900" Height="465">
-    <Grid HorizontalAlignment="Right" Width="880">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" MinHeight="280"/>
-            <RowDefinition Height="2"/>
+            <RowDefinition Height="5"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="2"/>
+            <RowDefinition Height="5"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="2"/>
+            <RowDefinition Height="5"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -23,7 +23,7 @@
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0">
-                <ListView x:Name="lvFiles" ItemsSource="{Binding FileItems}" AllowDrop="True" Drop="LvFiles_Drop" KeyUp="LvFiles_KeyUp" IsEnabled="{Binding IsUnlocked}" ContextMenuOpening="LvFiles_ContextMenuOpening">
+                <ListView x:Name="lvFiles" Margin="5,0,5,0" ItemsSource="{Binding FileItems}" AllowDrop="True" Drop="LvFiles_Drop" KeyUp="LvFiles_KeyUp" IsEnabled="{Binding IsUnlocked}" ContextMenuOpening="LvFiles_ContextMenuOpening">
                     <ListView.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="폴더 열기" Click="MenuItem_OpenFolder_Click">
@@ -251,7 +251,7 @@
             </TabControl>
         </Grid>
 
-        <Border Grid.Row="2" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8" Padding="12,8" IsEnabled="{Binding CanEditPopsConfig}">
+        <Border Grid.Row="2" Margin="5,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8" Padding="12,8" IsEnabled="{Binding CanEditPopsConfig}">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                     <TextBlock Text="POPS 에뮬레이터 설정" Foreground="#D4AF37" FontSize="12" FontWeight="Bold"/>
@@ -282,8 +282,7 @@
             </StackPanel>
         </Border>
 
-        <!-- ===== Row 4: 진행도 ===== -->
-        <Border Grid.Row="4" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Margin="0,0,0,2" Padding="8,0">
+        <Border Grid.Row="4" Margin="5,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Padding="8,0">
             <Grid Height="28">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -309,8 +308,7 @@
             </Grid>
         </Border>
 
-        <!-- ===== Row 6: 버튼 바 ===== -->
-        <Border Grid.Row="6" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
+        <Border Grid.Row="6" Margin="5,0,5,0" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource RunButton}" IsEnabled="{Binding CanRun}" Command="{Binding RunCommand}" Margin="0,0,6,0">

@@ -5,7 +5,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="1000">
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -15,8 +14,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 드롭존 -->
-        <Border Grid.Row="0" Height="150" IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}" Style="{StaticResource DropZone}" AllowDrop="True" Drop="CiaDrop_Drop" MouseLeftButtonDown="CiaDrop_Click">
+        <Border Grid.Row="0" Margin="5,5,5,0" Height="150" IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}" Style="{StaticResource DropZone}" AllowDrop="True" Drop="CiaDrop_Drop" MouseLeftButtonDown="CiaDrop_Click">
             <Grid Margin="14,0" Cursor="">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HintVisibility}" Opacity="0.85">
                     <Image Source="/Assets/Images/drag.png" Width="24" Height="24" Margin="0,0,0,6" HorizontalAlignment="Center"/>
@@ -39,24 +37,14 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Image Grid.Column="0" Source="/Assets/Images/AddFile.png" Width="28" Height="28"
-                       Margin="0,0,6,0" VerticalAlignment="Center"
-                       ToolTip="{Binding SelectedFile.FilePath}"/>
-                    <TextBlock Grid.Column="1"
-                           Text="{Binding SelectedFile.FileName}"
-                           Foreground="#888888" FontSize="12"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                           ToolTip="{Binding SelectedFile.FilePath}"/>
-                    <TextBlock Grid.Column="1"
-                           Text="CIA" Foreground="#888" FontSize="11"
-                           HorizontalAlignment="Right" VerticalAlignment="Top"
-                           Margin="0,8"/>
+                    <Image Grid.Column="0" Source="/Assets/Images/AddFile.png" Width="28" Height="28" Margin="0,0,6,0" VerticalAlignment="Center" ToolTip="{Binding SelectedFile.FilePath}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding SelectedFile.FileName}" Foreground="#888888" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding SelectedFile.FilePath}"/>
+                    <TextBlock Grid.Column="1" Text="CIA" Foreground="#888" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8"/>
                 </Grid>
             </Grid>
         </Border>
 
-        <!-- 게임 정보: 고정 높이 -->
-        <Border Grid.Row="1" Height="68" Margin="0,5,0,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8" Visibility="{Binding RomInfoVisibility}">
+        <Border Grid.Row="1" Height="68" Margin="5" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8" Visibility="{Binding RomInfoVisibility}">
             <Grid Margin="12,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -71,34 +59,24 @@
                 </Border>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding RomInfo.ShortDescription}"
-                           Foreground="#E8E8F0" FontSize="13" FontWeight="SemiBold"
-                           TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding RomInfo.Publisher}"
-                           Foreground="#8888A8" FontSize="11" Margin="0,2,0,0"/>
+                    <TextBlock Text="{Binding RomInfo.ShortDescription}" Foreground="#E8E8F0" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding RomInfo.Publisher}" Foreground="#8888A8" FontSize="11" Margin="0,2,0,0"/>
                     <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                        <TextBlock Text="{Binding RomInfo.ProductCode}"
-                               Foreground="#8888A8" FontSize="11"/>
+                        <TextBlock Text="{Binding RomInfo.ProductCode}" Foreground="#8888A8" FontSize="11"/>
                         <TextBlock Text=" · " Foreground="#555570" FontSize="11"/>
-                        <TextBlock Text="{Binding RomInfo.TitleId}"
-                               Foreground="#555570" FontSize="11"/>
+                        <TextBlock Text="{Binding RomInfo.TitleId}" Foreground="#555570" FontSize="11"/>
                     </StackPanel>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal"
                         VerticalAlignment="Center" Margin="12,0,0,0">
-                    <Image Width="24" Height="24" Margin="0,0,8,0"
-                       Source="{Binding RomInfo.ProductCode, Converter={StaticResource RegionToImageConverter}}"
-                       ToolTip="{Binding RomInfo.Region}"/>
-                    <Image Width="24" Height="24"
-                       Source="{Binding RomInfo.Crypto, Converter={StaticResource LockIconConverter}}"/>
+                    <Image Width="24" Height="24" Margin="0,0,8,0" Source="{Binding RomInfo.ProductCode, Converter={StaticResource RegionToImageConverter}}" ToolTip="{Binding RomInfo.Region}"/>
+                    <Image Width="24" Height="24" Source="{Binding RomInfo.Crypto, Converter={StaticResource LockIconConverter}}"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- 진행도 바 -->
-        <Border Grid.Row="3" Background="#12FFFFFF" BorderBrush="#30FFFFFF"
-                BorderThickness="0,1,0,0" CornerRadius="8" Margin="0,0,0,2" Padding="8,0">
+        <Border Grid.Row="3" Margin="5" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Padding="8,0">
             <Grid Height="28">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -106,20 +84,14 @@
                     <ColumnDefinition Width="140"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" Text="{Binding ProgressStatus}"
-                           Foreground="#A0A0A0" FontSize="11"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Grid.Column="1" Margin="0,0,10,0" Text="{Binding ProgressText}"
-                           Foreground="#4CAF50" FontSize="12" FontWeight="Bold"
-                           VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="0" Text="{Binding ProgressStatus}" Foreground="#A0A0A0" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="1" Margin="0,0,10,0" Text="{Binding ProgressText}" Foreground="#4CAF50" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
                 <Grid Grid.Column="2" Height="10" VerticalAlignment="Center">
                     <Border Background="#25FFFFFF" CornerRadius="5"/>
                     <Border CornerRadius="5" ClipToBounds="True">
                         <Border Background="#4CAF50" CornerRadius="5" RenderTransformOrigin="0,0.5">
                             <Border.RenderTransform>
-                                <ScaleTransform ScaleX="{Binding SelectedFile.Progress,
-                                    Converter={StaticResource ProgressToStarConverter},
-                                    FallbackValue=0}"/>
+                                <ScaleTransform ScaleX="{Binding SelectedFile.Progress, Converter={StaticResource ProgressToStarConverter}, FallbackValue=0}"/>
                             </Border.RenderTransform>
                         </Border>
                     </Border>
@@ -127,23 +99,16 @@
             </Grid>
         </Border>
 
-        <!-- 하단 버튼 바 -->
-        <Border Grid.Row="4" Background="#252526" Padding="8,6"
-                BorderBrush="#2D2D30" BorderThickness="0,1,0,0" CornerRadius="5">
+        <Border Grid.Row="4" Margin="5,0,5,5" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0" CornerRadius="5">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Style="{StaticResource RunButton}"
-                            IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}"
-                            Command="{Binding RunCommand}" Margin="0,0,6,0">
+                    <Button Style="{StaticResource RunButton}" IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}" Command="{Binding RunCommand}" Margin="0,0,6,0">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Assets/Images/Run.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="추출" VerticalAlignment="Center"
-                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            <TextBlock Text="추출" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource GrayButton}"
-                            IsEnabled="{Binding IsLocked}"
-                            Command="{Binding CancelCommand}">
+                    <Button Style="{StaticResource GrayButton}" IsEnabled="{Binding IsLocked}" Command="{Binding CancelCommand}">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Assets/Images/Cancel.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
                             <TextBlock Text="취소" VerticalAlignment="Center"/>
@@ -151,17 +116,13 @@
                     </Button>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <Button Style="{StaticResource GrayButton}"
-                            IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}"
-                            Command="{Binding ClearFileCommand}" Margin="0,0,6,0">
+                    <Button Style="{StaticResource GrayButton}" IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}" Command="{Binding ClearFileCommand}" Margin="0,0,6,0">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Assets/Images/Clear.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
                             <TextBlock Text="초기화" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource GrayButton}"
-                            IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}"
-                            Click="BtnAddFile_Click">
+                    <Button Style="{StaticResource GrayButton}" IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBool}}" Click="BtnAddFile_Click">
                         <StackPanel Orientation="Horizontal">
                             <Image Source="/Assets/Images/AddFile.png" Width="24" Height="24" Margin="0,0,6,0" VerticalAlignment="Center"/>
                             <TextBlock Text="파일 선택" VerticalAlignment="Center"/>

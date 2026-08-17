@@ -22,12 +22,8 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <ListView x:Name="lvFiles" Grid.Row="0"
-                      ItemsSource="{Binding FileItems}"
-                      IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}"
-                      SelectionMode="Extended"
-                      KeyUp="LvFiles_KeyUp"
-                      AllowDrop="True"
+            <ListView x:Name="lvFiles" Grid.Row="0" Margin="5,0,5,5" ItemsSource="{Binding FileItems}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" SelectionMode="Extended" AllowDrop="True"
+                      KeyUp="LvFiles_KeyUp"                      
                       Drop="LvFiles_Drop"
                       DragOver="LvFiles_DragOver" 
                       GridViewColumnHeader.Click="GridViewColumnHeader_Click"
@@ -140,8 +136,7 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Image Width="16" Height="16" Margin="0,0,3,0"
-                                                           Source="{Binding Converter={StaticResource PbpLanguageToFlagConverter}}"/>
+                                                    <Image Width="16" Height="16" Margin="0,0,3,0" Source="{Binding Converter={StaticResource PbpLanguageToFlagConverter}}"/>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
@@ -197,10 +192,7 @@
                 </ListView.View>
             </ListView>
 
-            <Border Grid.Row="0" IsHitTestVisible="False"
-                    Visibility="{Binding HintVisibility}"
-                    BorderBrush="#333337" BorderThickness="1" Margin="15,55,15,15"
-                    CornerRadius="6">
+            <Border Grid.Row="0" IsHitTestVisible="False" Visibility="{Binding HintVisibility}" BorderBrush="#333337" BorderThickness="1" Margin="15,55,15,15" CornerRadius="6">
                 <Border.Background>
                     <SolidColorBrush Color="#181818" Opacity="0.95"/>
                 </Border.Background>
@@ -228,7 +220,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="1" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
+        <Border Grid.Row="1" Margin="5,0,5,5" Background="#252526" Padding="8,6" BorderBrush="#2D2D30" BorderThickness="0,1,0,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Style="{StaticResource RunButton}" IsEnabled="{Binding IsConverting, Converter={StaticResource InverseBool}}" Command="{Binding RunCommand}" Margin="0,0,6,0">

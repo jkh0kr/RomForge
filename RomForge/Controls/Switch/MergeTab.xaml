@@ -18,7 +18,7 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <core:FileManagerControl x:Name="fileMgr" Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding IsIdle}"/>
+            <core:FileManagerControl x:Name="fileMgr" Grid.Row="0" Margin="5,0,5,5" IsEnabled="{Binding IsIdle}"/>
 
             <Grid Grid.Row="1" Margin="0,0,0,5">
                 <Grid.ColumnDefinitions>
