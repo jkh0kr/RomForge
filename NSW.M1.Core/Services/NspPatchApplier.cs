@@ -104,6 +104,7 @@ public static class NspPatchApplier
     private static int ApplyXdeltaCandidates(List<XdeltaCandidate> candidates, string? exefsDir, string romfsDir, string displayRoot, bool isDlc, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log)
     {
         int count = 0;
+        int successCount = 0;
         string label = isDlc ? "DLC xdelta" : "xdelta";
 
         foreach (var candidate in candidates)
@@ -128,10 +129,15 @@ public static class NspPatchApplier
 
             foreach (var targetPath in targetFiles.Distinct())
             {
-                ApplyXdeltaToTarget(tempPatch.Path, targetPath, displayRoot, progress, log, isDlc: isDlc, displayName: candidate.DisplayName);
                 count++;
+
+                if (ApplyXdeltaToTarget(tempPatch.Path, targetPath, displayRoot, progress, log, isDlc: isDlc, displayName: candidate.DisplayName))
+                    successCount++;
             }
         }
+
+        if (count > 0)
+            log($"  {label} 패치 완료 수: {successCount}개 / {count}개", LogLevel.Ok);
 
         return count;
     }
@@ -306,7 +312,7 @@ public static class NspPatchApplier
         return ApplyXdeltaCandidates(candidates, null, romfsDir, romfsDir, true, progress, log);
     }
 
-    private static void ApplyXdeltaToTarget(string xdeltaPath, string targetPath, string displayRoot, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, bool isDlc = false, string? displayName = null)
+    private static bool ApplyXdeltaToTarget(string xdeltaPath, string targetPath, string displayRoot, IProgress<(int pct, string label)> progress, Action<string, LogLevel> log, bool isDlc = false, string? displayName = null)
     {
         string displayPath = Path.GetRelativePath(displayRoot, targetPath);
         string prefix = isDlc ? "DLC xdelta" : "xdelta";
@@ -328,11 +334,16 @@ public static class NspPatchApplier
 
             Xdelta3.ApplyPatch(targetPath, Path.GetFullPath(xdeltaPath), tempOutPath, wrapper);
 
-            if (File.Exists(tempOutPath))
+            if (!File.Exists(tempOutPath))
             {
-                File.Delete(targetPath);
-                File.Move(tempOutPath, targetPath);
+                log($"  ❌ {prefix} 패치 실패 ({shownName}): 출력 파일이 생성되지 않았습니다.", LogLevel.Error);
+                return false;
             }
+
+            File.Delete(targetPath);
+            File.Move(tempOutPath, targetPath);
+
+            return true;
         }
         catch (Exception ex)
         {
@@ -340,6 +351,8 @@ public static class NspPatchApplier
 
             if (File.Exists(tempOutPath))
                 File.Delete(tempOutPath);
+
+            return false;
         }
     }
 

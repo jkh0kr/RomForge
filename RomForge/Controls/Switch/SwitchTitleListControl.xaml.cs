@@ -23,6 +23,8 @@ public partial class SwitchTitleListControl : UserControl
 
     public event Action? FileListChanged;
 
+    private bool _syncingPatch;
+
     public SwitchTitleListControl()
     {
         InitializeComponent();
@@ -223,13 +225,19 @@ public partial class SwitchTitleListControl : UserControl
     private void BtnRemoveFile_Click(object sender, RoutedEventArgs e)
     {
         foreach (var item in lvFiles.SelectedItems.Cast<GameFile>().ToList())
+        {
+            DetachPatchSync(item);
             GameFiles.Remove(item);
+        }
 
         UpdateDropHint();
     }
 
     private void BtnRemoveAllFiles_Click(object sender, RoutedEventArgs e)
     {
+        foreach (var item in GameFiles)
+            DetachPatchSync(item);
+
         GameFiles.Clear();
         UpdateDropHint();
     }
@@ -348,6 +356,7 @@ public partial class SwitchTitleListControl : UserControl
                     vm.PatchPath = existingBase.PatchPath;
                     vm.PatchPassword = existingBase.PatchPassword;
                 }
+                DetachPatchSync(existingBase);
                 GameFiles.Remove(existingBase);
             }
         }
@@ -362,11 +371,79 @@ public partial class SwitchTitleListControl : UserControl
                     vm.PatchPath = existingUpdate.PatchPath;
                     vm.PatchPassword = existingUpdate.PatchPassword;
                 }
+                DetachPatchSync(existingUpdate);
                 GameFiles.Remove(existingUpdate);
             }
         }
 
         GameFiles.Add(vm);
+        AttachPatchSync(vm);
+        SyncPatchToPartner(vm);
+    }
+
+    private void AttachPatchSync(GameFile vm) => vm.PropertyChanged += GameFile_PatchPropertyChanged;
+
+    private void DetachPatchSync(GameFile vm) => vm.PropertyChanged -= GameFile_PatchPropertyChanged;
+
+    private void GameFile_PatchPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_syncingPatch)
+            return;
+
+        if (sender is not GameFile file)
+            return;
+
+        if (e.PropertyName != nameof(GameFile.PatchPath) && e.PropertyName != nameof(GameFile.PatchPassword))
+            return;
+
+        SyncPatchToPartner(file);
+    }
+
+    private GameFile? FindPatchPartner(GameFile file)
+    {
+        bool isBase = file.FileType.Contains('B');
+        bool isUpdate = file.FileType.Contains('U');
+
+        if (!isBase && !isUpdate)
+            return null;
+
+        return isBase
+            ? GameFiles.FirstOrDefault(f => f.FileType.Contains('U'))
+            : GameFiles.FirstOrDefault(f => f.FileType.Contains('B'));
+    }
+
+    private void SyncPatchToPartner(GameFile file)
+    {
+        var partner = FindPatchPartner(file);
+
+        if (partner == null || ReferenceEquals(partner, file))
+            return;
+
+        if (string.IsNullOrEmpty(file.PatchPath) && !string.IsNullOrEmpty(partner.PatchPath))
+        {
+            ApplySyncedPatch(file, partner.PatchPath, partner.PatchPassword);
+            return;
+        }
+
+        if (partner.PatchPath == file.PatchPath && partner.PatchPassword == file.PatchPassword)
+            return;
+
+        ApplySyncedPatch(partner, file.PatchPath, file.PatchPassword);
+    }
+
+    private void ApplySyncedPatch(GameFile target, string? patchPath, string? patchPassword)
+    {
+        _syncingPatch = true;
+
+        try
+        {
+            target.PatchPath = patchPath;
+            target.PatchPassword = patchPassword;
+        }
+        finally
+        {
+            _syncingPatch = false;
+        }
     }
 
     private static IEnumerable<string> ExpandPaths(IEnumerable<string> paths)
