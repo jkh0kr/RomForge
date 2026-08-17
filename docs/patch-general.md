@@ -8,8 +8,8 @@
 ## 화면 구성
 
 1. **패치 대상 원본** — 패치를 적용할 게임 파일
-2. **패치 파일** — IPS / BPS / UPS / PPF / APS / Xdelta, DPC 형식의 패치 파일
-3. **패치 후 자동 압축** — 체크하면 BIN / IMG / ISO 파일은 CHD로, 3DS / CCI / CIA는 ZCCI로 GCM / Wii / WBFS은 RVZ로 그 외 파일은 ZIP으로 자동 압축됩니다
+2. **패치 파일** — IPS / BPS / UPS / PPF / APS / Xdelta / DPC 형식의 패치 파일
+3. **패치 후 자동 압축** — 체크하면 BIN / IMG / ISO 파일은 CHD로, 3DS / CCI / CIA는 ZCCI로 GCM / Wii / WBFS은 RVZ로 그 외 파일은 ZIP로 자동 압축됩니다
 4. **패치 진행 바**
 5. **초기화** — 1, 2번 항목을 초기화합니다 (잘못 선택했거나 다른 게임을 이어서 패치할 때 사용)
 6. **해시 계산** — 1번에 선택된 원본 파일의 해시 값을 계산합니다 (기본 알고리즘: MD5)
@@ -17,7 +17,7 @@
 8. **패치 취소** — 진행 중인 패치를 취소하고, 만들어지던 파일은 삭제합니다
 9. **로그**
 
-<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/53773d73-5b46-4765-83be-7e2ad69ad260" />
+<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/d31bdc35-ef61-4f14-96d4-ad5eecd06186" />
 
 ---
 
@@ -43,7 +43,7 @@
 3. "패치 후 자동 압축" 옵션을 체크합니다.
 4. **패치 시작**을 누릅니다.
 
-<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/4e56dae1-80b3-4486-b239-29048a5607b0" />
+<img width="850" height="683" alt="image" src="https://github.com/user-attachments/assets/dde8a5c9-af6f-4dd3-a6f5-00af2900d02e" />
 
 ---
 
@@ -57,4 +57,4 @@
 - **GCM / Wii / WBFS** → **RVZ**
 - **이외 기타** → **ZIP**
 
-<img width="800" height="50" alt="{37E82D57-1F15-4248-BDA0-4BEFB4135E5C}" src="https://github.com/user-attachments/assets/87f61d72-418a-4126-b231-7f1459d60433" />
+<img width="800" height="40" alt="image" src="https://github.com/user-attachments/assets/1b7cda1b-f309-45e9-afc3-2a497d81506c" />
