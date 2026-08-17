@@ -1,6 +1,7 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
 using LibHac.Ns;
+using LibHac.Util;
 using NSW.Core;
 using NSW.Core.Enums;
 using NSW.M1.Core.Models;
@@ -25,6 +26,7 @@ namespace RomForge.ViewModels.Switch
         private string _publisher = "SEGA";
         private string _gameId = string.Empty;
         private string _gameVersion = string.Empty;
+        private string _nspTitleId = string.Empty;
 
         private bool _wideScreen = false;
         private string _selectedSoundVolume = "100%";
@@ -57,9 +59,21 @@ namespace RomForge.ViewModels.Switch
 
         public string Publisher { get => _publisher; set { _publisher = value; OnPropertyChanged(); } }
 
-        public string GameId { get => _gameId; set { _gameId = value; OnPropertyChanged(); } }
+        public string GameId
+        { 
+            get => _gameId;
+            set
+            { 
+                _gameId = value;
+                NspTitleId = Crc32Helper.BuildTitleId(Crc32Helper.Compute(Encoding.Default.GetBytes(value)));
+                OnPropertyChanged();
+                OnPropertyChanged(NspTitleId);
+            } 
+        }
 
         public string GameVersion { get => _gameVersion; set { _gameVersion = value; OnPropertyChanged(); } }
+
+        public string NspTitleId { get => _nspTitleId; set { _nspTitleId = value; OnPropertyChanged(); } }
 
         public bool WideScreen { get => _wideScreen; set { _wideScreen = value; OnPropertyChanged(); } }
 
@@ -148,13 +162,17 @@ namespace RomForge.ViewModels.Switch
         private void BrowseCue()
         {
             var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "CUE/CHD 파일|*.cue;*.chd" };
-            if (dlg.ShowDialog() == true) CuePath = dlg.FileName;
+
+            if (dlg.ShowDialog() == true) 
+                CuePath = dlg.FileName;
         }
 
         private void BrowseNsp()
         {
             var dlg = new Microsoft.Win32.OpenFileDialog { Filter = "NSP/NSZ 파일|*.nsp;*.nsz" };
-            if (dlg.ShowDialog() == true) NspPath = dlg.FileName;
+
+            if (dlg.ShowDialog() == true) 
+                NspPath = dlg.FileName;
         }
 
         private async Task BrowseWork()
@@ -176,6 +194,7 @@ namespace RomForge.ViewModels.Switch
                     return null;
 
                 var hunk = wrapper.ReadHunk(0);
+
                 return hunk.Length >= 0x90 ? hunk : null;
             }
             catch
@@ -195,8 +214,7 @@ namespace RomForge.ViewModels.Switch
 
                 if (string.Equals(Path.GetExtension(inputPath), ".chd", StringComparison.OrdinalIgnoreCase))
                 {
-                    header = await Task.Run(() => TryReadChdFirstSectorHeader(inputPath))
-                        ?? throw new InvalidOperationException("CHD 헤더를 읽을 수 없습니다.");
+                    header = await Task.Run(() => TryReadChdFirstSectorHeader(inputPath)) ?? throw new InvalidOperationException("CHD 헤더를 읽을 수 없습니다.");
                 }
                 else
                 {
@@ -266,6 +284,7 @@ namespace RomForge.ViewModels.Switch
             using (BeginWork())
             {
                 _cts = new CancellationTokenSource();
+
                 try
                 {
                     await RunConversionProcess(_cts.Token);
@@ -314,26 +333,25 @@ namespace RomForge.ViewModels.Switch
                 });
 
                 Log("원본 NSP 언팩 중...");
+
                 var unpackReq = new BuildRequest(NspPath, string.Empty, [], string.Empty, WorkPath);
+
                 await NspBuildService.Run(unpackReq, BuildMode.UnpackOnly, progress, (msg, lvl) => Log(msg), token);
 
                 token.ThrowIfCancellationRequested();
 
-                string? baseProgramDir = LibHacHelper.FindBaseProgramDir(unpackedDir)
-                    ?? throw new DirectoryNotFoundException("언팩된 프로그램(titleId) 폴더를 찾을 수 없습니다.");
+                string? baseProgramDir = LibHacHelper.FindBaseProgramDir(unpackedDir) ?? throw new DirectoryNotFoundException("언팩된 프로그램(titleId) 폴더를 찾을 수 없습니다.");
                 string romfsDir = Path.Combine(baseProgramDir, "romfs");
-
-                string? existingCuePath = (Directory.Exists(romfsDir)
-                    ? Directory.GetFiles(romfsDir, "*.cue", SearchOption.AllDirectories).FirstOrDefault()
-                    : null) ?? throw new FileNotFoundException($"romfs 안에서 cue 파일을 찾을 수 없습니다.");
-
+                string? existingCuePath = (Directory.Exists(romfsDir) ? Directory.GetFiles(romfsDir, "*.cue", SearchOption.AllDirectories).FirstOrDefault() : null) ?? throw new FileNotFoundException($"romfs 안에서 cue 파일을 찾을 수 없습니다.");
                 string targetDir = Path.GetDirectoryName(existingCuePath)!;
                 var oldBins = CHD.Core.Services.ConversionSource.ParseBinsFromCue(existingCuePath);
 
                 foreach (var bin in oldBins)
                 {
-                    if (File.Exists(bin)) File.Delete(bin);
+                    if (File.Exists(bin)) 
+                        File.Delete(bin);
                 }
+
                 File.Delete(existingCuePath);
 
                 string cueFileName = Path.GetFileName(existingCuePath);
@@ -342,6 +360,7 @@ namespace RomForge.ViewModels.Switch
                 if (string.Equals(Path.GetExtension(CuePath), ".chd", StringComparison.OrdinalIgnoreCase))
                 {
                     Log("CHD 압축 해제 중...");
+
                     using var chdman = new CHD.Core.Services.ChdmanService();
                     bool ok = await chdman.ExtractCdAsync(CuePath, finalCuePath, progressHandler, token);
 
@@ -351,13 +370,18 @@ namespace RomForge.ViewModels.Switch
                 else
                 {
                     var sourceBins = CHD.Core.Services.ConversionSource.ParseBinsFromCue(CuePath);
-                    if (sourceBins.Count == 0) throw new FileNotFoundException("입력한 CUE에서 참조하는 BIN 파일을 찾을 수 없습니다.");
+
+                    if (sourceBins.Count == 0) 
+                        throw new FileNotFoundException("입력한 CUE에서 참조하는 BIN 파일을 찾을 수 없습니다.");
 
                     foreach (var bin in sourceBins)
                     {
-                        if (!File.Exists(bin)) throw new FileNotFoundException($"BIN 파일이 존재하지 않습니다: {bin}");
+                        if (!File.Exists(bin)) 
+                            throw new FileNotFoundException($"BIN 파일이 존재하지 않습니다: {bin}");
+
                         await CopyFileAsync(bin, Path.Combine(targetDir, Path.GetFileName(bin)), token);
                     }
+
                     await CopyFileAsync(CuePath, finalCuePath, token);
                 }
 
@@ -376,9 +400,7 @@ namespace RomForge.ViewModels.Switch
 
                 ini.SetValue("Sound", "Volume", volumeMultiplier.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
                 await ini.SaveAsync();
-
-                uint crc = Crc32Helper.ComputeFile(targetBins[0]);
-                string titleIdStr = Crc32Helper.BuildTitleId(crc);
+                
                 var metadata = MetadataService.GetGameMetadataFromUnpacked(unpackedDir);
                 var koLang = metadata?.Languages.FirstOrDefault(l => l.Language == ApplicationControlProperty.Language.Korean)
                            ?? metadata?.Languages.First();
@@ -399,11 +421,11 @@ namespace RomForge.ViewModels.Switch
                 {
                     UserMetadata = metadata,
                     Language = ApplicationControlProperty.Language.None,
-                    OverrideTitleId = ulong.Parse(titleIdStr, System.Globalization.NumberStyles.HexNumber)
+                    OverrideTitleId = ulong.Parse(NspTitleId, System.Globalization.NumberStyles.HexNumber)
                 };
 
                 string finalNspPath = await NspBuildService.Run(rebuildReq, BuildMode.RebuildOnly, progress, (msg, lvl) => Log(msg), token);
-                string finalRenamedPath = RenameOutputFile(finalNspPath, GameTitle, titleIdStr);
+                string finalRenamedPath = RenameOutputFile(finalNspPath, GameTitle, NspTitleId);
 
                 Path.GetDirectoryName(finalRenamedPath)!.OpenFolder();
             }

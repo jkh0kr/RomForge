@@ -15,22 +15,22 @@ public partial class MergeTab : UserControl
     public MergeTab()
     {
         InitializeComponent();
-
-        Image extraImage = new Image();
-        extraImage.Source = new BitmapImage(new Uri("/Assets/Images/Settings.png", UriKind.RelativeOrAbsolute));
-        extraImage.Width = 30;
-        extraImage.Height = 30;
-        RenderOptions.SetBitmapScalingMode(extraImage, BitmapScalingMode.HighQuality);
-
-        fileMgr.ExtraButton1.ToolTip = "압축 설정";
-        fileMgr.ExtraButton1.Visibility = Visibility.Visible;
-        fileMgr.ExtraButton1.Content = extraImage;
-        fileMgr.ExtraButton1Clicked += ExtraButton1Clicked;
     }
 
-    private void ExtraButton1Clicked()
+    private void BtnSettings_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.NavigateSettings();
+    }
+
+    private void BtnHelp_Click(object sender, RoutedEventArgs e)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "https://sinjunyoung.github.io/RomForge/switch-merge/",
+            UseShellExecute = true
+        };
+
+        System.Diagnostics.Process.Start(psi);
     }
 
     protected override void OnVisualParentChanged(DependencyObject oldParent)
