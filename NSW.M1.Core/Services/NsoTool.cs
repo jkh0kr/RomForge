@@ -8,6 +8,40 @@ public static class NsoTool
 {
     private const int HeaderSize = 0x100;
 
+    private const int MinHeaderReadSize = 0x60;
+
+    public static bool TryReadHeaderInfo(string path, out bool isNso, out string buildIdHex)
+    {
+        isNso = false;
+        buildIdHex = string.Empty;
+
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        if (fs.Length < MinHeaderReadSize)
+            return false;
+
+        Span<byte> header = stackalloc byte[MinHeaderReadSize];
+        int totalRead = 0;
+
+        while (totalRead < MinHeaderReadSize)
+        {
+            int read = fs.Read(header[totalRead..]);
+
+            if (read == 0)
+                return false;
+
+            totalRead += read;
+        }
+
+        if (!(header[0] == (byte)'N' && header[1] == (byte)'S' && header[2] == (byte)'O' && header[3] == (byte)'0'))
+            return false;
+
+        isNso = true;
+        buildIdHex = Convert.ToHexString(header[0x40..0x60]).TrimEnd('0');
+
+        return true;
+    }
+
     private record struct SegInfo(int FileOffField, int MemOffField, int SizeField, int FileSizeField, int CompBit, int HashBit, int HashOffset);
 
     private static readonly SegInfo[] Segs =
@@ -17,14 +51,14 @@ public static class NsoTool
         new(0x30, 0x34, 0x38, 0x68, 2, 5, 0xE0),
     ];
 
-    public static bool IsNso(byte[] data) =>
-        data.Length >= 4 && data[0] == 'N' && data[1] == 'S' && data[2] == 'O' && data[3] == '0';
+    public static bool IsNso(byte[] data) => data.Length >= 4 && data[0] == 'N' && data[1] == 'S' && data[2] == 'O' && data[3] == '0';
 
     public static string GetBuildIdHex(byte[] nso) => Convert.ToHexString(nso.AsSpan(0x40, 32)).TrimEnd('0');
 
     public static bool IsCompressed(byte[] nso)
     {
         uint flags = BitConverter.ToUInt32(nso, 0x0C);
+
         return Segs.Any(s => (flags & (1u << s.CompBit)) != 0);
     }
 
@@ -43,14 +77,15 @@ public static class NsoTool
             int memSize = BitConverter.ToInt32(nso, s.SizeField);
             bool compressed = (flags & (1u << s.CompBit)) != 0;
             int fileSize = compressed ? BitConverter.ToInt32(nso, s.FileSizeField) : memSize;
-
             byte[] raw = new byte[fileSize];
+
             Array.Copy(nso, fileOff, raw, 0, fileSize);
 
             segData[i] = compressed ? Lz4.Decompress(raw, memSize) : raw;
         }
 
         byte[] outNso = new byte[HeaderSize + segData.Sum(s => s.Length)];
+
         Array.Copy(nso, 0, outNso, 0, HeaderSize);
 
         uint newFlags = flags;
@@ -73,6 +108,7 @@ public static class NsoTool
         }
 
         BitConverter.GetBytes(newFlags).CopyTo(outNso, 0x0C);
+
         return outNso;
     }
 
@@ -86,9 +122,10 @@ public static class NsoTool
             var s = Segs[i];
             int fileOff = BitConverter.ToInt32(plain, s.FileOffField);
             int size = BitConverter.ToInt32(plain, s.SizeField);
-
             byte[] raw = new byte[size];
+
             Array.Copy(plain, fileOff, raw, 0, size);
+
             segData[i] = raw;
 
             bool wasCompressed = (originalFlags & (1u << s.CompBit)) != 0;
@@ -107,11 +144,14 @@ public static class NsoTool
                 throw new InvalidOperationException($"세그먼트 {i} LZ4 압축 실패 (encodedLen={encodedLen})");
 
             byte[] compressed = new byte[encodedLen];
+
             Array.Copy(buffer, compressed, encodedLen);
+
             segCompressed[i] = compressed;
         }
 
         byte[] outNso = new byte[HeaderSize + segCompressed.Sum(s => s.Length)];
+
         Array.Copy(plain, 0, outNso, 0, HeaderSize);
 
         int cursor = HeaderSize;
@@ -119,8 +159,8 @@ public static class NsoTool
         for (int i = 0; i < 3; i++)
         {
             var s = Segs[i];
-            Array.Copy(segCompressed[i], 0, outNso, cursor, segCompressed[i].Length);
 
+            Array.Copy(segCompressed[i], 0, outNso, cursor, segCompressed[i].Length);
             BitConverter.GetBytes(cursor).CopyTo(outNso, s.FileOffField);
             BitConverter.GetBytes(segData[i].Length).CopyTo(outNso, s.SizeField);
             BitConverter.GetBytes(segCompressed[i].Length).CopyTo(outNso, s.FileSizeField);

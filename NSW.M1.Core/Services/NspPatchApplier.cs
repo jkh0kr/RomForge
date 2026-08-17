@@ -89,15 +89,24 @@ public static class NspPatchApplier
             log("  패치 대상 파일이 존재하지 않습니다.", LogLevel.Error);
     }
 
-    private static IEnumerable<string> FindTargetsByContains(string? dir, string targetFileName)
+    private static ILookup<string, string> BuildFileNameIndex(string? dir)
     {
         if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
-            yield break;
+            return Array.Empty<string>().ToLookup(f => f, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+        return Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)
+                         .ToLookup(Path.GetFileName, StringComparer.OrdinalIgnoreCase)!;
+    }
+
+    private static IEnumerable<string> FindTargetsByContains(ILookup<string, string> index, string targetFileName)
+    {
+        foreach (var group in index)
         {
-            if (targetFileName.Contains(Path.GetFileName(f), StringComparison.OrdinalIgnoreCase))
-                yield return f;
+            if (targetFileName.Contains(group.Key, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var f in group)
+                    yield return f;
+            }
         }
     }
 
@@ -107,6 +116,9 @@ public static class NspPatchApplier
         int successCount = 0;
         string label = isDlc ? "DLC xdelta" : "xdelta";
 
+        var exefsIndex = BuildFileNameIndex(exefsDir);
+        var romfsIndex = BuildFileNameIndex(romfsDir);
+
         foreach (var candidate in candidates)
         {
             var targetFiles = new List<string>();
@@ -115,8 +127,8 @@ public static class NspPatchApplier
                 targetFiles.Add(candidate.AbsoluteExactPath);
             else
             {
-                targetFiles.AddRange(FindTargetsByContains(exefsDir, candidate.TargetFileName));
-                targetFiles.AddRange(FindTargetsByContains(romfsDir, candidate.TargetFileName));
+                targetFiles.AddRange(FindTargetsByContains(exefsIndex, candidate.TargetFileName));
+                targetFiles.AddRange(FindTargetsByContains(romfsIndex, candidate.TargetFileName));
             }
 
             if (targetFiles.Count == 0)
@@ -340,8 +352,7 @@ public static class NspPatchApplier
                 return false;
             }
 
-            File.Delete(targetPath);
-            File.Move(tempOutPath, targetPath);
+            File.Move(tempOutPath, targetPath, overwrite: true);
 
             return true;
         }
@@ -448,12 +459,10 @@ public static class NspPatchApplier
             if (Path.GetFileName(nsoPath).Equals("main.npdm", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            byte[] data = File.ReadAllBytes(nsoPath);
-
-            if (!NsoTool.IsNso(data))
+            if (!NsoTool.TryReadHeaderInfo(nsoPath, out bool isNso, out string headerBuildId) || !isNso)
                 continue;
 
-            buildIdMap[NsoTool.GetBuildIdHex(data)] = nsoPath;
+            buildIdMap[headerBuildId] = nsoPath;
         }
 
         int count = 0;

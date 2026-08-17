@@ -480,8 +480,25 @@ public partial class SwitchTitleListControl : UserControl
     {
         if (lvFiles.SelectedItem is GameFile file)
         {
-            file.PatchPath = null;
-            file.PatchPassword = null;
+            var partner = FindPatchPartner(file);
+
+            _syncingPatch = true;
+
+            try
+            {
+                file.PatchPath = null;
+                file.PatchPassword = null;
+
+                if (partner != null)
+                {
+                    partner.PatchPath = null;
+                    partner.PatchPassword = null;
+                }
+            }
+            finally
+            {
+                _syncingPatch = false;
+            }
         }
     }
 
