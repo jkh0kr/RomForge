@@ -18,6 +18,14 @@
 
 <img width="850" height="684" alt="1783840797" src="https://github.com/user-attachments/assets/40b3e83a-87f1-478f-ad17-1b53c2bfa133" />
 
+## 압축 설정
+
+<img width="664" height="152" alt="{79498652-D8A2-41E7-A2D5-090ED4114011}" src="https://github.com/user-attachments/assets/f3244e4f-fce4-4d60-801f-9be8c71837fe" />
+
+- **압축 레벨** - 가장 왼쪽 : 무압축(nsp, xci) / 3: 고속, 9: 균형, 18: 고압축 (nsz, xcz)
+- **압축 모드** - 블록: 고속, 블록리스: 고압축
+- **압축 무결성 검증** - 압축 후 오류 검사 진행
+
 ---
 
 ## 사용 예시
