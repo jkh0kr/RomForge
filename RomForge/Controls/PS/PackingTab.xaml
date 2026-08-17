@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:RomForge.Controls.PS"
              mc:Ignorable="d" d:DesignWidth="900" Height="465">
-    <Grid Margin="10">
+    <Grid HorizontalAlignment="Right" Width="880">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" MinHeight="280"/>
             <RowDefinition Height="2"/>
@@ -14,10 +14,8 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="2"/>
             <RowDefinition Height="Auto"/>
-            <!-- Row 6: 버튼 바 -->
         </Grid.RowDefinitions>
 
-        <!-- ===== Row 0: 파일 리스트(좌) + 이미지 탭(우) ===== -->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>

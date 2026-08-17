@@ -1,7 +1,6 @@
 ﻿using Common;
 using Common.WPF.ViewModels;
 using LibHac.Ns;
-using LibHac.Util;
 using NSW.Core;
 using NSW.Core.Enums;
 using NSW.M1.Core.Models;

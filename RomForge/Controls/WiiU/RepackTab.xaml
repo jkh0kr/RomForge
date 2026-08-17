@@ -17,7 +17,6 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 목록 -->
         <Border Grid.Row="0" Margin="5,0,5,10" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8" IsEnabled="{Binding IsIdle}">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -82,11 +81,8 @@
                                 <GridViewColumn Header="한글패치" Width="70">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border Width="32" Height="32" CornerRadius="4" Background="#3A3A40" BorderBrush="#5A5A62" BorderThickness="1"
-                                                    ToolTip="{Binding PatchDisplay}"
-                                                    AllowDrop="True" DragEnter="PatchDropTarget_DragEnter" DragLeave="PatchDropTarget_DragLeave" Drop="PatchDropTarget_Drop"
-                                                    MouseLeftButtonUp="PatchDropTarget_Click"
-                                                    Cursor="Hand">
+                                            <Border Width="32" Height="32" CornerRadius="4" Background="#3A3A40" BorderBrush="#5A5A62" BorderThickness="1" ToolTip="{Binding PatchDisplay}" Cursor="Hand"
+                                                    AllowDrop="True" DragEnter="PatchDropTarget_DragEnter" DragLeave="PatchDropTarget_DragLeave" Drop="PatchDropTarget_Drop" MouseLeftButtonUp="PatchDropTarget_Click">
                                                 <Border.ContextMenu>
                                                     <ContextMenu>
                                                         <MenuItem Header="폴더 선택..." Click="PatchMenu_SelectFolder_Click">
@@ -174,21 +170,27 @@
                     <Button Width="30" Height="30" Margin="0,0,0,8" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding RemoveAllCommand}">
                         <Image Source="/Assets/Images/Clear.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" ToolTip="모두 삭제"/>
                     </Button>
-                    <Button Width="30" Height="30" Padding="0" BorderThickness="1" ToolTip="도움말" Style="{StaticResource GrayButton}" Click="BtnHelp_Click">
-                        <Image Source="/Assets/Images/Help.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
-                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- 출력 포맷 선택 -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5,0,0,10">
-            <TextBlock Text="출력 포맷:" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <RadioButton Content="WUA ( 에뮬레이터 )" GroupName="OutputFormat" IsChecked="{Binding IsWuaFormat}" Foreground="White" VerticalAlignment="Center" Margin="0,0,15,0" IsEnabled="{Binding IsIdle}"/>
-            <RadioButton Content="WUP ( 실기 )" GroupName="OutputFormat" IsChecked="{Binding IsWupFormat}" Foreground="White" VerticalAlignment="Center" IsEnabled="{Binding IsIdle}"/>
-        </StackPanel>
+        <Grid Grid.Row="1" Margin="5,0,5,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5,0,0,10">
+                <TextBlock Text="출력 포맷:" Foreground="White" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="0,5,10,0"/>
+                <RadioButton Content="WUA ( 에뮬레이터 )" GroupName="OutputFormat" IsChecked="{Binding IsWuaFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,5,15,0" IsEnabled="{Binding IsIdle}"/>
+                <RadioButton Content="WUP ( 실기 )" GroupName="OutputFormat" IsChecked="{Binding IsWupFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,5,15,0" IsEnabled="{Binding IsIdle}"/>
+            </StackPanel>
 
-        <!-- 작업 폴더 -->
+            <Button Grid.Column="1" Width="30" Height="30" Padding="0" BorderThickness="1" ToolTip="도움말" Style="{StaticResource GrayButton}" Click="BtnHelp_Click">
+                <Image Source="/Assets/Images/Help.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
+            </Button>
+
+        </Grid>
+
         <StackPanel Grid.Row="2" Margin="5,0,5,10">
             <Grid Height="36">
                 <Grid.ColumnDefinitions>
@@ -207,20 +209,18 @@
             </Grid>
         </StackPanel>
 
-        <!-- 실행 버튼 -->
         <Grid Grid.Row="3" Margin="5,0,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
-
+            
             <core:IconButton Grid.Column="0" DefaultText="언팩" DefaultIcon="/Assets/Images/Unpack.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsUnpackRunning}" IsEnabled="{Binding UnpackEnabled}" Click="BtnUnpack_Click"/>
-            <core:IconButton Grid.Column="1" Margin="5,0,0,0" DefaultText="리팩 (폴더 기반)" DefaultIcon="/Assets/Images/Repack.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsRebuildRunning}" IsEnabled="{Binding RebuildEnabled}" Click="BtnRebuild_Click"/>
-            <core:IconButton Grid.Column="2" Margin="5,0,5,0" DefaultText="언팩 + 리팩 (Full)" DefaultIcon="/Assets/Images/Run.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsFullRunning}" IsEnabled="{Binding StartEnabled}" Click="BtnStart_Click"/>
+            <core:IconButton Grid.Column="1" Margin="10,0,0,0" DefaultText="리팩 (폴더 기반)" DefaultIcon="/Assets/Images/Repack.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsRebuildRunning}" IsEnabled="{Binding RebuildEnabled}" Click="BtnRebuild_Click"/>
+            <core:IconButton Grid.Column="2" Margin="10,0,5,0" DefaultText="언팩 + 리팩 (Full)" DefaultIcon="/Assets/Images/Run.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsFullRunning}" IsEnabled="{Binding StartEnabled}" Click="BtnStart_Click"/>
         </Grid>
 
-        <!-- 진행률 -->
         <Border Grid.Row="4" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Margin="5,0,5,5" Padding="8,0">
             <Grid Height="28">
                 <Grid.ColumnDefinitions>

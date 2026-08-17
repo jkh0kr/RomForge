@@ -16,7 +16,7 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <TabControl Grid.Row="0" Margin="0,0,0,5" SelectedIndex="0">
+            <TabControl Grid.Row="0" Margin="0,0,0,5" SelectedIndex="0" Background="Transparent" BorderThickness="0">
                 <TabItem IsEnabled="{Binding IsIdle}">
                     <TabItem.Header>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

@@ -125,22 +125,4 @@ public partial class InstallMainTab : UserControl
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => ViewModel.CancelExtract();
-
-    private void Image_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = "https://seedminer.hacks.guide/",
-            UseShellExecute = true
-        });
-    }
-
-    private void MovableTextBlock_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        Process.Start(new ProcessStartInfo
-        {
-            FileName = "https://seedminer.hacks.guide/",
-            UseShellExecute = true
-        });
-    }
 }

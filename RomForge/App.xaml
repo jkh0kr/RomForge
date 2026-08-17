@@ -393,16 +393,16 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-
+            
             <Style TargetType="TextBox">
-                <Setter Property="Background"      Value="#1E1E1E"/>
-                <Setter Property="Foreground"      Value="#E8E8F0"/>
-                <Setter Property="BorderBrush"     Value="#2A2A3A"/>
-                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Foreground"      Value="#DCDCDC"/>
                 <Setter Property="Height"          Value="32"/>
-                <Setter Property="Padding"         Value="10,0,10,0"/>
-                <Setter Property="FontSize"        Value="12"/>
+                <Setter Property="Padding"         Value="10,0"/>
+                <Setter Property="FontSize"        Value="11"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Background"      Value="#12FFFFFF"/>
+                <Setter Property="BorderBrush"     Value="#30FFFFFF"/>
+                <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="TextBox">
@@ -413,12 +413,17 @@
                                 <Trigger Property="IsFocused" Value="True">
                                     <Setter Property="BorderBrush" Value="#4F8EF7"/>
                                 </Trigger>
+
+                                <Trigger Property="IsReadOnly" Value="True">
+                                    <Setter Property="Background" Value="#121212"/>
+                                    <Setter Property="Foreground" Value="#656565"/>
+                                    <Setter Property="BorderBrush" Value="#1A1A1A"/>
+                                </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
             </Style>
-
 
             <Style TargetType="GroupBox">
                 <Setter Property="Background" Value="#2D2D2D"/>

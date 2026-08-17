@@ -55,7 +55,7 @@
             </Grid>
 
             <!-- 탭 -->
-            <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}" BorderThickness="1">
+            <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}" Background="Transparent" BorderThickness="0">
 
                 <!-- 굽기 탭 -->
                 <TabItem IsEnabled="{Binding IsIdle}">

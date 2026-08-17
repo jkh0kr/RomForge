@@ -8,7 +8,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TabControl Grid.Row="0" SelectedIndex="{Binding PatchVM.SubTabIndex}">
+        <TabControl Grid.Row="0" SelectedIndex="{Binding PatchVM.SubTabIndex}" Background="Transparent" BorderThickness="0">
 
             <TabItem IsEnabled="{Binding IsIdle}">
                 <TabItem.Header>

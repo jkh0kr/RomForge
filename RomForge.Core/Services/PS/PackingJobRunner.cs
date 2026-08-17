@@ -25,7 +25,7 @@ public class PackingJobRunner
         else
         {
             var safeTitle = string.Concat(gameTitle.Split(Path.GetInvalidFileNameChars()));
-            targetOutputPath = Path.Combine(baseDirectory, safeTitle + ".PBP");
+            targetOutputPath = Path.Combine(baseDirectory, safeTitle + ".pbp");
         }
 
         targetOutputPath = Utils.GetUniqueFilePath(targetOutputPath);

@@ -35,7 +35,7 @@
                         <TextBlock Text="패치" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <patch:MainTab/>
+                <patch:MainTab Margin="0,-5,0,0"/>
             </TabItem>
 
             <TabItem IsEnabled="{Binding IsIdle}">
@@ -65,7 +65,7 @@
                         <TextBlock Text="Switch" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <switch:MainTab DataContext="{Binding SwitchMainVM}"/>
+                <switch:MainTab DataContext="{Binding SwitchMainVM}" Margin="0,-5,0,0"/>
             </TabItem>
 
             <TabItem IsEnabled="{Binding IsIdle}">
@@ -75,7 +75,7 @@
                         <TextBlock Text="WiiU" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <wiiu:MainTab DataContext="{Binding WiiUMainVM}"/>
+                <wiiu:MainTab DataContext="{Binding WiiUMainVM}" Margin="0,-5,0,0"/>
             </TabItem>
 
 
@@ -86,7 +86,7 @@
                         <TextBlock Text="3DS" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <_3ds:MainTab DataContext="{Binding Main3DsVM}"/>
+                <_3ds:MainTab DataContext="{Binding Main3DsVM}" Margin="0,-5,0,0"/>
             </TabItem>
 
             <TabItem IsEnabled="{Binding IsIdle}">
@@ -96,7 +96,7 @@
                         <TextBlock Text="PS" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <ps:MainTab DataContext="{Binding PSMainVM}"/>
+                <ps:MainTab DataContext="{Binding PSMainVM}" Margin="0,-5,0,0"/>
             </TabItem>
 
             <TabItem IsEnabled="{Binding IsIdle}">
@@ -106,7 +106,7 @@
                         <TextBlock Text="유틸" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <util:MainTab DataContext="{Binding UtilMainVM}"/>
+                <util:MainTab DataContext="{Binding UtilMainVM}" Margin="0,-5,0,0"/>
             </TabItem>
 
             <TabItem IsEnabled="{Binding IsIdle}">
@@ -116,7 +116,7 @@
                         <TextBlock Text="설정" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <settings:MainTab DataContext="{Binding Settings}"/>
+                <settings:MainTab DataContext="{Binding Settings}"  Margin="0,-5,0,0"/>
             </TabItem>
 
         </TabControl>

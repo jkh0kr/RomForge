@@ -20,41 +20,30 @@
 
             <core:FileManagerControl x:Name="fileMgr" Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding IsIdle}"/>
 
-            <Grid Grid.Row="1" Margin="5,0,5,5">
+            <Grid Grid.Row="1" Margin="0,0,0,5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" IsEnabled="{Binding IsIdle}" Style="{StaticResource OptionBorder}">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <Image Grid.Column="0" Margin="0,0,8,0" Source="/Assets/Images/AddFile.png" Width="32"/>
-                        <TextBlock FontSize="11" Foreground="#A0A0A0" Grid.Column="1" Text="출력 구분" VerticalAlignment="Center"/>
-                        <Border Background="#3F3F46" Grid.Column="2" Margin="12,8" Width="1"/>
-
-                        <StackPanel Grid.Column="3" Margin="8,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <RadioButton Content="NSP, NSZ" GroupName="OutputFormat" IsChecked="{Binding UseNSP}" Margin="0,0,16,0"/>
-                            <RadioButton Content="XCI, XCZ" GroupName="OutputFormat" IsChecked="{Binding UseXCI}"/>
-                        </StackPanel>
-                    </Grid>
+                <Border Grid.Column="0" IsEnabled="{Binding IsIdle}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0">
+                        <TextBlock Text="출력 포맷:" Foreground="White" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <RadioButton Content="NSP, NSZ" GroupName="OutputFormat" IsChecked="{Binding UseNSP}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                        <RadioButton Content="XCI, XCZ" GroupName="OutputFormat" IsChecked="{Binding UseXCI}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                        <TextBlock Text="※ 압축 설정에 따라 자동으로 선택 됩니다 ( 설정 화면에서 변경 가능 )" Foreground="#D4AF37" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    </StackPanel>
                 </Border>
 
                 <StackPanel Grid.Column="1" Margin="5,0,5,0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Background="Transparent" BorderThickness="0" Click="BtnSettings_Click" Height="36" HorizontalContentAlignment="Center" Margin="5,0,0,0" Padding="0" Style="{StaticResource GrayButton}" VerticalContentAlignment="Center" Width="36" x:Name="btnSettings">
+                    <Button Background="Transparent" BorderThickness="0" Click="BtnSettings_Click" Height="30" HorizontalContentAlignment="Center" Margin="5,0,0,0" Padding="0" Style="{StaticResource GrayButton}" VerticalContentAlignment="Center" Width="36" x:Name="btnSettings">
                         <Button.ToolTip>
                             <ToolTip Content="압축 설정"/>
                         </Button.ToolTip>
                         <Image RenderOptions.BitmapScalingMode="HighQuality" Source="/Assets/Images/Settings.png" Stretch="Uniform"/>
                     </Button>
 
-                    <Button Background="Transparent" BorderThickness="0" Click="BtnHelp_Click" Height="36" HorizontalContentAlignment="Center" Margin="10,0,0,0" Padding="0" Style="{StaticResource GrayButton}" VerticalContentAlignment="Center" Width="36" x:Name="btnHelp">
+                    <Button Background="Transparent" BorderThickness="0" Click="BtnHelp_Click" Height="30" HorizontalContentAlignment="Center" Margin="10,0,0,0" Padding="0" Style="{StaticResource GrayButton}" VerticalContentAlignment="Center" Width="36" x:Name="btnHelp">
                         <Button.ToolTip>
                             <ToolTip Content="도움말"/>
                         </Button.ToolTip>
@@ -71,7 +60,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <Button Background="Transparent" BorderThickness="0" Command="{Binding OpenWorkSpaceCommand}" Grid.Column="0" Height="36" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0" Padding="0" Style="{StaticResource GrayButton}" Width="36" x:Name="btnWorkSpace">
+                <Button Background="Transparent" BorderThickness="0" Command="{Binding OpenWorkSpaceCommand}" Grid.Column="0" Height="30" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0" Padding="0" Style="{StaticResource GrayButton}" Width="36" x:Name="btnWorkSpace">
                     <Button.ToolTip>
                         <ToolTip Content="{x:Static l:Resources.ToolTip_OpenWorkSpace}"/>
                     </Button.ToolTip>
@@ -81,10 +70,10 @@
                 <TextBlock FontSize="12" FontWeight="Bold" Foreground="White" Grid.Column="1" Margin="10,0,10,0" Text="{x:Static l:Resources.Label_OutputPath}" VerticalAlignment="Center"/>
 
                 <Border Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6" Grid.Column="2">
-                    <TextBox Background="Transparent" BorderThickness="0" FontSize="11" Foreground="#DCDCDC" Height="36" IsEnabled="{Binding IsIdle}" Text="{Binding OutputPath, Mode=TwoWay}" VerticalContentAlignment="Center" x:Name="txtOutput"/>
+                    <TextBox Background="Transparent" BorderThickness="0" FontSize="11" Foreground="#DCDCDC" Height="30" IsEnabled="{Binding IsIdle}" Text="{Binding OutputPath, Mode=TwoWay}" VerticalContentAlignment="Center" x:Name="txtOutput"/>
                 </Border>
 
-                <Button Background="Transparent" BorderThickness="0" Click="BtnBrowseOutput_Click" Grid.Column="3" Height="36" HorizontalContentAlignment="Center" IsEnabled="{Binding IsIdle}" Margin="5,0,5,0" Padding="0" Style="{StaticResource GrayButton}" VerticalContentAlignment="Center" Width="36" x:Name="btnBrowseOutput">
+                <Button Background="Transparent" BorderThickness="0" Click="BtnBrowseOutput_Click" Grid.Column="3" Height="30" HorizontalContentAlignment="Center" IsEnabled="{Binding IsIdle}" Margin="5,0,5,0" Padding="0" Style="{StaticResource GrayButton}" VerticalContentAlignment="Center" Width="36" x:Name="btnBrowseOutput">
                     <Button.ToolTip>
                         <ToolTip Content="{x:Static l:Resources.ToolTip_BrowseOutput}"/>
                     </Button.ToolTip>
@@ -99,22 +88,9 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <core:IconButton Grid.Column="0"
-                           x:Name="btnMergeStart"
-                           DefaultText="{x:Static l:Resources.Button_MergeStart}"
-                           DefaultIcon="/Assets/Images/Merge.png"
-                           CancelText="{x:Static l:Resources.Button_Cancel}"
-                           CancelIcon="/Assets/Images/Cancel.png"
-                           IsRunning="{Binding IsMergeRunning}" IsEnabled="{Binding MergeEnabled}"
+                <core:IconButton Grid.Column="0" x:Name="btnMergeStart" DefaultText="{x:Static l:Resources.Button_MergeStart}" DefaultIcon="/Assets/Images/Merge.png" CancelText="{x:Static l:Resources.Button_Cancel}" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsMergeRunning}" IsEnabled="{Binding MergeEnabled}"
                            Click="BtnMergeStart_Click"/>
-
-                <core:IconButton Grid.Column="2"
-                           x:Name="btnSplitStart" Margin="0,0,5,0"
-                           DefaultText="{x:Static l:Resources.Button_SplitStart}"
-                           DefaultIcon="/Assets/Images/Split.png"
-                           CancelText="{x:Static l:Resources.Button_Cancel}"
-                           CancelIcon="/Assets/Images/Cancel.png"
-                           IsRunning="{Binding IsSplitRunning}" IsEnabled="{Binding SplitEnabled}"
+                <core:IconButton Grid.Column="2" x:Name="btnSplitStart" Margin="0,0,5,0" DefaultText="{x:Static l:Resources.Button_SplitStart}" DefaultIcon="/Assets/Images/Split.png" CancelText="{x:Static l:Resources.Button_Cancel}" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsSplitRunning}" IsEnabled="{Binding SplitEnabled}"
                            Click="BtnSplitStart_Click"/>
             </Grid>
 
@@ -132,9 +108,7 @@
                     </Grid.ColumnDefinitions>
 
                     <TextBlock FontSize="11" Foreground="#A0A0A0" Grid.Column="0" Text="{Binding ProgressLabel}" VerticalAlignment="Center" x:Name="progressLabel"/>
-
                     <TextBlock FontSize="11" Foreground="#4CAF50" Grid.Column="1" Margin="10,0,15,0" Text="{Binding ProgressPercent}" VerticalAlignment="Center" x:Name="progressPercent"/>
-
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock FontSize="11" Foreground="Gray" Margin="0,0,10,0" Text="{Binding ProgressSpeed}" VerticalAlignment="Center" x:Name="progressSpeed"/>
                         <TextBlock FontSize="11" Foreground="#4CAF50" Text="{Binding ProgressTime}" VerticalAlignment="Center" x:Name="progressTime"/>

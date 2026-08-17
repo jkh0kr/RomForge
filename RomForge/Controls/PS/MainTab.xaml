@@ -7,11 +7,7 @@
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="1000">
     <Grid>
-        <TabControl x:Name="MasterTabControl" 
-                    SelectedIndex="{Binding SubTabIndex, Mode=TwoWay}"
-                    Background="Transparent" 
-                    BorderThickness="0">
-
+        <TabControl x:Name="MasterTabControl" SelectedIndex="{Binding SubTabIndex, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
 
             <TabItem IsEnabled="{Binding IsIdle}">
                 <TabItem.Header>
@@ -20,7 +16,7 @@
                         <TextBlock Text="PBP 패킹" VerticalAlignment="Center"/>
                     </StackPanel>
                 </TabItem.Header>
-                <local:PackingTab DataContext="{Binding PackingVM}"/>
+                <local:PackingTab DataContext="{Binding PackingVM}" Margin="0,-5,0,0"/>
             </TabItem>
 
             <TabItem IsEnabled="{Binding IsIdle}">

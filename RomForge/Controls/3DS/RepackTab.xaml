@@ -24,7 +24,6 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Border Grid.Column="0" Margin="0,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6" AllowDrop="True" PreviewDragEnter="TxtPatch_DragEnter" PreviewDragOver="TxtPatch_DragOver" PreviewDrop="TxtRom_Drop">
                     <Grid>
@@ -32,12 +31,9 @@
                         <TextBlock Text="롬파일(.3ds, .cci, .zcci, .cia)을 드래그&amp;드롭하세요" Visibility="{Binding InputHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False"/>
                     </Grid>
                 </Border>
-                <Button Grid.Column="1" x:Name="btnOpenRomFile" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseInputCommand}" IsEnabled="{Binding IsIdle}" Margin="5,0,5,0">
+                <Button Grid.Column="1" x:Name="btnOpenRomFile" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Command="{Binding BrowseInputCommand}" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0">
                     <Image Source="/Assets/Images/AddFile.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
-                </Button>
-                <Button Grid.Column="2" x:Name="btnHelp" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Click="BtnHelp_Click" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0" ToolTip="도움말">
-                    <Image Source="/Assets/Images/Help.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
-                </Button>
+                </Button>                
             </Grid>
         </StackPanel>
 
@@ -54,7 +50,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.ColumnSpan="2" Margin="0,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6" AllowDrop="True" PreviewDragEnter="TxtPatch_DragEnter" PreviewDragOver="TxtPatch_DragOver" PreviewDrop="TxtPatch_Drop">
+                    <Border Grid.ColumnSpan="2" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6" AllowDrop="True" PreviewDragEnter="TxtPatch_DragEnter" PreviewDragOver="TxtPatch_DragOver" PreviewDrop="TxtPatch_Drop">
                         <Grid>
                             <TextBox x:Name="txtPatch" Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsIdle}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
                             <TextBlock Text="한글패치 폴더 또는 zip/7z파일을 드래그&amp;드롭하세요" Visibility="{Binding PatchHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False"/>
@@ -70,7 +66,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Margin="0,0,5,0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6">
+                    <Border Grid.Column="0" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="6" Margin="0,0,5,0">
                         <Grid>
                             <TextBox x:Name="txtOutput" Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsIdle}" Background="Transparent" BorderThickness="0" Foreground="#DCDCDC" FontSize="11" VerticalContentAlignment="Center" Padding="10,0"/>
                             <TextBlock Text="작업 폴더를 선택하세요" Visibility="{Binding OutputHintVisibility}" Foreground="#50FFFFFF" FontSize="11" VerticalAlignment="Center" IsHitTestVisible="False" Margin="10,0,0,0"/>
@@ -83,44 +79,19 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="2" Margin="5,0,0,10">
+        <Grid Grid.Row="2" Margin="5,0,5,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
-            <core:IconButton Grid.Column="0"
-                             DefaultText="언팩"
-                             DefaultIcon="/Assets/Images/Unpack.png"
-                             CancelText="취소"
-                             CancelIcon="/Assets/Images/Cancel.png"
-                             IsRunning="{Binding IsUnpackRunning}"
-                             IsEnabled="{Binding UnpackEnabled}"
-                             Click="BtnUnpack_Click"/>
-
-            <core:IconButton Grid.Column="1"
-                             Margin="5,0,0,0"
-                             DefaultText="리팩 (폴더 기반)"
-                             DefaultIcon="/Assets/Images/Repack.png"
-                             CancelText="취소"
-                             CancelIcon="/Assets/Images/Cancel.png"
-                             IsRunning="{Binding IsRebuildRunning}"
-                             IsEnabled="{Binding RebuildEnabled}"
-                             Click="BtnRebuild_Click"/>
-
-            <core:IconButton Grid.Column="2"
-                             Margin="5,0,5,0"
-                             DefaultText="언팩 + 리팩 (스트리밍 기반)"
-                             DefaultIcon="/Assets/Images/Run.png"
-                             CancelText="취소"
-                             CancelIcon="/Assets/Images/Cancel.png"
-                             IsRunning="{Binding IsFullRunning}"
-                             IsEnabled="{Binding StartEnabled}"
-                             Click="BtnStart_Click"/>
+            <core:IconButton Grid.Column="0" Margin="0,0,5,0" DefaultText="언팩" DefaultIcon="/Assets/Images/Unpack.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsUnpackRunning}" IsEnabled="{Binding UnpackEnabled}" Click="BtnUnpack_Click"/>
+            <core:IconButton Grid.Column="1" Margin="5,0,5,0" DefaultText="리팩 (폴더 기반)" DefaultIcon="/Assets/Images/Repack.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsRebuildRunning}" IsEnabled="{Binding RebuildEnabled}" Click="BtnRebuild_Click"/>
+            <core:IconButton Grid.Column="2" Margin="5,0,0,0" DefaultText="언팩 + 리팩 (스트리밍 기반)" DefaultIcon="/Assets/Images/Run.png" CancelText="취소" CancelIcon="/Assets/Images/Cancel.png" IsRunning="{Binding IsFullRunning}" IsEnabled="{Binding StartEnabled}" Click="BtnStart_Click"/>
         </Grid>
 
-        <Border Grid.Row="3" Margin="5,0,5,10" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8" Visibility="{Binding RomInfoVisibility}">
+        <Border Grid.Row="3" Margin="5,0,5,5" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" CornerRadius="8" Visibility="{Binding RomInfoVisibility}">
             <Grid Margin="12,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -128,14 +99,12 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- 아이콘 -->
                 <Border Grid.Column="0" Width="48" Height="48" CornerRadius="8" Margin="0,0,12,0">
                     <Border.Background>
                         <ImageBrush ImageSource="{Binding RomInfo.Icon}" Stretch="UniformToFill"/>
                     </Border.Background>
                 </Border>
 
-                <!-- 타이틀 / 퍼블리셔 / 제품코드 -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBox Text="{Binding RomInfo.ShortDescription, UpdateSourceTrigger=PropertyChanged}" MaxLength="63" IsEnabled="{Binding IsIdle}" Background="Transparent" BorderThickness="1" Padding="0" Foreground="#E8E8F0" FontSize="13" FontWeight="SemiBold" VerticalContentAlignment="Center" ToolTip="게임명 (최대 63자)"/>
                     <TextBox Text="{Binding RomInfo.Publisher, UpdateSourceTrigger=PropertyChanged}" MaxLength="63" IsEnabled="{Binding IsIdle}" Background="Transparent" BorderThickness="1" Padding="0" Foreground="#8888A8" FontSize="11" Margin="0,2,0,0" VerticalContentAlignment="Center" ToolTip="배급사 (최대 63자)"/>
@@ -146,23 +115,28 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- 지역 / 암호화 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                    <Image Width="24" Height="24" Margin="0,0,8,0"
-                   Source="{Binding RomInfo.ProductCode, Converter={StaticResource RegionToImageConverter}}"
-                   ToolTip="{Binding RomInfo.Region}"/>
-                    <Image Width="24" Height="24"
-                   Source="{Binding RomInfo.Crypto, Converter={StaticResource LockIconConverter}}"/>
+                    <Image Width="24" Height="24" Margin="0,0,8,0" Source="{Binding RomInfo.ProductCode, Converter={StaticResource RegionToImageConverter}}" ToolTip="{Binding RomInfo.Region}"/>
+                    <Image Width="24" Height="24" Source="{Binding RomInfo.Crypto, Converter={StaticResource LockIconConverter}}"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="10,0,5,10">
-            <TextBlock Text="출력 구분:" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <RadioButton Content="CCI ( 에뮬레이터 )" GroupName="OutputFormat" IsChecked="{Binding IsCciFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,15,0" IsEnabled="{Binding IsIdle}"/>
-            <RadioButton Content="ZCCI ( 압축 )" GroupName="OutputFormat" IsChecked="{Binding IsZcciFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,15,0" IsEnabled="{Binding IsIdle}"/>
-            <RadioButton Content="CIA ( 실기 )" GroupName="OutputFormat" IsChecked="{Binding IsCiaFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" IsEnabled="{Binding IsIdle}"/>
-        </StackPanel>
+        <Grid Grid.Row="4" Margin="0,0,5,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10,0,5,10">
+                <TextBlock Text="출력 포맷:" Foreground="White" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,10,10,0"/>
+                <RadioButton Content="CCI ( 에뮬레이터 )" GroupName="OutputFormat" IsChecked="{Binding IsCciFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,10,15,0" IsEnabled="{Binding IsIdle}"/>
+                <RadioButton Content="CIA ( 실기 )" GroupName="OutputFormat" IsChecked="{Binding IsCiaFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,10,15,0" IsEnabled="{Binding IsIdle}"/>
+                <RadioButton Content="ZCCI ( Azahar 전용 압축 )" GroupName="OutputFormat" IsChecked="{Binding IsZcciFormat}" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,10,15,0" IsEnabled="{Binding IsIdle}"/>
+            </StackPanel>
+            <Button Grid.Column="2" x:Name="btnHelp" Width="30" Height="30" Padding="0" BorderThickness="1" Style="{StaticResource GrayButton}" Click="BtnHelp_Click" IsEnabled="{Binding IsIdle}" Margin="5,0,0,0" ToolTip="도움말">
+                <Image Source="/Assets/Images/Help.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
+            </Button>
+        </Grid>
 
         <Border Grid.Row="5" Background="#12FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="0,1,0,0" CornerRadius="8" Margin="5,0,5,5" Padding="8,0">
             <Grid x:Name="progressArea" Height="28">
@@ -175,12 +149,10 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0" x:Name="progressLabel" Text="{Binding ProgressLabel}" Foreground="#A0A0A0" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-
                 <TextBlock Grid.Column="1" x:Name="progressPercent" Margin="0,0,10,0" Text="{Binding ProgressPercent}" Foreground="#4CAF50" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
-
                 <TextBlock Grid.Column="2" x:Name="progressSpeed" Margin="0,0,10,0" Text="{Binding ProgressSpeed}" Foreground="Gray" FontSize="11" VerticalAlignment="Center"/>
-
                 <TextBlock Grid.Column="3" x:Name="progressTime" Margin="0,0,10,0" Text="{Binding ProgressTime}" Foreground="#4CAF50" FontSize="11" VerticalAlignment="Center"/>
+                
                 <Grid Grid.Column="4" Height="10" VerticalAlignment="Center">
                     <Border Background="#25FFFFFF" CornerRadius="5"/>
                     <Border x:Name="barTrack" CornerRadius="5" ClipToBounds="True">
