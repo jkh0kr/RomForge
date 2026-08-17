@@ -8,7 +8,7 @@
 ## 화면 구성
 
 1. **패치 대상 원본** — 패치를 적용할 게임 파일
-2. **패치 파일** — IPS / BPS / UPS / PPF / APS / Xdelta, DPC 형식의 패치 파일
+2. **패치 파일** — IPS / BPS / UPS / PPF / APS / Xdelta / DPC 형식의 패치 파일
 3. **패치 후 자동 압축** — 체크하면 BIN / IMG / ISO 파일은 CHD로, 3DS / CCI / CIA는 ZCCI로 GCM / Wii / WBFS은 RVZ로 그 외 파일은 ZIP로 자동 압축됩니다
 4. **패치 진행 바**
 5. **초기화** — 1, 2번 항목을 초기화합니다 (잘못 선택했거나 다른 게임을 이어서 패치할 때 사용)
