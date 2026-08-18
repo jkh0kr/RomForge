@@ -80,7 +80,7 @@ public class TitleExtractor(KeyStore keyStore, SdCrypto sdCrypto, SdTitleScanner
             {
                 Position = 0
             };
-            await using var dec0 = new NcchDecryptionStream(ms, 0, keyStore);
+            await using var dec0 = new NcchDecryptionStream(ms, 0, keyStore, leaveOpen: true);
 
             if (ncch0.ExtendedHeaderSize > 0)
             {
@@ -148,7 +148,7 @@ public class TitleExtractor(KeyStore keyStore, SdCrypto sdCrypto, SdTitleScanner
             Log($"추출 중: {entry.ContentIdHex}.app");
 
             await using var src = File.OpenRead(entry.FilePath);
-            Stream decrypted = new SdDecryptStream(src, entry.SdPath, sdCrypto);
+            Stream decrypted = new SdDecryptStream(src, entry.SdPath, sdCrypto, leaveOpen: true);
 
             byte[] ncchHeaderBytes = new byte[0x200];
 
@@ -159,7 +159,7 @@ public class TitleExtractor(KeyStore keyStore, SdCrypto sdCrypto, SdTitleScanner
             var ncch = NcchHeader.Parse(ncchHeaderBytes, 0);
 
             if (!ncch.NoCrypto)
-                decrypted = new NcchDecryptionStream(decrypted, 0, keyStore);
+                decrypted = new NcchDecryptionStream(decrypted, 0, keyStore, leaveOpen: true);
 
             await using (decrypted)
             {

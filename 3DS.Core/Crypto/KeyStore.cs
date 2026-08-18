@@ -24,14 +24,14 @@ public class KeyStore
 
     private void TryLoadAesKeys(string path)
     {
-        if (!File.Exists(path)) 
+        if (!File.Exists(path))
             return;
 
         foreach (var line in File.ReadLines(path))
         {
             var trimmed = line.Trim();
 
-            if (trimmed.StartsWith('#') || !trimmed.Contains('=')) 
+            if (trimmed.StartsWith('#') || !trimmed.Contains('='))
                 continue;
 
             var parts = trimmed.Split('=', 2);
@@ -53,7 +53,7 @@ public class KeyStore
 
     private void TryLoadBoot9(string path)
     {
-        if (!File.Exists(path)) 
+        if (!File.Exists(path))
             return;
 
         byte[] boot9 = File.ReadAllBytes(path);
@@ -65,7 +65,7 @@ public class KeyStore
 
     private void TryLoadSeedDb(string path)
     {
-        if (!File.Exists(path)) 
+        if (!File.Exists(path))
             return;
 
         byte[] data = File.ReadAllBytes(path);
@@ -137,6 +137,14 @@ public class KeyStore
     public byte[] GetNormalKey(int slotId)
         => _slots[slotId].NormalKey
            ?? throw new InvalidOperationException($"Slot 0x{slotId:X2} NormalKey 없음 — aes_keys.txt 또는 boot9.bin 확인 필요");
+
+    public byte[] DeriveNormalKey(int slotId, byte[] keyY)
+    {
+        byte[] keyX = _slots[slotId].KeyX
+            ?? throw new InvalidOperationException($"Slot 0x{slotId:X2} KeyX 없음 — aes_keys.txt 또는 boot9.bin 확인 필요");
+
+        return KeySlot.ComputeNormalKey(keyX, keyY);
+    }
 
     public byte[] GetSdKey() => GetNormalKey(0x34);
 

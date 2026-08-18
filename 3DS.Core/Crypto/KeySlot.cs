@@ -18,14 +18,19 @@ public class KeySlot
 
     private void TryGenerateNormalKey()
     {
-        if (KeyX == null || KeyY == null) 
+        if (KeyX == null || KeyY == null)
             return;
 
-        var step1 = Lrot128(KeyX, 2);
-        var step2 = Xor128(step1, KeyY);
+        NormalKey = ComputeNormalKey(KeyX, KeyY);
+    }
+
+    public static byte[] ComputeNormalKey(byte[] keyX, byte[] keyY)
+    {
+        var step1 = Lrot128(keyX, 2);
+        var step2 = Xor128(step1, keyY);
         var step3 = Add128(step2, GeneratorConstant);
 
-        NormalKey = Lrot128(step3, 87);
+        return Lrot128(step3, 87);
     }
 
     public static byte[] Lrot128(byte[] input, int rot)

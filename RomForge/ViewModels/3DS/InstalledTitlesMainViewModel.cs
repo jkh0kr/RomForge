@@ -103,7 +103,7 @@ public class InstalledTitlesMainViewModel(Action<string> setStatus) : ToolTabVie
         {
             var record0 = title.Contents.OrderBy(c => c.ContentIndex).FirstOrDefault();
 
-            if (record0 is null) 
+            if (record0 is null)
                 return vm;
 
             string filename = record0.ContentIdHex + ".app";
@@ -111,19 +111,19 @@ public class InstalledTitlesMainViewModel(Action<string> setStatus) : ToolTabVie
             string dlcPath = Path.Combine(title.ContentPath, "00000000", filename);
             string? appFile = File.Exists(normalPath) ? normalPath : File.Exists(dlcPath) ? dlcPath : null;
 
-            if (appFile is null) 
+            if (appFile is null)
                 return vm;
 
             string sdPath = appFile.StartsWith(scanner.Id1Path, StringComparison.OrdinalIgnoreCase) ? appFile[scanner.Id1Path.Length..].Replace('\\', '/') : appFile.Replace('\\', '/');
             using var raw = File.OpenRead(appFile);
-            using var sdStream = new SdDecryptStream(raw, sdPath, sdCrypto);
+            using var sdStream = new SdDecryptStream(raw, sdPath, sdCrypto, leaveOpen: true);
             byte[] ncchBuf = new byte[0x200];
 
             sdStream.ReadExactly(ncchBuf, 0, 0x200);
             sdStream.Position = 0;
 
             var ncchHeader = NcchHeader.Parse(ncchBuf, 0);
-            Stream ncchStream = ncchHeader.NoCrypto ? sdStream : new NcchDecryptionStream(sdStream, 0, keyStore);
+            Stream ncchStream = ncchHeader.NoCrypto ? sdStream : new NcchDecryptionStream(sdStream, 0, keyStore, leaveOpen: true);
             SmdhInfo? smdhInfo;
             await using (ncchStream)
                 smdhInfo = await NcchGameInfoReader.LoadAsync(ncchStream);

@@ -23,11 +23,13 @@ public class NcchDecryptionStream : Stream
     private readonly ExeFsSection[] _exeFsSections = new ExeFsSection[8];
     private int _exeFsSectionCount;
     private readonly bool _isActuallyEncrypted;
+    private readonly bool _leaveOpen;
 
-    public NcchDecryptionStream(Stream baseStream, long ncchOffset, KeyStore keyStore)
+    public NcchDecryptionStream(Stream baseStream, long ncchOffset, KeyStore keyStore, bool leaveOpen = false)
     {
         _baseStream = baseStream ?? throw new ArgumentNullException(nameof(baseStream));
         _ncchOffset = ncchOffset;
+        _leaveOpen = leaveOpen;
 
         byte[] headerData = new byte[0x200];
         long savedPos = _baseStream.Position;
@@ -222,7 +224,7 @@ public class NcchDecryptionStream : Stream
     {
         long blocks = byteOffset / 16;
 
-        if (blocks == 0) 
+        if (blocks == 0)
             return;
 
         ulong high = BitConverter.ToUInt64(ctr, 0);
@@ -252,7 +254,7 @@ public class NcchDecryptionStream : Stream
 
     private static void AesCtrProcessInPlace(byte[] data, int offset, int size, byte[] key, byte[] initialCtr, int blockOffset)
     {
-        if (size <= 0) 
+        if (size <= 0)
             return;
 
         using var aes = Aes.Create();
@@ -306,8 +308,7 @@ public class NcchDecryptionStream : Stream
         byte[] keyYPrimary = new byte[16];
 
         Array.Copy(_header.Signature, 0, keyYPrimary, 0, 16);
-        keyStore.SetKeyY(0x2C, keyYPrimary);
-        primaryKey = keyStore.GetNormalKey(0x2C);
+        primaryKey = keyStore.DeriveNormalKey(0x2C, keyYPrimary);
 
         int secondarySlot = _header.SecondaryKeySlot switch
         {
@@ -317,17 +318,17 @@ public class NcchDecryptionStream : Stream
             0x0B => 0x1B,
             _ => 0x2C
         };
-        keyStore.SetKeyY(secondarySlot, keyYPrimary);
-        secondaryKey = keyStore.GetNormalKey(secondarySlot);
+
+        byte[] secondaryKeyY = keyYPrimary;
 
         if (_header.SeedCrypto)
         {
             byte[] seed = keyStore.GetSeed(_header.ProgramId);
-            byte[] newKeyY = CalculateSeedKey(keyYPrimary, seed);
 
-            keyStore.SetKeyY(secondarySlot, newKeyY);
-            secondaryKey = keyStore.GetNormalKey(secondarySlot);
+            secondaryKeyY = CalculateSeedKey(keyYPrimary, seed);
         }
+
+        secondaryKey = keyStore.DeriveNormalKey(secondarySlot, secondaryKeyY);
     }
 
     private static byte[] CalculateSeedKey(byte[] originalKey, byte[] seed)
@@ -349,8 +350,8 @@ public class NcchDecryptionStream : Stream
     {
         byte[] partitionId = BitConverter.GetBytes(_header.PartitionId);
 
-        exheaderCtr = new byte[16]; 
-        exefsCtr = new byte[16]; 
+        exheaderCtr = new byte[16];
+        exefsCtr = new byte[16];
         romfsCtr = new byte[16];
 
         if (_header.Version == 0 || _header.Version == 2)
@@ -358,16 +359,16 @@ public class NcchDecryptionStream : Stream
             for (int i = 0; i < 8; i++)
                 exheaderCtr[i] = partitionId[7 - i];
 
-            Array.Copy(exheaderCtr, exefsCtr, 16); 
+            Array.Copy(exheaderCtr, exefsCtr, 16);
             Array.Copy(exheaderCtr, romfsCtr, 16);
 
-            exheaderCtr[8] = 1; 
-            exefsCtr[8] = 2; 
+            exheaderCtr[8] = 1;
+            exefsCtr[8] = 2;
             romfsCtr[8] = 3;
         }
         else
         {
-            Array.Copy(partitionId, exheaderCtr, 8); 
+            Array.Copy(partitionId, exheaderCtr, 8);
             Array.Copy(exheaderCtr, exefsCtr, 16);
             Array.Copy(exheaderCtr, romfsCtr, 16);
             SetBigEndian32(exheaderCtr, 12, 0x200);
@@ -380,7 +381,7 @@ public class NcchDecryptionStream : Stream
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && !_leaveOpen)
             _baseStream.Dispose();
 
         base.Dispose(disposing);

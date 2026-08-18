@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 
 namespace _3DS.Core.IO;
 
-public class SdDecryptStream(Stream baseStream, string sdPath, SdCrypto sdCrypto) : Stream
+public class SdDecryptStream(Stream baseStream, string sdPath, SdCrypto sdCrypto, bool leaveOpen = false) : Stream
 {
     private readonly byte[] _key = sdCrypto.GetKey();
     private readonly byte[] _iv = SdCrypto.PathToIv(sdPath);
@@ -83,7 +83,7 @@ public class SdDecryptStream(Stream baseStream, string sdPath, SdCrypto sdCrypto
 
     private static void SeekCtr(byte[] ctr, long blocks)
     {
-        if (blocks == 0) 
+        if (blocks == 0)
             return;
 
         ulong hi = BinaryPrimitives.ReadUInt64BigEndian(ctr.AsSpan(0));
@@ -92,7 +92,7 @@ public class SdDecryptStream(Stream baseStream, string sdPath, SdCrypto sdCrypto
 
         lo += (ulong)blocks;
 
-        if (lo < oldLo) 
+        if (lo < oldLo)
             hi++;
 
         BinaryPrimitives.WriteUInt64BigEndian(ctr.AsSpan(0), hi);
@@ -126,7 +126,7 @@ public class SdDecryptStream(Stream baseStream, string sdPath, SdCrypto sdCrypto
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && !leaveOpen)
             baseStream.Dispose();
 
         base.Dispose(disposing);
