@@ -38,7 +38,7 @@ public static class XciCompressService
     {
         var keySet = KeySetProvider.Instance.KeySet ?? throw new InvalidOperationException(Res.Main_Err_NoKeys);
 
-        return RunAsync(inputPath, false, 0, false, false, true, keySet?.Clone(), progress, log, ct);
+        return RunAsync(inputPath, false, 0, false, false, false, keySet?.Clone(), progress, log, ct);
     }
 
     private static async Task<string> RunAsync(string inputPath, bool isCompressMode, int compressionLevel, bool validation, bool useBlockMode, bool forceKeyGen0, KeySet keySet, IProgress<ProgressInfo> progress, Action<string, LogLevel, string> log, CancellationToken ct)
