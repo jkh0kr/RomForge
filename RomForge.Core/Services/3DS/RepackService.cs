@@ -89,15 +89,13 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
     {
         log("리팩 시작...", LogLevel.Highlight);
 
-        string safeFileName = NspNameBuilder.SafeFileName(displayName);
-        string fileName = string.IsNullOrEmpty(safeFileName) ? "output" : safeFileName;
-        string outputCci = Utils.GetUniqueFilePath(Path.Combine(outputPath, fileName + "_Repack.cci"));
         var repackedNcchs = new Dictionary<int, (NcchUnpackResult, byte[], Stream, RomFsUnpackResult?, IRomFsFileSource?)>();
         var contentsList = new List<Contents>();
         int exefsPatchedCount = 0;
         PatchFolderFileSource? romfsPatchSource = null;
         byte[]? exHeaderPart0 = null;
         byte[]? exefsBlockPart0 = null;
+        string? titleId = null;
 
         using var patchCtx = PatchSourceContext.Open(getPatchPath(), log);
         bool patchDirSpecified = patchCtx.HasSource;
@@ -175,6 +173,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
             {
                 exHeaderPart0 = exHeader;
                 exefsBlockPart0 = exefsBlock;
+                titleId = ncchHeader.ProgramId.ToString("x16");
             }
 
             string romfsDir = Path.Combine(partDir, "romfs");
@@ -211,6 +210,11 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
         if (repackedNcchs.Count == 0)
             throw new InvalidOperationException("언팩된 파티션이 없습니다.");
+
+        string safeFileName = NspNameBuilder.SafeFileName(displayName);
+        string fileName = string.IsNullOrEmpty(safeFileName) ? "output" : safeFileName;
+        string namePart = string.IsNullOrEmpty(titleId) ? fileName : $"{fileName} [{titleId.ToUpperInvariant()}]";
+        string outputCci = Utils.GetUniqueFilePath(Path.Combine(outputPath, namePart + "_Repack.cci"));
 
         var repackedSource = await RepackedNcsdSource.CreateAsync(repackedNcchs, contentsList, log, ct);
 

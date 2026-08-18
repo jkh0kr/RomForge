@@ -248,7 +248,9 @@ public class RepackMainViewModel : ToolTabViewModel
                 case BuildMode.FullProcess:
                     string safeName = NspNameBuilder.SafeFileName(_romInfo?.ShortDescription ?? string.Empty);
                     string fileName = string.IsNullOrEmpty(safeName) ? inputFileName : safeName;
-                    string outputCci = Utils.GetUniqueFilePath(Path.Combine(OutputPath, fileName + "_Repack.cci"));
+                    string? titleId = _romInfo?.TitleId;
+                    string namePart = string.IsNullOrEmpty(titleId) ? fileName : $"{fileName} [{titleId}]";
+                    string outputCci = Utils.GetUniqueFilePath(Path.Combine(OutputPath, namePart + "_Repack.cci"));
 
                     producedPath = await Task.Run(() => _service.RepackDirectAsync(InputPath, outputCci, keyStore, RomInfo?.ShortDescriptionChanged == true ? RomInfo.ShortDescription : null, RomInfo?.PublisherChanged == true ? RomInfo.Publisher : null, OutputFormat, reporter.CreateAction(), TrackOutput, ct), ct);
 
