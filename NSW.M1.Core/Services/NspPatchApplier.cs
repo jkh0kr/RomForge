@@ -241,7 +241,7 @@ public static class NspPatchApplier
 
             src.CopyTo(dst);
 
-            log($"  {label} 교체: {rel}", LogLevel.Ok);
+            log($"  {label} 교체: {rel}", LogLevel.Info);
 
             count++;
         }

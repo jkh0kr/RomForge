@@ -39,7 +39,7 @@ public class PatchFolderFileSource : IRomFsFileSource
         if (direct != null)
         {
             if (_appliedPaths.Add(relative))
-                log?.Invoke($"  romfs 교체: {relative}", LogLevel.Ok);
+                log?.Invoke($"  RomFS 교체: {relative}", LogLevel.Info);
 
             return direct;
         }
@@ -77,7 +77,7 @@ public class PatchFolderFileSource : IRomFsFileSource
             _appliedPaths.Add(relative);
             _resultCache[fullPath] = patchedData;
 
-            log?.Invoke($"  romfs {ext} 패치 적용: {relative} ({originalData.Length:N0} → {patchedData.Length:N0} bytes)", LogLevel.Ok);
+            log?.Invoke($"  RomFS {ext} 패치 적용: {relative} ({originalData.Length:N0} → {patchedData.Length:N0} bytes)", LogLevel.Ok);
 
             return new MemoryStream(patchedData);
         }

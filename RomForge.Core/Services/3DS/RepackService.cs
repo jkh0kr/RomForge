@@ -299,10 +299,10 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
         else
         {
             if (exefsPatchedCount > 0)
-                log($"exefs 패치 적용 완료: {exefsPatchedCount}개 파일", LogLevel.Ok);
+                log($"ExeFS 패치 적용 완료: {exefsPatchedCount}개 파일", LogLevel.Ok);
 
             if (romfsPatchSource is { AppliedCount: > 0 })
-                log($"romfs 패치 적용 완료: {romfsPatchSource.AppliedCount}개 파일", LogLevel.Ok);
+                log($"RomFS 패치 적용 완료: {romfsPatchSource.AppliedCount}개 파일", LogLevel.Ok);
         }
 
         log($"출력: {outputFilePath}", LogLevel.Ok);

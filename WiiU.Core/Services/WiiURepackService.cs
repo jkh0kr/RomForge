@@ -141,7 +141,7 @@ public sealed class WiiURepackService
     {
         if (overwriteFiles.TryGetValue(path, out var overwriteRef))
         {
-            log?.Invoke($"  교체: {overwriteRef.DisplayName} → {path}", LogLevel.Ok);
+            log?.Invoke($"  교체: {overwriteRef.DisplayName} → {path}", LogLevel.Info);
 
             return overwriteRef.OpenRead();
         }
