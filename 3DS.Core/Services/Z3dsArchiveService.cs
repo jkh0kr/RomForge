@@ -4,7 +4,6 @@ using _3DS.Core.Models;
 using Common;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Concurrent;
 using System.IO.Pipelines;
 using System.Text;
 using ZstdSharp;
@@ -38,8 +37,11 @@ public class Z3dsArchiveService
             Stream inputStream = fileStream;
 
             byte[] headerBuffer = new byte[0x200];
+
             fileStream.Position = 0x4000;
+
             await fileStream.ReadExactlyAsync(headerBuffer, 0, 0x200, ct);
+
             var header = NcchHeader.Parse(headerBuffer, 0);
 
             if (!header.NoCrypto)
@@ -63,14 +65,15 @@ public class Z3dsArchiveService
             await using (inputStream)
             {
                 outputPath = Utils.GetUniqueFilePath(Path.ChangeExtension(inputPath, CompressExtension));
+
                 using var outputStream = File.Open(outputPath, FileMode.Create, FileAccess.Write);
 
                 log?.Invoke($"{Path.GetFileName(inputPath)} 압축 시작", LogLevel.Highlight);
-
                 await CompressInternalAsync(inputStream, outputStream, fileStream.Length, compressionLevel, progress, ct);
 
                 long originalSize = new FileInfo(inputPath).Length;
                 long compressedSize = new FileInfo(outputPath).Length;
+
                 log?.Invoke($"압축률: {Utils.FormatFileSize(originalSize)} → {Utils.FormatFileSize(compressedSize)} ({compressedSize * 100.0 / originalSize:F1}%)", LogLevel.Highlight);
                 log?.Invoke($"압축 완료: {outputPath}", LogLevel.Ok);
             }
@@ -94,7 +97,6 @@ public class Z3dsArchiveService
             var keyStore = new KeyStore();
             var unpacker = new CiaReader(keyStore);
             await using var ctx = await unpacker.OpenAsync(inputPath, log, ct);
-
             uint titleType = (uint)(ctx.Ticket.TitleId >> 32);
 
             if (titleType != 0x00040000)
@@ -150,7 +152,6 @@ public class Z3dsArchiveService
     {
         long readBytes = 0;
         long writtenBytes = 0;
-
         byte[] underlyingMagic = MagicNcsd;
 
         if (input.CanSeek && input.Length > 0x104)
@@ -229,11 +230,13 @@ public class Z3dsArchiveService
         WriteSeekTable(output, [.. seekEntries]);
 
         long endOffset = output.Position;
-
         output.Position = headerOffset;
+
         WriteZ3dsHeader(output, underlyingMagic, (uint)metadataAligned, endOffset - bodyStartOffset, uncompressedSize);
         await output.WriteAsync(metadataPadded, ct);
+
         output.Position = endOffset;
+
         progress?.Report(new ProgressInfo { Percent = 100 });
     }
 
@@ -272,115 +275,6 @@ public class Z3dsArchiveService
         {
             if (!isCompleted && !string.IsNullOrEmpty(outputPath) && File.Exists(outputPath))
                 try { File.Delete(outputPath); } catch { }
-        }
-    }
-
-    private static async Task<List<SeekEntry>> CompressBlocksAsync(Stream input, Stream output, int frameSize, int compressionLevel, long totalSize, Action<long>? onRead, Action<long>? onWritten, CancellationToken ct)
-    {
-        var seekEntries = new List<SeekEntry>();
-        var pool = ArrayPool<byte>.Shared;
-        int threadCount = Math.Min(Environment.ProcessorCount, 8);
-        var writeQueue = new Queue<Task<(byte[] compressed, int plainSize, byte[] rentedBuf)>>();
-        var semaphore = new SemaphoreSlim(threadCount);
-        long readPos = 0;
-        var compressorStack = new ConcurrentStack<Compressor>();
-
-        for (int i = 0; i < threadCount; i++)
-        {
-            var c = new Compressor(compressionLevel);
-
-            c.SetParameter(ZSTD_cParameter.ZSTD_c_windowLog, 25);
-            c.SetParameter(ZSTD_cParameter.ZSTD_c_enableLongDistanceMatching, 1);
-            compressorStack.Push(c);
-        }
-
-        try
-        {
-            while (readPos < totalSize)
-            {
-                ct.ThrowIfCancellationRequested();
-                await semaphore.WaitAsync(ct);
-
-                int toRead = (int)Math.Min(frameSize, totalSize - readPos);
-                byte[] rentedBuf = pool.Rent(toRead);
-                int bytesRead = await ReadExactAsync(input, rentedBuf, toRead, ct);
-
-                readPos += bytesRead;
-                onRead?.Invoke(bytesRead);
-
-                int capturedSize = bytesRead;
-
-                var task = Task.Run(() =>
-                {
-                    try
-                    {
-                        ct.ThrowIfCancellationRequested();
-                        compressorStack.TryPop(out var compressor);
-
-                        try
-                        {
-                            int maxBound = Compressor.GetCompressBound(capturedSize);
-                            byte[] bound = pool.Rent(maxBound);
-
-                            try
-                            {
-                                int compressedSize = compressor.Wrap(new ReadOnlySpan<byte>(rentedBuf, 0, capturedSize), bound.AsSpan(0, maxBound));
-                                byte[] result = new byte[compressedSize];
-
-                                bound.AsSpan(0, compressedSize).CopyTo(result);
-
-                                return (compressed: result, plainSize: capturedSize, rentedBuf);
-                            }
-                            finally { pool.Return(bound); }
-                        }
-                        finally { compressorStack.Push(compressor); }
-                    }
-                    catch
-                    {
-                        pool.Return(rentedBuf);
-                        semaphore.Release();
-                        throw;
-                    }
-                }, ct);
-
-                writeQueue.Enqueue(task);
-
-                if (writeQueue.Count >= threadCount)
-                    await FlushNextAsync();
-            }
-
-            while (writeQueue.Count > 0)
-                await FlushNextAsync();
-        }
-        finally
-        {
-            foreach (var c in compressorStack) c.Dispose();
-        }
-
-        return seekEntries;
-
-        async Task FlushNextAsync()
-        {
-            var task = writeQueue.Dequeue();
-            (byte[] compressed, int plainSize, byte[] rentedBuf) = await task;
-
-            try
-            {
-                seekEntries.Add(new SeekEntry
-                {
-                    CompressedSize = (uint)compressed.Length,
-                    DecompressedSize = (uint)plainSize
-                });
-
-                await output.WriteAsync(compressed, ct);
-
-                onWritten?.Invoke(compressed.Length);
-            }
-            finally
-            {
-                pool.Return(rentedBuf);
-                semaphore.Release();
-            }
         }
     }
 
@@ -504,8 +398,10 @@ public class Z3dsArchiveService
         header.Clear();
         MagicZ3DS.CopyTo(header[0x00..]);
         underlyingMagic.AsSpan(0, 4).CopyTo(header[0x04..]);
+
         header[0x08] = FormatVersion;
         header[0x09] = 0x00;
+
         BinaryPrimitives.WriteUInt16LittleEndian(header[0x0A..], 0x20);
         BinaryPrimitives.WriteUInt32LittleEndian(header[0x0C..], metadataSize);
         BinaryPrimitives.WriteInt64LittleEndian(header[0x10..], compressedSize);
@@ -562,23 +458,6 @@ public class Z3dsArchiveService
         output.WriteByte((byte)(data.Length >> 8));
         output.Write(nameBytes);
         output.Write(data);
-    }
-
-    private static async Task<int> ReadExactAsync(Stream stream, byte[] buffer, int count, CancellationToken ct)
-    {
-        int totalRead = 0;
-
-        while (totalRead < count)
-        {
-            int read = await stream.ReadAsync(buffer.AsMemory(totalRead, count - totalRead), ct);
-
-            if (read == 0)
-                throw new EndOfStreamException($"스트림이 예상보다 일찍 끝났습니다. 요청: {count} bytes, 읽음: {totalRead} bytes");
-
-            totalRead += read;
-        }
-
-        return totalRead;
     }
 
     private static int AlignUp(int value, int alignment) => (value + alignment - 1) & ~(alignment - 1);
