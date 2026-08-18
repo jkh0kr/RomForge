@@ -35,7 +35,7 @@ public static class XciCompressService
     }
 
     public static Task<string> DecompressAsync(string inputPath, IProgress<ProgressInfo> progress, Action<string, LogLevel, string> log, CancellationToken ct = default)
-    { 
+    {
         var keySet = KeySetProvider.Instance.KeySet ?? throw new InvalidOperationException(Res.Main_Err_NoKeys);
 
         return RunAsync(inputPath, false, 0, false, false, true, keySet?.Clone(), progress, log, ct);
@@ -167,6 +167,7 @@ public static class XciCompressService
                     {
                         var recryptedHeader = await NcaRecryptService.GetRecryptedHeaderAsync(capStorage, nca.Header.KeyGeneration, keySet, ct);
                         using var headerStream = new MemoryStream(recryptedHeader);
+
                         await converter.ConvertAsync(headerStream, capStorage, s, useBlockMode, compressionLevel, onRead, ct);
                     }, size, label));
                 }
@@ -209,7 +210,7 @@ public static class XciCompressService
             {
                 string reName = re.Name.ToString();
 
-                if (reName == "secure") 
+                if (reName == "secure")
                     continue;
 
                 var (absOffset, reSize, reHash, reHashTargetSize) = rootPartition.GetEntryInfo(reName);
@@ -224,6 +225,7 @@ public static class XciCompressService
             }
 
             long secureAbsStart = fout.Position;
+
             rootEntryRelOffsets["secure"] = (ulong)(secureAbsStart - rootDataStart);
 
             var secureBuilderTemp = new Hfs0Builder();
@@ -348,7 +350,7 @@ public static class XciCompressService
 
                         string origName = Path.ChangeExtension(entry.Name, ".nca");
 
-                        if (!converters.TryGetValue(origName, out var converter)) 
+                        if (!converters.TryGetValue(origName, out var converter))
                             continue;
 
                         using var nczFile = new UniqueRef<IFile>();
@@ -377,11 +379,14 @@ public static class XciCompressService
             for (int i = disposables.Count - 1; i >= 0; i--) disposables[i]?.Dispose();
 
             if (!isCompleted && !string.IsNullOrEmpty(finalPath) && File.Exists(finalPath))
-                try 
-                {                    
-                    File.Delete(finalPath); 
-                } 
-                catch { }
+                try
+                {
+                    File.Delete(finalPath);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"실패한 결과 파일 삭제 실패 ({finalPath}): {ex.Message}");
+                }
         }
     }
 }

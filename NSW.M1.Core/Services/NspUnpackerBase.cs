@@ -20,6 +20,7 @@ public abstract class NspUnpackerBase(KeySet keySet)
     protected async Task<UnpackResult> UnpackCore(BuildRequest req, string outDir, bool withControlNca, IProgress<(int pct, string label)>? progress, CancellationToken ct)
     {
         BaseNspPath = req.BaseFilePath;
+
         Directory.CreateDirectory(outDir);
 
         var storages = new List<LocalStorage>();
@@ -57,7 +58,6 @@ public abstract class NspUnpackerBase(KeySet keySet)
             var extractor = new NcaExtractor(_keySet, ShouldExtract);
             var progCtx = CreateProgressContext(uniquePaths, ncas);
             var result = BuildBaseResult(ncas);
-
             var allOffsets = ncas.BaseProgs.Keys
                 .Union(ncas.UpdateProgs.Keys)
                 .OrderBy(k => k);
@@ -72,7 +72,6 @@ public abstract class NspUnpackerBase(KeySet keySet)
 
                 ulong programTitleId = result.TitleId + idOffset;
                 string programDir = Path.Combine(outDir, programTitleId.ToString("X16"));
-
                 var effectiveProg = baseProg ?? updateProg!;
                 var patchProg = baseProg != null ? updateProg : null;
 
@@ -80,10 +79,10 @@ public abstract class NspUnpackerBase(KeySet keySet)
                 {
                     string ncaId = ncas.CreateOnlyNcaIds[idOffset];
                     string rawDir = Path.Combine(outDir, "rawprograms");
+
                     Directory.CreateDirectory(rawDir);
 
                     string rawPath = Path.Combine(rawDir, $"{ncaId}.nca");
-
                     using (var inStream = rawNca.BaseStorage.AsStream())
                     using (var outStream = File.Create(rawPath))
                     {
@@ -125,6 +124,7 @@ public abstract class NspUnpackerBase(KeySet keySet)
 
                 ncas.BaseLegals.TryGetValue(idOffset, out var baseLegal);
                 ncas.UpdateLegals.TryGetValue(idOffset, out var updateLegal);
+
                 var legalDir = extractor.ExtractLegal(baseLegal, updateLegal, "legal", programDir, progCtx, progress, ct);
 
                 if (legalDir != null)
@@ -152,10 +152,10 @@ public abstract class NspUnpackerBase(KeySet keySet)
         }
         finally
         {
-            foreach (var s in storages) 
+            foreach (var s in storages)
                 s.Dispose();
 
-            foreach (var ns in collector.NscStreams) 
+            foreach (var ns in collector.NscStreams)
                 ns.Dispose();
         }
     }
@@ -197,6 +197,25 @@ public abstract class NspUnpackerBase(KeySet keySet)
             }
         }
 
+        void SumControlFsByPath(Nca? baseControl, Nca? updateControl)
+        {
+            var sizeByPath = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+
+            void Collect(IFileSystem fs)
+            {
+                foreach (var entry in fs.EnumerateEntries("/", "*", SearchOptions.RecurseSubdirectories))
+                {
+                    if (entry.Type == DirectoryEntryType.File && ShouldExtract(entry.FullPath))
+                        sizeByPath[entry.FullPath] = entry.Size;
+                }
+            }
+
+            NcaExtractor.TryWithFs(baseControl, null, NcaSectionType.Data, Collect);
+            NcaExtractor.TryWithFs(updateControl, null, NcaSectionType.Data, Collect);
+
+            total += sizeByPath.Values.Sum();
+        }
+
         foreach (var (idOffset, baseProg) in ncas.BaseProgs)
         {
             ncas.UpdateProgs.TryGetValue(idOffset, out var updateProg);
@@ -211,7 +230,7 @@ public abstract class NspUnpackerBase(KeySet keySet)
         foreach (var (idOffset, baseControl) in ncas.BaseControls)
         {
             ncas.UpdateControls.TryGetValue(idOffset, out var updateControl);
-            NcaExtractor.TryWithFs(baseControl, updateControl, NcaSectionType.Data, SumFs);
+            SumControlFsByPath(baseControl, updateControl);
         }
 
         foreach (var (idOffset, baseHtml) in ncas.BaseHtmls)

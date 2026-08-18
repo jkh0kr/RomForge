@@ -2,7 +2,6 @@
 using LibHac.Common.Keys;
 using LibHac.Fs;
 using LibHac.Fs.Fsa;
-using LibHac.FsSystem;
 using LibHac.Tools.FsSystem;
 using LibHac.Tools.FsSystem.NcaUtils;
 using NSW.Core;
@@ -15,7 +14,10 @@ namespace NSW.M1.Core.Services;
 public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract)
 {
     private readonly KeySet _keySet = keySet;
+
     private readonly Func<string, bool> _shouldExtract = shouldExtract;
+
+    private readonly byte[] _copyBuffer = new byte[0x1000000];
 
     public string ExtractExeFs(Nca baseProg, Nca? updateProg, string dirName, string outDir, ProgressContext ctx, IProgress<(int pct, string label)>? progress = null, CancellationToken ct = default)
     {
@@ -39,12 +41,12 @@ public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract
 
             for (int i = 0; i < 4; i++)
             {
-                if (!baseProg.SectionExists(i)) 
+                if (!baseProg.SectionExists(i))
                     continue;
 
                 if (baseProg.GetFsHeader(i).ExistsSparseLayer())
                 {
-                    hasSparse = true; 
+                    hasSparse = true;
                     break;
                 }
             }
@@ -76,7 +78,7 @@ public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract
 
     public string? ExtractControl(Nca? controlNca, Nca? updateControlNca, BuildRequest req, UnpackResult result, string dirName, string outDir, string baseNspPath, ProgressContext ctx, IProgress<(int pct, string label)>? progress = null, CancellationToken ct = default)
     {
-        if (controlNca == null) 
+        if (controlNca == null)
             return null;
 
         string dir = Path.Combine(outDir, dirName);
@@ -108,7 +110,7 @@ public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract
 
     public string? ExtractHtmlDoc(Nca? baseHtml, Nca? updateHtml, string dirName, string outDir, ProgressContext ctx, IProgress<(int pct, string label)>? progress = null, CancellationToken ct = default)
     {
-        if (baseHtml == null && updateHtml == null) 
+        if (baseHtml == null && updateHtml == null)
             return null;
 
         string dir = Path.Combine(outDir, dirName);
@@ -132,7 +134,7 @@ public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract
 
     public string? ExtractLegal(Nca? baseLegal, Nca? updateLegal, string dirName, string outDir, ProgressContext ctx, IProgress<(int pct, string label)>? progress = null, CancellationToken ct = default)
     {
-        if (baseLegal == null && updateLegal == null) 
+        if (baseLegal == null && updateLegal == null)
             return null;
 
         string dir = Path.Combine(outDir, dirName);
@@ -147,7 +149,7 @@ public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract
 
     public void ExtractDlcs(List<Nca> dlcNcas, string outDir, UnpackResult result, ProgressContext ctx, IProgress<(int pct, string label)>? progress = null, CancellationToken ct = default)
     {
-        if (dlcNcas.Count == 0) 
+        if (dlcNcas.Count == 0)
             return;
 
         string dlcBaseDir = Path.Combine(outDir, "DLCs");
@@ -159,7 +161,7 @@ public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract
             string titleIdStr = nca.Header.TitleId.ToString("X16");
             string dlcDestDir = Path.Combine(dlcBaseDir, titleIdStr, "romfs");
 
-            if (!nca.CanOpenSection(NcaSectionType.Data)) 
+            if (!nca.CanOpenSection(NcaSectionType.Data))
                 continue;
 
             try
@@ -169,13 +171,16 @@ public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract
                 ExtractFileSystem(fs, dlcDestDir, $"DLC ({titleIdStr})", ctx, progress, ct);
                 result.Dlcs.Add(new DlcUnpackInfo { TitleId = nca.Header.TitleId, Dir = Path.Combine("DLCs", titleIdStr) });
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"DLC 추출 실패 ({titleIdStr}): {ex.Message}");
+            }
         }
     }
 
     public static void TryWithFs(Nca? nca, Nca? patchNca, NcaSectionType section, Action<IFileSystem> action)
     {
-        if (nca == null) 
+        if (nca == null)
             return;
 
         try
@@ -185,12 +190,15 @@ public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract
                 : nca.OpenFileSystem(section, IntegrityCheckLevel.None);
             action(fs);
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"섹션 열기 실패 ({section}, TitleId={nca.Header.TitleId:X16}): {ex.Message}");
+        }
     }
 
     public void ExtractFileSystem(IFileSystem fs, string outDir, string label, ProgressContext ctx, IProgress<(int pct, string label)>? progress = null, CancellationToken ct = default)
     {
-        var buf = new byte[0x1000000];
+        var buf = _copyBuffer;
 
         foreach (var entry in fs.EnumerateEntries("/", "*", SearchOptions.RecurseSubdirectories))
         {
@@ -211,7 +219,7 @@ public sealed class NcaExtractor(KeySet keySet, Func<string, bool> shouldExtract
 
             using var src = new UniqueRef<IFile>();
 
-            if (!fs.OpenFile(ref src.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).IsSuccess()) 
+            if (!fs.OpenFile(ref src.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).IsSuccess())
                 continue;
 
             using var dest = File.Open(destPath, FileMode.Create);

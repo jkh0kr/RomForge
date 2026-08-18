@@ -217,10 +217,7 @@ public static class NspBuildService
         progress.Report((0, "Program NCA 생성 중..."));
 
         if (req.HasPatch)
-        {
-            bool isArchive = ArchivePatchSourceFactory.IsArchivePath(req.PatchDir);
             NspPatchApplier.ApplyPatch(req.PatchDir, unpackResult, progress, log, req.PatchPassword);
-        }
 
         settings.NcaType = LibHac.FsSystem.NcaHeader.ContentType.Program;
         settings.ProgramNcaPath = NcaGenerator.GenerateProgramNca(settings, progress, ct) ?? string.Empty;

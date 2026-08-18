@@ -186,7 +186,10 @@ namespace RomForge.ViewModels.Switch
 
                         new WorkDirs(req.OutputDir).Cleanup(keepUnpacked: mode == BuildMode.RebuildOnly);
                     }
-                    catch { }
+                    catch (Exception cleanupEx)
+                    {
+                        Debug.WriteLine($"취소 후 작업 디렉터리 정리 실패: {cleanupEx.Message}");
+                    }
                 }
                 catch (UnpackMetadataNotFoundException bex)
                 {
@@ -212,6 +215,7 @@ namespace RomForge.ViewModels.Switch
             if (string.IsNullOrEmpty(OutputPath))
             {
                 errorMsg = "작업 폴더를 설정하세요.";
+
                 return false;
             }
 
@@ -222,14 +226,17 @@ namespace RomForge.ViewModels.Switch
                 if (!Directory.Exists(unpackedPath))
                 {
                     errorMsg = "언팩된 데이터가 없습니다.";
+
                     return false;
                 }
 
                 string tempPath = Path.Combine(OutputPath, "temp");
+
                 if (!Directory.Exists(tempPath))
                     Directory.CreateDirectory(tempPath);
 
                 req = new BuildRequest(string.Empty, string.Empty, [], string.Empty, OutputPath);
+
                 return true;
             }
 
@@ -238,27 +245,26 @@ namespace RomForge.ViewModels.Switch
             if (gameFiles == null || !gameFiles.Any(f => f.FileType.Contains('B')))
             {
                 errorMsg = "원본 파일(BASE)이 리스트에 없습니다.";
+
                 return false;
             }
 
             if (gameFiles.Any(f => f.IsKeyMissing))
             {
                 errorMsg = NSW.Core.Properties.Resources.Main_Err_NoKeys;
+
                 return false;
             }
 
             var baseEntry = gameFiles.First(f => f.FileType.Contains('B'));
             var updateEntry = gameFiles.FirstOrDefault(f => f.FileType.Contains('U'));
             var dlcEntries = gameFiles.Where(f => f.FileType.Contains('D')).ToList();
-
             var mainPatchSource = !string.IsNullOrEmpty(baseEntry.PatchPath) ? baseEntry : updateEntry;
             string mainPatch = (mainPatchSource?.PatchPath ?? string.Empty).Trim();
             string? mainPatchPassword = mainPatchSource?.PatchPassword;
-
             var dlcPatchDirs = dlcEntries
                 .Where(f => !string.IsNullOrEmpty(f.PatchPath) && !string.IsNullOrEmpty(f.TitleID))
                 .ToDictionary(f => f.TitleID!, f => f.PatchPath!.Trim(), StringComparer.OrdinalIgnoreCase);
-
             var dlcPatchPasswords = dlcEntries
                 .Where(f => !string.IsNullOrEmpty(f.PatchPath) && !string.IsNullOrEmpty(f.TitleID) && !string.IsNullOrEmpty(f.PatchPassword))
                 .ToDictionary(f => f.TitleID!, f => f.PatchPassword!, StringComparer.OrdinalIgnoreCase);

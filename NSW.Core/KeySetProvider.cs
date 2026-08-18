@@ -1,4 +1,5 @@
 ﻿using LibHac.Common.Keys;
+using System.Diagnostics;
 
 namespace NSW.Core;
 
@@ -34,7 +35,10 @@ public sealed class KeySetProvider
         if (File.Exists(keysPath))
         {
             try { _keySet = ExternalKeyReader.ReadKeyFile(keysPath); }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"prod.keys 로딩 실패 ({keysPath}): {ex.Message}");
+            }
         }
     }
 }

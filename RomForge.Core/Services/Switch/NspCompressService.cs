@@ -21,12 +21,14 @@ public static class NspCompressService
     public static Task<string> CompressAsync(string inputPath, int compressionLevel, bool validation, bool useBlockMode, IProgress<ProgressInfo> progress, Action<string, LogLevel, string> log, CancellationToken ct = default)
     {
         var keySet = KeySetProvider.Instance.KeySet ?? throw new InvalidOperationException(Res.Main_Err_NoKeys);
+
         return RunCoreAsync(inputPath, true, compressionLevel, validation, useBlockMode, false, keySet?.Clone(), progress, log, ct);
     }
 
     public static Task<string> DecompressAsync(string inputPath, IProgress<ProgressInfo> progress, Action<string, LogLevel, string> log, CancellationToken ct = default)
     {
         var keySet = KeySetProvider.Instance.KeySet ?? throw new InvalidOperationException(Res.Main_Err_NoKeys);
+
         return RunCoreAsync(inputPath, false, 0, false, false, false, keySet?.Clone(), progress, log, ct);
     }
 
@@ -36,7 +38,6 @@ public static class NspCompressService
         var converters = new Dictionary<string, NcaToNczConverter>(StringComparer.OrdinalIgnoreCase);
         string? finalPath = null;
         bool isCompleted = false;
-
         string modeDone = isCompressMode ? Res.Log_ModeCompress : Res.Log_ModeDecompress;
 
         log?.Invoke($"{Path.GetFileName(inputPath)} {modeDone} {Res.Log_ProcessStart}", LogLevel.Info, inputPath);
@@ -50,8 +51,11 @@ public static class NspCompressService
 
             var meta = metas.First();
             var sourceStorage = new LocalStorage(inputPath, FileAccess.Read);
+
             disposables.Add(sourceStorage);
+
             IFileSystem sourceFs = sourceStorage.OpenFileSystem(keySet, inputPath);
+
             disposables.Add(sourceFs);
             keySet.RegisterTickets(sourceFs);
 
@@ -71,9 +75,13 @@ public static class NspCompressService
                     continue;
 
                 fileRef.Get.GetSize(out long size).ThrowIfFailure();
+
                 IFile rawFile = fileRef.Release();
+
                 disposables.Add(rawFile);
+
                 IStorage currentStorage = new FileStorage(rawFile);
+
                 disposables.Add(currentStorage);
 
                 if (entryExt is ".tik" or ".cert")
@@ -81,6 +89,7 @@ public static class NspCompressService
                     if (!forceKeyGen0)
                     {
                         var capturedStorage = currentStorage;
+
                         fileEntries.Add((entryName, async (s, onRead) => await Utils.CopyStreamAsync(capturedStorage.AsStream(), s, onRead, ct), size, entryName));
                     }
                     continue;
@@ -89,6 +98,7 @@ public static class NspCompressService
                 if (entryExt is not ".nca" and not ".ncz")
                 {
                     var capturedStorage = currentStorage;
+
                     fileEntries.Add((entryName, async (s, onRead) => await Utils.CopyStreamAsync(capturedStorage.AsStream(), s, onRead, ct), size, entryName));
                     continue;
                 }
@@ -100,7 +110,9 @@ public static class NspCompressService
                 if (entryExt == ".ncz")
                 {
                     var ncz = new Ncz(keySet, currentStorage.AsStream(), NczReadMode.Original);
+
                     ncz.BaseStorage.GetSize(out ncaSize).ThrowIfFailure();
+
                     ncaStorage = ncz.BaseStorage;
                     ncaName = Path.ChangeExtension(entryName, ".nca");
                 }
@@ -118,13 +130,16 @@ public static class NspCompressService
                 {
                     string compName = nca.HasSparseLayer() ? ncaName : Path.ChangeExtension(ncaName, ".ncz");
                     var converter = new NcaToNczConverter(keySet);
+
                     converters[ncaName] = converter;
+
                     var capturedStorage = ncaStorage;
 
                     fileEntries.Add((compName, async (s, onRead) =>
                     {
                         var recryptedHeader = await NcaRecryptService.GetRecryptedHeaderAsync(capturedStorage, (int)nca.Header.KeyGeneration, keySet, ct);
                         using var headerStream = new MemoryStream(recryptedHeader);
+
                         await converter.ConvertAsync(headerStream, capturedStorage, s, useBlockMode, compressionLevel, onRead, ct);
                     }, size, label));
                 }
@@ -132,6 +147,7 @@ public static class NspCompressService
                 {
                     var capturedStorage = ncaStorage;
                     string statusLabel = isCompressMode ? Res.Log_StatusCopying : Res.Log_StatusDecompressing;
+
                     fileEntries.Add((ncaName, async (s, onRead) =>
                     {
                         await NcaRecryptService.RecryptAsync(capturedStorage.AsStream(), s, (int)nca.Header.KeyGeneration, keySet, onRead, ct);
@@ -141,6 +157,7 @@ public static class NspCompressService
 
             string displayName = $"{(isCompressMode ? Res.Log_StatusCompressing : Res.Log_StatusDecompressing)} {NspNameBuilder.CompressDisplayNameBuild(meta.KrTitle, meta.TitleId, meta.DisplayVersion)}";
             var fout = File.Open(finalPath, FileMode.Create, FileAccess.ReadWrite);
+
             disposables.Add(fout);
 
             await Pfs0Builder.WriteAsync(displayName, Path.GetFileNameWithoutExtension(finalPath), fileEntries, fout, Pfs0Builder.GetAlignmentPadding(inputPath), progress, ct);
@@ -149,13 +166,17 @@ public static class NspCompressService
             {
                 long originalSize = new FileInfo(inputPath).Length;
                 long compressedSize = fout.Length;
+
                 log?.Invoke($"{Res.Log_CompressionRatio}: {Utils.FormatFileSize(originalSize)} → {Utils.FormatFileSize(compressedSize)} ({compressedSize * 100.0 / originalSize:F1}%)", LogLevel.Highlight, meta.TitleId);
 
                 if (validation)
                 {
                     fout.Position = 0;
+
                     var validationPfs = new PartitionFileSystem();
+
                     validationPfs.Initialize(fout.AsStorage()).ThrowIfFailure();
+
                     IFileSystem validationFs = validationPfs;
                     var nczEntries = validationFs.EnumerateEntries("/", "*.ncz")
                         .Where(e => converters.ContainsKey(Path.ChangeExtension(e.Name, ".nca")))
@@ -165,19 +186,20 @@ public static class NspCompressService
                     foreach (var entry in nczEntries)
                     {
                         ct.ThrowIfCancellationRequested();
+
                         string origName = Path.ChangeExtension(entry.Name, ".nca");
 
                         if (!converters.TryGetValue(origName, out var converter))
                             continue;
 
                         using var nczFile = new UniqueRef<IFile>();
+
                         validationFs.OpenFile(ref nczFile.Ref, entry.FullPath.ToU8Span(), OpenMode.Read).ThrowIfFailure();
+
                         string label = $"{meta.KrTitle ?? meta.EnTitle} [{meta.TitleId}]";
 
                         log?.Invoke($"- {label} {Res.Log_StatusValidating}", LogLevel.Info, meta.TitleId);
-
                         await converter.ValidateAsync(nczFile.Get.AsStream(), Path.GetFileNameWithoutExtension(finalPath), totalValidationSize, label, progress, ct);
-
                         log?.Invoke($"- {label} {Res.Log_ValidationComplete}", LogLevel.Ok, meta.TitleId);
                     }
                 }
@@ -198,7 +220,10 @@ public static class NspCompressService
                 {
                     File.Delete(finalPath);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"실패한 결과 파일 삭제 실패 ({finalPath}): {ex.Message}");
+                }
         }
     }
 }

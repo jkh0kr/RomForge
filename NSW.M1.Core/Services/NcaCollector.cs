@@ -14,8 +14,8 @@ using Path = System.IO.Path;
 namespace NSW.M1.Core.Services;
 
 public sealed record CollectedNcas(
-    Dictionary<byte, Nca> BaseProgs, Dictionary<byte, Nca> UpdateProgs, Dictionary<byte, Nca> BaseControls, Dictionary<byte, Nca> UpdateControls, Dictionary<byte, Nca> BaseHtmls, 
-    Dictionary<byte, Nca> UpdateHtmls, Dictionary<byte, Nca> BaseLegals, Dictionary<byte, Nca> UpdateLegals, List<Nca> DlcNcas, uint PatchVersion, HashSet<byte> CreateOnlyOffsets, 
+    Dictionary<byte, Nca> BaseProgs, Dictionary<byte, Nca> UpdateProgs, Dictionary<byte, Nca> BaseControls, Dictionary<byte, Nca> UpdateControls, Dictionary<byte, Nca> BaseHtmls,
+    Dictionary<byte, Nca> UpdateHtmls, Dictionary<byte, Nca> BaseLegals, Dictionary<byte, Nca> UpdateLegals, List<Nca> DlcNcas, uint PatchVersion, HashSet<byte> CreateOnlyOffsets,
     Dictionary<byte, Nca> CreateOnlyRawNcas, Dictionary<byte, string> CreateOnlyNcaIds);
 
 public sealed class NcaCollector(KeySet keySet)
@@ -42,8 +42,43 @@ public sealed class NcaCollector(KeySet keySet)
         var createOnlyOffsets = new HashSet<byte>();
         var createOnlyRawNcas = new Dictionary<byte, Nca>();
         var createOnlyNcaIds = new Dictionary<byte, string>();
+        var processedIds = new HashSet<string>();
+        var allNcas = new Dictionary<string, Nca>();
+        var cnmtList = new List<LibHac.Tools.Ncm.Cnmt>();
 
-        foreach (var cnmt in EnumerateCnmts(partitions))
+        foreach (var pfs in partitions)
+        {
+            foreach (var entry in EnumerateNcaEntries(pfs))
+            {
+                string currentId = Path.GetFileNameWithoutExtension(entry.Name).ToLower();
+
+                if (!processedIds.Add(currentId))
+                    continue;
+
+                var nca = OpenNca(pfs, entry.FullPath);
+
+                if (nca == null)
+                    continue;
+
+                allNcas[currentId] = nca;
+
+                if (nca.Header.ContentType != NcaContentType.Meta)
+                    continue;
+
+                try
+                {
+                    using var metaFs = nca.OpenFileSystem(NcaSectionType.Data, IntegrityCheckLevel.None);
+
+                    cnmtList.AddRange(ReadCnmtsFromFs(metaFs));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"CNMT 파싱 실패 ({entry.FullPath}): {ex.Message}");
+                }
+            }
+        }
+
+        foreach (var cnmt in cnmtList)
         {
             if (cnmt.Type == ContentMetaType.Patch)
             {
@@ -77,26 +112,34 @@ public sealed class NcaCollector(KeySet keySet)
                     case ContentMetaType.Application:
                         switch (entry.Type)
                         {
-                            case ContentType.Program: baseProgIds[idOffset] = ncaId; 
+                            case ContentType.Program:
+                                baseProgIds[idOffset] = ncaId;
                                 break;
-                            case ContentType.Control: baseControlIds[idOffset] = ncaId; 
+                            case ContentType.Control:
+                                baseControlIds[idOffset] = ncaId;
                                 break;
-                            case ContentType.HtmlDocument: baseHtmlIds[idOffset] = ncaId; 
+                            case ContentType.HtmlDocument:
+                                baseHtmlIds[idOffset] = ncaId;
                                 break;
-                            case ContentType.LegalInformation: baseLegalIds[idOffset] = ncaId; 
+                            case ContentType.LegalInformation:
+                                baseLegalIds[idOffset] = ncaId;
                                 break;
                         }
                         break;
                     case ContentMetaType.Patch:
                         switch (entry.Type)
                         {
-                            case ContentType.Program: updateProgIds[idOffset] = ncaId;
+                            case ContentType.Program:
+                                updateProgIds[idOffset] = ncaId;
                                 break;
-                            case ContentType.Control: updateControlIds[idOffset] = ncaId;
+                            case ContentType.Control:
+                                updateControlIds[idOffset] = ncaId;
                                 break;
-                            case ContentType.HtmlDocument: updateHtmlIds[idOffset] = ncaId; 
+                            case ContentType.HtmlDocument:
+                                updateHtmlIds[idOffset] = ncaId;
                                 break;
-                            case ContentType.LegalInformation: updateLegalIds[idOffset] = ncaId; 
+                            case ContentType.LegalInformation:
+                                updateLegalIds[idOffset] = ncaId;
                                 break;
                         }
                         break;
@@ -125,26 +168,6 @@ public sealed class NcaCollector(KeySet keySet)
         var baseLegals = new Dictionary<byte, Nca>();
         var updateLegals = new Dictionary<byte, Nca>();
         var dlcNcas = new List<Nca>();
-        var processedIds = new HashSet<string>();
-        var allNcas = new Dictionary<string, Nca>();
-
-        foreach (var pfs in partitions)
-        {
-            foreach (var entry in EnumerateNcaEntries(pfs))
-            {
-                string currentId = Path.GetFileNameWithoutExtension(entry.Name).ToLower();
-
-                if (!processedIds.Add(currentId)) 
-                    continue;
-
-                var nca = OpenNca(pfs, entry.FullPath);
-
-                if (nca == null)
-                    continue;
-
-                allNcas[currentId] = nca;
-            }
-        }
 
         foreach (var (currentId, nca) in allNcas)
         {
@@ -152,7 +175,7 @@ public sealed class NcaCollector(KeySet keySet)
                 baseProgs[bpOffset] = nca;
             else if (updateProgReverse.TryGetValue(currentId, out var upOffset))
             {
-                if (!baseProgIds.ContainsKey(upOffset)) 
+                if (!baseProgIds.ContainsKey(upOffset))
                 {
                     baseProgs[upOffset] = nca;
                     createOnlyOffsets.Add(upOffset);
@@ -183,46 +206,13 @@ public sealed class NcaCollector(KeySet keySet)
         return new CollectedNcas(baseProgs, updateProgs, baseControls, updateControls, baseHtmls, updateHtmls, baseLegals, updateLegals, dlcNcas, patchVersion, createOnlyOffsets, createOnlyRawNcas, createOnlyNcaIds);
     }
 
-    private IEnumerable<LibHac.Tools.Ncm.Cnmt> EnumerateCnmts(IEnumerable<IFileSystem> partitions)
-    {
-        foreach (var pfs in partitions)
-        {
-            foreach (var entry in EnumerateNcaEntries(pfs))
-            {
-                LibHac.Tools.Ncm.Cnmt[]? cnmts = null;
-
-                try
-                {
-                    var metaNca = OpenNca(pfs, entry.FullPath);
-                    if (metaNca?.Header.ContentType != NcaContentType.Meta)
-                        continue;
-
-                    using var metaFs = metaNca.OpenFileSystem(NcaSectionType.Data, IntegrityCheckLevel.None);
-
-                    cnmts = [.. ReadCnmtsFromFs(metaFs)];
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"CNMT 파싱 실패 ({entry.FullPath}): {ex.Message}");
-                    continue;
-                }
-
-                if (cnmts == null)
-                    continue;
-
-                foreach (var c in cnmts) 
-                    yield return c;
-            }
-        }
-    }
-
     private static IEnumerable<LibHac.Tools.Ncm.Cnmt> ReadCnmtsFromFs(IFileSystem metaFs)
     {
         foreach (var cnmtEntry in metaFs.EnumerateEntries("/", "*.cnmt"))
         {
             using var cnmtFile = new UniqueRef<IFile>();
 
-            if (metaFs.OpenFile(ref cnmtFile.Ref, cnmtEntry.FullPath.ToU8Span(), OpenMode.Read).IsFailure()) 
+            if (metaFs.OpenFile(ref cnmtFile.Ref, cnmtEntry.FullPath.ToU8Span(), OpenMode.Read).IsFailure())
                 continue;
 
             yield return new LibHac.Tools.Ncm.Cnmt(cnmtFile.Get.AsStream());
