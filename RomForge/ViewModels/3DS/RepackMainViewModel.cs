@@ -22,7 +22,6 @@ public class RepackMainViewModel : ToolTabViewModel
     private CancellationTokenSource _cts = new();
     private BuildMode? _currentMode;
     private readonly RepackService _service;
-
     public ObservableCollection<LogEntry> LogEntries { get; } = [];
 
     private string _inputPath = string.Empty;
@@ -36,28 +35,48 @@ public class RepackMainViewModel : ToolTabViewModel
     private TitleViewModel? _romInfo;
 
     private RepackOutputFormat _outputFormat = RepackOutputFormat.Cci;
+
     public RepackOutputFormat OutputFormat
     {
         get => _outputFormat;
-        set { _outputFormat = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsCciFormat)); OnPropertyChanged(nameof(IsZcciFormat)); OnPropertyChanged(nameof(IsCiaFormat)); }
+        set 
+        { 
+            _outputFormat = value; OnPropertyChanged();
+
+            OnPropertyChanged(nameof(IsCciFormat)); 
+            OnPropertyChanged(nameof(IsZcciFormat));
+            OnPropertyChanged(nameof(IsCiaFormat)); 
+        }
     }
 
     public bool IsCciFormat
     {
         get => OutputFormat == RepackOutputFormat.Cci;
-        set { if (value) OutputFormat = RepackOutputFormat.Cci; }
+        set 
+        { 
+            if (value) 
+                OutputFormat = RepackOutputFormat.Cci; 
+        }
     }
 
     public bool IsZcciFormat
     {
         get => OutputFormat == RepackOutputFormat.Zcci;
-        set { if (value) OutputFormat = RepackOutputFormat.Zcci; }
+        set 
+        { 
+            if (value) 
+                OutputFormat = RepackOutputFormat.Zcci; 
+        }
     }
 
     public bool IsCiaFormat
     {
         get => OutputFormat == RepackOutputFormat.Cia;
-        set { if (value) OutputFormat = RepackOutputFormat.Cia; }
+        set 
+        { 
+            if (value) 
+                OutputFormat = RepackOutputFormat.Cia; 
+        }
     }
 
     public string InputPath
@@ -66,6 +85,7 @@ public class RepackMainViewModel : ToolTabViewModel
         set
         {
             _inputPath = value;
+
             OnPropertyChanged();
             OnPropertyChanged(nameof(InputHintVisibility));
             _ = RefreshRomInfoAsync();
@@ -75,7 +95,11 @@ public class RepackMainViewModel : ToolTabViewModel
     public string PatchPath
     {
         get => _patchPath;
-        set { _patchPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(PatchHintVisibility)); }
+        set 
+        { 
+            _patchPath = value; OnPropertyChanged();
+            OnPropertyChanged(nameof(PatchHintVisibility)); 
+        }
     }
 
     public string OutputPath
@@ -84,8 +108,10 @@ public class RepackMainViewModel : ToolTabViewModel
         set
         {
             _outputPath = value;
+
             OnPropertyChanged();
             OnPropertyChanged(nameof(OutputHintVisibility));
+
             if (string.IsNullOrEmpty(InputPath))
                 _ = RefreshRomInfoAsync();
         }
@@ -242,7 +268,7 @@ public class RepackMainViewModel : ToolTabViewModel
                         if (OutputFormat == RepackOutputFormat.Zcci)
                             TrackOutput(Path.ChangeExtension(producedPath, ".zcci"));
 
-                        producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
+                        producedPath = await FinalizeOutputFormatAsync(producedPath, progress, ct);
                     }
                     break;
                 case BuildMode.FullProcess:
@@ -259,7 +285,7 @@ public class RepackMainViewModel : ToolTabViewModel
                         if (OutputFormat == RepackOutputFormat.Zcci)
                             TrackOutput(Path.ChangeExtension(producedPath, ".zcci"));
 
-                        producedPath = await FinalizeOutputFormatAsync(producedPath, keyStore, progress, ct);
+                        producedPath = await FinalizeOutputFormatAsync(producedPath, progress, ct);
                     }
                     break;
             }
@@ -299,25 +325,19 @@ public class RepackMainViewModel : ToolTabViewModel
         }
     }
 
-    private async Task<string> FinalizeOutputFormatAsync(string cciPath, KeyStore keyStore, Progress<ProgressInfo> progress, CancellationToken ct)
+    private async Task<string> FinalizeOutputFormatAsync(string cciPath, Progress<ProgressInfo> progress, CancellationToken ct)
     {
-        switch (OutputFormat)
-        {
-            case RepackOutputFormat.Zcci:
-                await Z3dsArchiveService.CompressAsync(cciPath, 18, progress, Log, ct);
-                TryDeleteFile(cciPath);
+        if (OutputFormat != RepackOutputFormat.Zcci)
+            return cciPath;
 
-                return Path.ChangeExtension(cciPath, ".zcci");
+        long cciSize = new FileInfo(cciPath).Length;
+        var zcciReporter = new ProgressReporter(Path.GetFileNameWithoutExtension(cciPath), string.Empty, cciSize, progress);
+        var zcciProgress = new Progress<ProgressInfo>(info => zcciReporter.ReportPercent(info.Percent / 100.0));
 
-            case RepackOutputFormat.Cia:
-                await new CciToCiaConverter(keyStore).ConvertAsync(cciPath, progress, Log, ct);
-                TryDeleteFile(cciPath);
+        await Z3dsArchiveService.CompressAsync(cciPath, 18, zcciProgress, Log, ct);
+        TryDeleteFile(cciPath);
 
-                return Path.ChangeExtension(cciPath, ".cia");
-
-            default:
-                return cciPath;
-        }
+        return Path.ChangeExtension(cciPath, ".zcci");
     }
 
     private static void TryDeleteFile(string path)
