@@ -37,11 +37,9 @@ public static class SourceArchiveExtractor
         ".vpk", ".pkg"
     };
 
-    private static readonly string[] IgnoredExtensions =
-        [".txt", ".nfo", ".diz", ".url", ".ini", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".md5", ".sfv", ".log", ".pdf", ".doc", ".docx"];
+    private static readonly string[] IgnoredExtensions = [".txt", ".nfo", ".diz", ".url", ".ini", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".md5", ".sfv", ".log", ".pdf", ".doc", ".docx"];
 
-    public static bool IsArchivePath(string? path) =>
-        !string.IsNullOrEmpty(path) && SupportedExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+    public static bool IsArchivePath(string? path) => !string.IsNullOrEmpty(path) && SupportedExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 
     public static Task<ArchiveExtractResult> AnalyzeAndExtractAsync(string archivePath, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct) =>
         Task.Run(() =>
@@ -52,8 +50,7 @@ public static class SourceArchiveExtractor
             if (entries.Count == 0)
                 throw new InvalidOperationException("압축 파일에 항목이 없습니다.");
 
-            var cueEntries = entries.Where(e =>
-                string.Equals(Path.GetExtension(e.Key), ".cue", StringComparison.OrdinalIgnoreCase)).ToList();
+            var cueEntries = entries.Where(e => string.Equals(Path.GetExtension(e.Key), ".cue", StringComparison.OrdinalIgnoreCase)).ToList();
 
             if (cueEntries.Count == 1)
                 return ResolveCue(session, cueEntries[0], entries, extractDir, progress, ct);
@@ -127,9 +124,7 @@ public static class SourceArchiveExtractor
         foreach (var bin in referencedBins)
         {
             string binFileName = Path.GetFileName(bin);
-            var match = entries.FirstOrDefault(e =>
-                GetEntryDirectory(e.Key) == cueDir &&
-                string.Equals(Path.GetFileName(e.Key), binFileName, StringComparison.OrdinalIgnoreCase));
+            var match = entries.FirstOrDefault(e => GetEntryDirectory(e.Key) == cueDir && string.Equals(Path.GetFileName(e.Key), binFileName, StringComparison.OrdinalIgnoreCase));
 
             if (match.Key is not null)
                 binEntries.Add(match);
@@ -139,8 +134,12 @@ public static class SourceArchiveExtractor
             throw new InvalidOperationException("CUE 파일이 참조하는 BIN 파일을 압축 안에서 찾을 수 없습니다.");
 
         var binExtracted = ExtractEntries(session, binEntries, extractDir, progress, ct);
+        int mainIndex = ConversionSource.ResolveMainDataTrackIndex(cuePath);
+        string ? mainBinFileName = mainIndex >= 0 && mainIndex < referencedBins.Count ? Path.GetFileName(referencedBins[mainIndex]) : null;
+        var mainEntry = binEntries.FirstOrDefault(e => string.Equals(Path.GetFileName(e.Key), mainBinFileName, StringComparison.OrdinalIgnoreCase));
+        string resolvedKey = mainEntry.Key ?? binEntries[0].Key;
 
-        return new ArchiveExtractResult { ResolvedPath = binExtracted[binEntries[0].Key] };
+        return new ArchiveExtractResult { ResolvedPath = binExtracted[resolvedKey] };
     }
 
     private static string GetEntryDirectory(string key)
@@ -151,13 +150,9 @@ public static class SourceArchiveExtractor
         return lastSlash >= 0 ? normalized[..lastSlash] : string.Empty;
     }
 
-    private static Dictionary<string, string> ExtractEntries(IArchiveSession session, List<ArchiveEntryInfo> entries, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct) =>
-        session.Extract([.. entries.Select(e => e.Key)], extractDir, progress, ct);
+    private static Dictionary<string, string> ExtractEntries(IArchiveSession session, List<ArchiveEntryInfo> entries, string extractDir, IProgress<ProgressInfo> progress, CancellationToken ct) => session.Extract([.. entries.Select(e => e.Key)], extractDir, progress, ct);
 
-    private static IArchiveSession OpenSession(string archivePath) =>
-        string.Equals(Path.GetExtension(archivePath), ".7z", StringComparison.OrdinalIgnoreCase)
-            ? new NativeSevenZipSession(archivePath)
-            : new SharpCompressSession(archivePath);
+    private static IArchiveSession OpenSession(string archivePath) => string.Equals(Path.GetExtension(archivePath), ".7z", StringComparison.OrdinalIgnoreCase) ? new NativeSevenZipSession(archivePath) : new SharpCompressSession(archivePath);
 
     private readonly record struct ArchiveEntryInfo(string Key, long Size, bool IsDirectory);
 
@@ -277,8 +272,7 @@ public static class SourceArchiveExtractor
 
             void OnExtracting(object? sender, ProgressEventArgs e)
             {
-                ct.ThrowIfCancellationRequested();                
-
+                ct.ThrowIfCancellationRequested();
                 reporter.ReportPercent(e.PercentDone / 100.0);
             }
 

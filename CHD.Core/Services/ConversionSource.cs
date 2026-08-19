@@ -33,6 +33,7 @@ public class ConversionSource
     private static ConversionSource FromCue(string cuePath)
     {
         var bins = ParseBinsFromCue(cuePath);
+
         return new ConversionSource
         {
             Format = InputFormat.BinCue,
@@ -48,6 +49,7 @@ public class ConversionSource
         foreach (var cue in Directory.GetFiles(dir, "*.cue"))
         {
             var bins = ParseBinsFromCue(cue);
+
             if (bins.Any(b => string.Equals(b, binPath, StringComparison.OrdinalIgnoreCase)))
                 return FromCue(cue);
         }
@@ -58,6 +60,7 @@ public class ConversionSource
     public static IReadOnlyList<string> ParseBinsFromCue(string cuePath)
     {
         cuePath = Path.GetFullPath(cuePath);
+
         var dir = Path.GetDirectoryName(cuePath)!;
         var bins = new List<string>();
 
@@ -66,20 +69,71 @@ public class ConversionSource
 
         foreach (var line in File.ReadAllLines(cuePath))
         {
-            var match = Regex.Match(line.Trim(),
-                @"^FILE\s+""(.+?)""\s+BINARY", RegexOptions.IgnoreCase);
+            var match = Regex.Match(line.Trim(), @"^FILE\s+""(.+?)""\s+BINARY", RegexOptions.IgnoreCase);
 
-            if (!match.Success) continue;
+            if (!match.Success) 
+                continue;
 
             var binName = match.Groups[1].Value;
-            var fullPath = Path.IsPathRooted(binName)
-                ? binName
-                : Path.GetFullPath(Path.Combine(dir, binName));
+            var fullPath = Path.IsPathRooted(binName) ? binName : Path.GetFullPath(Path.Combine(dir, binName));
 
             bins.Add(fullPath);
         }
 
         return bins;
+    }
+
+    public static int ResolveMainDataTrackIndex(string cuePath)
+    {
+        if (!File.Exists(cuePath))
+            return 0;
+
+        bool inHighDensity = false;
+        int fileIndex = -1;
+        int firstDataIndex = -1;
+        int lastHighDensityDataIndex = -1;
+
+        foreach (var raw in File.ReadAllLines(cuePath))
+        {
+            var line = raw.Trim();
+
+            if (line.StartsWith("REM", StringComparison.OrdinalIgnoreCase))
+            {
+                if (line.Contains("HIGH-DENSITY", StringComparison.OrdinalIgnoreCase))
+                    inHighDensity = true;
+                else if (line.Contains("SINGLE-DENSITY", StringComparison.OrdinalIgnoreCase))
+                    inHighDensity = false;
+
+                continue;
+            }
+
+            if (Regex.IsMatch(line, @"^FILE\s+"".+?""\s+BINARY", RegexOptions.IgnoreCase))
+            {
+                fileIndex++;
+                continue;
+            }
+
+            var trackMatch = Regex.Match(line, @"^TRACK\s+\d+\s+(\S+)", RegexOptions.IgnoreCase);
+
+            if (!trackMatch.Success || fileIndex < 0)
+                continue;
+
+            bool isData = !trackMatch.Groups[1].Value.Equals("AUDIO", StringComparison.OrdinalIgnoreCase);
+
+            if (!isData)
+                continue;
+
+            if (firstDataIndex < 0)
+                firstDataIndex = fileIndex;
+
+            if (inHighDensity)
+                lastHighDensityDataIndex = fileIndex;
+        }
+
+        if (lastHighDensityDataIndex >= 0)
+            return lastHighDensityDataIndex;
+
+        return firstDataIndex >= 0 ? firstDataIndex : 0;
     }
 
     public static IReadOnlyList<string> ParseFilesFromGdi(string gdiPath)
@@ -101,6 +155,7 @@ public class ConversionSource
             if (tokens.Count >= 5)
             {
                 string fileName = tokens[4].Trim('"');
+
                 files.Add(fileName);
             }
         }
@@ -167,6 +222,7 @@ public class ConversionSource
             return $"CUE 파일에 BIN 참조가 없습니다: {Path.GetFileName(PrimaryFile)}";
 
         var missing = BinFiles.FirstOrDefault(b => !File.Exists(b));
+
         if (missing != null)
             return $"BIN 파일을 찾을 수 없습니다: {Path.GetFileName(missing)}";
 

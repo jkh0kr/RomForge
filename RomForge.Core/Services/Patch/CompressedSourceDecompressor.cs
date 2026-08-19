@@ -21,9 +21,7 @@ public static class CompressedSourceDecompressor
 
         log($"{Path.GetFileName(sourcePath)} 압축 해제 중...", LogLevel.Highlight);
 
-        var result = ext == ".chd"
-            ? await DecompressChdAsync(sourcePath, workDir, progress, log, ct)
-            : await DecompressRvzAsync(sourcePath, workDir, progress, log, ct);
+        var result = ext == ".chd" ? await DecompressChdAsync(sourcePath, workDir, progress, log, ct) : await DecompressRvzAsync(sourcePath, workDir, progress, log, ct);
 
         log($"압축 해제 완료: {Path.GetFileName(result.ActualSourcePath)}", LogLevel.Ok);
 
@@ -33,6 +31,7 @@ public static class CompressedSourceDecompressor
     private static async Task<(string ActualSourcePath, DetectResult Detected)> DecompressChdAsync(string chdPath, string outputDir, IProgress<ProgressInfo> progress, Action<string, LogLevel> log, CancellationToken ct)
     {
         var converter = new FileConverter(AppConfig.Instance.Chdman.Compression);
+
         converter.LogMessage += (_, e) => log(e.Message, e.Level);
 
         var result = await converter.ConvertFileAsync(chdPath, outputDir, progress, ct);
@@ -49,7 +48,9 @@ public static class CompressedSourceDecompressor
             if (bins.Count == 0)
                 throw new Exception("CUE 파일이 참조하는 BIN 파일을 찾을 수 없습니다.");
 
-            var mainBin = Path.Combine(Path.GetDirectoryName(result.OutputFile)!, Path.GetFileName(bins[0]));
+            int mainIndex = ConversionSource.ResolveMainDataTrackIndex(result.OutputFile);
+            string mainBinName = mainIndex >= 0 && mainIndex < bins.Count ? bins[mainIndex] : bins[0];
+            var mainBin = Path.Combine(Path.GetDirectoryName(result.OutputFile)!, Path.GetFileName(mainBinName));
 
             return (mainBin, new DetectResult { Format = RomFormat.Bin, Direction = ConvertDirection.Compress, OutputExtension = "chd" });
         }
@@ -68,6 +69,7 @@ public static class CompressedSourceDecompressor
     private static async Task<(string ActualSourcePath, DetectResult Detected)> DecompressRvzAsync(string rvzPath, string outputDir, IProgress<ProgressInfo> progress, Action<string, LogLevel> log, CancellationToken ct)
     {
         var dolphin = new DolphinService();
+
         dolphin.LogMessage += (_, e) => log(e.Message, e.Level);
         dolphin.ProgressChanged += (_, e) => progress.Report(new ProgressInfo { Label = "압축 해제 중...", Percent = e.Progress });
 
