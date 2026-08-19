@@ -178,7 +178,7 @@ public class RepackService(Action<string, LogLevel> log, Func<string?> getPatchP
 
             if (Directory.Exists(romfsDir))
             {
-                romfsResult = RomFsPacker.ScanFolderAsUnpackResult(romfsDir);
+                romfsResult = RomFsFolderScanner.ScanFolderAsUnpackResult(romfsDir);
 
                 IRomFsFileSource? patchSource = null;
 
